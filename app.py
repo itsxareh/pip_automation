@@ -658,15 +658,17 @@ def main():
             try:
                 st.subheader("File Preview")
                 
-                preview_df = getattr(processor, automation_map[automation_type])(
-                    file_content, 
-                    preview_only=True,
-                    remove_duplicates=remove_duplicates,
-                    remove_blanks=remove_blanks,
-                    trim_spaces=trim_spaces)
-                st.dataframe(preview_df.head(10), use_container_width=True)
-                
-                uploaded_file.seek(0)
+                if automation_type in ["Updates", "Uploads"]:
+                    preview_df = getattr(processor, automation_map[automation_type])(file_content, preview_only=True)
+                    st.dataframe(preview_df.head(10), use_container_width=True)
+                else: 
+                    with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as temp_input:
+                        temp_input.write(file_content)
+                        temp_input_path = temp_input.name
+                    preview_df = pd.read_excel(temp_input_path)
+                    st.dataframe(preview_df.head(10), use_container_width=True)
+                    os.unlink(temp_input_path)
+                    uploaded_file.seek(0)
                     
             except Exception as e:
                 st.error(f"Error previewing file: {str(e)}")
