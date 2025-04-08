@@ -667,7 +667,7 @@ def main():
             try:
                 with st.spinner("Processing file..."):
                     if automation_type == "Data Clean":
-                        result_df, output_binary, output_filename = getattr(processor, "clean_only")(
+                        result_df, output_binary, output_filename = processor.clean_only(
                             file_content,
                             remove_duplicates=remove_duplicates,
                             remove_blanks=remove_blanks,
@@ -676,7 +676,7 @@ def main():
                         st.subheader("Cleaned Data")
                         st.dataframe(result_df, use_container_width=True)
                         st.download_button(
-                            label="Download",
+                            label="Download Cleaned File",
                             data=output_binary,
                             file_name=output_filename,
                             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
