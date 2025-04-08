@@ -83,17 +83,17 @@ class BPIProcessor:
         cleaned_df = cleaned_df.replace(r'^\s*$', pd.NA, regex=True)
         return cleaned_df
     
-    def clean_only(self, file_content, preview_only=False,
-                   remove_duplicates=False, remove_blanks=False, trim_spaces=False):
+    def clean_only(self, file_content, preview_only=False, 
+                  remove_duplicates=False, remove_blanks=False, trim_spaces=False):
         try:
             df = pd.read_excel(io.BytesIO(file_content))
             cleaned_df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
             
             if preview_only:
                 return cleaned_df
-            
+                
             current_date = datetime.now().strftime('%m%d%Y')
-            output_filename = f"Cleaned_Data.xlsx"
+            output_filename = f"CLEANED_DATA_{current_date}.xlsx"
             output_path = os.path.join(self.temp_dir, output_filename)
             
             with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
@@ -107,11 +107,12 @@ class BPIProcessor:
                     ) + 2
                     col_letter = chr(65 + i)
                     worksheet.column_dimensions[col_letter].width = max_length
+            
             with open(output_path, 'rb') as f:
                 output_binary = f.read()
                 
             return cleaned_df, output_binary, output_filename
-        
+            
         except Exception as e:
             st.error(f"Error cleaning file: {str(e)}")
             raise
