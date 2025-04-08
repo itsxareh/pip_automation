@@ -8,6 +8,7 @@ from datetime import datetime, date, time
 import io
 import tempfile
 import shutil
+import re 
 
 warnings.filterwarnings('ignore', category=UserWarning, 
                         message="Cell .* is marked as a date but the serial value .* is outside the limits for dates.*")
@@ -88,6 +89,12 @@ class BPIProcessor:
         try:
             df = pd.read_excel(io.BytesIO(file_content))
             cleaned_df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
+            
+            cleaned_df.columns = [re.sub(r'[^A-Za-z0-9_]', '_', str(col)) for col in cleaned_df.columns]
+            
+            invalid_cols = [col for col in cleaned_df.columns if not re.match(r'^[A-Za-z0-9_]+$', col)]
+            if invalid_cols:
+                st.warning(f"Found potentially problematic column names: {invalid_cols}. They have been sanitized.")
             
             if preview_only:
                 return cleaned_df
