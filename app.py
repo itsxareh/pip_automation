@@ -70,7 +70,7 @@ class BPIProcessor:
             return str(date_value)
 
     def clean_data(self, df, remove_duplicates=False, remove_blanks=False, trim_spaces=False):
-        cleaned_df = df.copy
+        cleaned_df = df.copy()
         
         if remove_blanks: 
             cleaned_df = cleaned_df.dropna(how='all')
@@ -82,6 +82,39 @@ class BPIProcessor:
                 
         cleaned_df = cleaned_df.replace(r'^\s*$', pd.NA, regex=True)
         return cleaned_df
+    
+    def clean_only(self, file_content, preview_only=False,
+                   remove_duplicates=False, remove_blanks=False, trim_spaces=False):
+        try:
+            df = pd.read_excel(io.BytesIO(file_content))
+            cleaned_df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
+            
+            if preview_only:
+                return cleaned_df
+            
+            current_date = datetime.now().strftime('%m%d%Y')
+            output_filename = f"Cleaned_Data.xlsx"
+            output_path = os.path.join(self.temp_dir, output_filename)
+            
+            with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
+                cleaned_df.to_excel(writer, index=False, sheet_name='Sheet1')
+                
+                worksheet = writer.sheets['Sheet1']
+                for i, col in enumerate(cleaned_df.columns):
+                    max_length = max(
+                        cleaned_df[col].astype(str).map(len).max(),
+                        len(col)
+                    ) + 2
+                    col_letter = chr(65 + i)
+                    worksheet.column_dimension[col_letter].width = max_length
+            with open(output_path, 'rb') as f:
+                output_binary = f.read()
+                
+            return cleaned_df, output_binary, output_filename
+        
+        except Exception as e:
+            st.error(f"Error cleaning file: {str(e)}")
+            raise
         
     def process_updates_or_uploads(self, file_content, automation_type, preview_only=False,
                                    remove_duplicates=False, remove_blanks=False, trim_spaces=False):
@@ -583,10 +616,11 @@ def main():
     
     automation_type = st.sidebar.selectbox(
         "Select Automation Type",
-        ["Updates", "Uploads", "Cured List"]
+        ["Data Clean", "Updates", "Uploads", "Cured List"]
     )
     
     automation_map = {
+        "Data Clean": "clean_only",
         "Updates": "process_updates",
         "Uploads": "process_uploads",
         "Cured List": "process_cured_list"
@@ -631,16 +665,33 @@ def main():
         if process_button:
             try:
                 with st.spinner("Processing file..."):
-                    if automation_type in ["Updates", "Uploads"]:
-                            result_df, output_binary, output_filename = getattr(processor, f"process_{automation_type.lower()}")(
-                                file_content,
-                                remove_duplicates=remove_duplicates,
-                                remove_blanks=remove_blanks,
-                                trim_spaces=trim_spaces)
-                            st.subheader("Processed Data")
-                            st.dataframe(result_df, use_container_width=True)
-                            st.download_button(label="Download Processed File", data=output_binary, file_name=output_filename, mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-                            st.success(f"File processed successfully! Download '{output_filename}'")
+                    if automation_type == "Data Clean":
+                        result_df, output_binary, output_filename = processor.clean_only(
+                            file_content,
+                            remove_duplicates=remove_duplicates,
+                            remove_blanks=remove_blanks,
+                            trim_spaces=trim_spaces
+                        )
+                        st.subheader("Cleaned Data")
+                        st.dataframe(result_df, use_container_width=True)
+                        st.download_button(
+                            label="Download",
+                            data=output_binary,
+                            file_name=output_filename,
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            type="primary"
+                        )
+                        st.success(f"File cleaned successfully! Download '{output_filename}'")
+                    elif automation_type in ["Updates", "Uploads"]:
+                        result_df, output_binary, output_filename = getattr(processor, f"process_{automation_type.lower()}")(
+                            file_content,
+                            remove_duplicates=remove_duplicates,
+                            remove_blanks=remove_blanks,
+                            trim_spaces=trim_spaces)
+                        st.subheader("Processed Data")
+                        st.dataframe(result_df, use_container_width=True)
+                        st.download_button(label="Download Processed File", data=output_binary, file_name=output_filename, mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                        st.success(f"File processed successfully! Download '{output_filename}'")
                     else: 
                         result = processor.process_cured_list(
                             file_content,
