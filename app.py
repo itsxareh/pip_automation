@@ -647,6 +647,7 @@ def main():
     trim_spaces = st.sidebar.checkbox("Trim Text", value=False)
     
     processor = BPIProcessor()
+    st.sidebar.markdown("   ")
     preview = st.sidebar.checkbox("Preview file before processing", value=True)
     process_button = st.sidebar.button("Process File", type="primary", disabled=uploaded_file is None)
     
