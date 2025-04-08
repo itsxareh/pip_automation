@@ -620,9 +620,10 @@ class BPIProcessor:
                 os.unlink(temp_input_path)
 
 def main():
+    st.set_page_config(page_title="Automation Tool", layout="wide")
+    
     tabs = st.tabs(["BPI", "ROB Bike"])
     with tabs[0]:
-        st.set_page_config(page_title="BPI Automation Tool", layout="wide")
     
         st.title("BPI Automation Tool")
         st.markdown("Transform File into CMS Format")
