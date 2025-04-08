@@ -676,7 +676,7 @@ def main():
     automation_map = config["automation_map"]
     automation_options = config["automation_options"]
 
-    st.sidebar.header(f"{campaign} Settings")
+    st.sidebar.header("Settings")
     automation_type = st.sidebar.selectbox("Select Automation Type", automation_options, key=f"{campaign}_automation_type")
     
     st.sidebar.header("File Upload")
