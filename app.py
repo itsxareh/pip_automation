@@ -642,31 +642,36 @@ class ROBBikeProcessor:
         output_binary = df.to_excel(index=False, engine='openpyxl')
         return df, output_binary, output_filename
 
-def render_sidebar(automation_options):
+def render_sidebar(automation_options, key_prefix):
     st.sidebar.header("Settings")
-    automation_type = st.sidebar.selectbox("Select Automation Type", automation_options)
+    automation_type = st.sidebar.selectbox("Select Automation Type", automation_options, key=f"{key_prefix}_automation_type")
     
     st.sidebar.header("File Upload")
-    uploaded_file = st.sidebar.file_uploader("Upload Excel file", type=["xlsx", "xls"], help="Select the Excel file to be processed")
+    uploaded_file = st.sidebar.file_uploader(
+        "Upload Excel file", 
+        type=["xlsx", "xls"], 
+        help="Select the Excel file to be processed",
+        key=f"{key_prefix}_file_uploader"
+    )
     
     st.sidebar.header("Data Cleaning Options")
-    remove_duplicates = st.sidebar.checkbox("Remove Duplicates", value=False)
-    remove_blanks = st.sidebar.checkbox("Remove Blanks", value=False)
-    trim_spaces = st.sidebar.checkbox("Trim Text", value=False)
+    remove_duplicates = st.sidebar.checkbox("Remove Duplicates", value=False, key=f"{key_prefix}_remove_duplicates")
+    remove_blanks = st.sidebar.checkbox("Remove Blanks", value=False, key=f"{key_prefix}_remove_blanks")
+    trim_spaces = st.sidebar.checkbox("Trim Text", value=False, key=f"{key_prefix}_trim_spaces")
     
     st.sidebar.markdown("   ")
-    preview = st.sidebar.checkbox("Preview file before processing", value=True)
-    process_button = st.sidebar.button("Process File", type="primary", disabled=uploaded_file is None)
+    preview = st.sidebar.checkbox("Preview file before processing", value=True, key=f"{key_prefix}_preview")
+    process_button = st.sidebar.button("Process File", type="primary", disabled=uploaded_file is None, key=f"{key_prefix}_process_button")
     
     return uploaded_file, automation_type, remove_duplicates, remove_blanks, trim_spaces, preview, process_button
+
 def main():
     st.set_page_config(page_title="Automation Tool", layout="wide")
     st.title("Automation Tool")
     st.markdown("Transform Files into CMS Format")
 
-    # Define campaign-specific automation options
     bpi_automation_options = ["Data Clean", "Updates", "Uploads", "Cured List"]
-    rob_bike_automation_options = ["Data Clean", "Uploads"]  # Example, adjust as needed
+    rob_bike_automation_options = ["Data Clean", "Uploads"] 
     
     bpi_automation_map = {
         "Data Clean": "clean_only",
@@ -679,13 +684,11 @@ def main():
         "Uploads": "process_uploads"
     }
 
-    # Create tabs for campaigns
     tab1, tab2 = st.tabs(["BPI", "ROB Bike"])
 
-    # BPI Tab
     with tab1:
         st.header("BPI Automation")
-        uploaded_file, automation_type, remove_duplicates, remove_blanks, trim_spaces, preview, process_button = render_sidebar(bpi_automation_options)
+        uploaded_file, automation_type, remove_duplicates, remove_blanks, trim_spaces, preview, process_button = render_sidebar(bpi_automation_options, "bpi")
         processor = BPIProcessor()
 
         if uploaded_file is not None:
@@ -740,7 +743,7 @@ def main():
             st.warning("Please upload a file to get started.")
     with tab2:
         st.header("ROB Bike Automation")
-        uploaded_file, automation_type, remove_duplicates, remove_blanks, trim_spaces, preview, process_button = render_sidebar(rob_bike_automation_options)
+        uploaded_file, automation_type, remove_duplicates, remove_blanks, trim_spaces, preview, process_button = render_sidebar(rob_bike_automation_options, 'rob_bike')
         processor = ROBBikeProcessor()
 
         if uploaded_file is not None:
