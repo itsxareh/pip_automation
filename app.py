@@ -256,7 +256,7 @@ class BPIProcessor:
             temp_input_path = temp_input.name
             
         df = pd.read_excel(temp_input_path)
-        df = self.clean_data(remove_duplicates, remove_blanks, trim_spaces)
+        df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
         
         if preview_only:
             os.unlink(temp_input_path)
