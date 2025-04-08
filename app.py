@@ -680,6 +680,7 @@ def main():
     automation_type = st.sidebar.selectbox("Select Automation Type", automation_options, key=f"{campaign}_automation_type")
     
     st.sidebar.header("File Upload")
+    preview = st.sidebar.checkbox("Preview file before processing", value=True, key=f"{campaign}_preview")
     uploaded_file = st.sidebar.file_uploader(
         "Upload Excel file", 
         type=["xlsx", "xls"], 
@@ -692,8 +693,6 @@ def main():
     remove_blanks = st.sidebar.checkbox("Remove Blanks", value=False, key=f"{campaign}_remove_blanks")
     trim_spaces = st.sidebar.checkbox("Trim Text", value=False, key=f"{campaign}_trim_spaces")
     
-    st.sidebar.markdown("   ")
-    preview = st.sidebar.checkbox("Preview file before processing", value=True, key=f"{campaign}_preview")
     process_button = st.sidebar.button("Process File", type="primary", disabled=uploaded_file is None, key=f"{campaign}_process_button")
 
     if uploaded_file is not None:
