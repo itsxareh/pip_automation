@@ -642,26 +642,50 @@ class ROBBikeProcessor:
         output_binary = df.to_excel(index=False, engine='openpyxl')
         return df, output_binary, output_filename
 
-def render_sidebar(automation_options, key_prefix):
-    st.sidebar.header("Settings")
-    automation_type = st.sidebar.selectbox("Select Automation Type", automation_options, key=f"{key_prefix}_automation_type")
+CAMPAIGN_CONFIG = {
+    "BPI": {
+        "automation_options": ["Data Clean", "Updates", "Uploads", "Cured List"],
+        "automation_map": {
+            "Data Clean": "clean_only",
+            "Updates": "process_updates",
+            "Uploads": "process_uploads",
+            "Cured List": "process_cured_list"
+        },
+        "processor": BPIProcessor
+    },
+    "ROB Bike": {
+        "automation_options": ["Data Clean", "Uploads"],
+        "automation_map": {
+            "Data Clean": "clean_only",
+            "Uploads": "process_uploads"
+        },
+        "processor": ROBBikeProcessor
+    }
+}
+
+def render_sidebar(active_campaign):
+    config = CAMPAIGN_CONFIG[active_campaign]
+    automation_options = config["automation_options"]
+    
+    st.sidebar.header(f"{active_campaign} Settings")
+    automation_type = st.sidebar.selectbox("Select Automation Type", automation_options, key=f"{active_campaign}_automation_type")
     
     st.sidebar.header("File Upload")
     uploaded_file = st.sidebar.file_uploader(
         "Upload Excel file", 
         type=["xlsx", "xls"], 
         help="Select the Excel file to be processed",
-        key=f"{key_prefix}_file_uploader"
+        key=f"{active_campaign}_file_uploader"
     )
     
     st.sidebar.header("Data Cleaning Options")
-    remove_duplicates = st.sidebar.checkbox("Remove Duplicates", value=False, key=f"{key_prefix}_remove_duplicates")
-    remove_blanks = st.sidebar.checkbox("Remove Blanks", value=False, key=f"{key_prefix}_remove_blanks")
-    trim_spaces = st.sidebar.checkbox("Trim Text", value=False, key=f"{key_prefix}_trim_spaces")
+    remove_duplicates = st.sidebar.checkbox("Remove Duplicates", value=False, key=f"{active_campaign}_remove_duplicates")
+    remove_blanks = st.sidebar.checkbox("Remove Blanks", value=False, key=f"{active_campaign}_remove_blanks")
+    trim_spaces = st.sidebar.checkbox("Trim Text", value=False, key=f"{active_campaign}_trim_spaces")
     
     st.sidebar.markdown("   ")
-    preview = st.sidebar.checkbox("Preview file before processing", value=True, key=f"{key_prefix}_preview")
-    process_button = st.sidebar.button("Process File", type="primary", disabled=uploaded_file is None, key=f"{key_prefix}_process_button")
+    preview = st.sidebar.checkbox("Preview file before processing", value=True, key=f"{active_campaign}_preview")
+    process_button = st.sidebar.button("Process File", type="primary", disabled=uploaded_file is None, key=f"{active_campaign}_process_button")
     
     return uploaded_file, automation_type, remove_duplicates, remove_blanks, trim_spaces, preview, process_button
 
@@ -670,110 +694,84 @@ def main():
     st.title("Automation Tool")
     st.markdown("Transform Files into CMS Format")
 
-    bpi_automation_options = ["Data Clean", "Updates", "Uploads", "Cured List"]
-    rob_bike_automation_options = ["Data Clean", "Uploads"] 
-    
-    bpi_automation_map = {
-        "Data Clean": "clean_only",
-        "Updates": "process_updates",
-        "Uploads": "process_uploads",
-        "Cured List": "process_cured_list"
-    }
-    rob_bike_automation_map = {
-        "Data Clean": "clean_only",
-        "Uploads": "process_uploads"
-    }
-
+    # Create tabs for campaigns
     tab1, tab2 = st.tabs(["BPI", "ROB Bike"])
+    
+    # Determine active tab
+    active_tab = "BPI" if st.session_state.get("active_tab", "BPI") == "BPI" else "ROB Bike"
+    if tab1:
+        st.session_state["active_tab"] = "BPI"
+    elif tab2:
+        st.session_state["active_tab"] = "ROB Bike"
 
+    # Render sidebar for the active tab only
+    uploaded_file, automation_type, remove_duplicates, remove_blanks, trim_spaces, preview, process_button = render_sidebar(active_tab)
+    config = CAMPAIGN_CONFIG[active_tab]
+    processor = config["processor"]()
+    automation_map = config["automation_map"]
+
+    # Tab content
     with tab1:
         st.header("BPI Automation")
-        uploaded_file, automation_type, remove_duplicates, remove_blanks, trim_spaces, preview, process_button = render_sidebar(bpi_automation_options, "bpi")
-        processor = BPIProcessor()
-
-        if uploaded_file is not None:
+        if active_tab == "BPI" and uploaded_file is not None:
             file_content = uploaded_file.getvalue() if hasattr(uploaded_file, 'getvalue') else uploaded_file.read()
-            
-            if preview:
-                try:
-                    st.subheader("File Preview")
-                    if automation_type in ["Updates", "Uploads"]:
-                        preview_df = getattr(processor, bpi_automation_map[automation_type])(file_content, preview_only=True)
-                        st.dataframe(preview_df.head(10), use_container_width=True)
-                    else:
-                        with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as temp_input:
-                            temp_input.write(file_content)
-                            temp_input_path = temp_input.name
-                        preview_df = pd.read_excel(temp_input_path)
-                        st.dataframe(preview_df.head(10), use_container_width=True)
-                        os.unlink(temp_input_path)
-                    uploaded_file.seek(0)
-                except Exception as e:
-                    st.error(f"Error previewing file: {str(e)}")
+            process_file(file_content, automation_type, automation_map, processor, remove_duplicates, remove_blanks, trim_spaces, preview, process_button)
 
-            if process_button:
-                try:
-                    with st.spinner("Processing file..."):
-                        if automation_type == "Cured List":
-                            result = processor.process_cured_list(file_content, remove_duplicates, remove_blanks, trim_spaces)
-                            tabs = st.tabs(["Remarks", "Reshuffle", "Payments"])
-                            with tabs[0]:
-                                st.subheader("Remarks Data")
-                                st.dataframe(result['remarks_df'], use_container_width=True)
-                                st.download_button(label="Download Remarks File", data=result['remarks_binary'], file_name=result['remarks_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-                            with tabs[1]:
-                                st.subheader("Reshuffle Data")
-                                st.dataframe(result['others_df'], use_container_width=True)
-                                st.download_button(label="Download Reshuffle File", data=result['others_binary'], file_name=result['others_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-                            with tabs[2]:
-                                st.subheader("Payments Data")
-                                st.dataframe(result['payments_df'], use_container_width=True)
-                                st.download_button(label="Download Payments File", data=result['payments_binary'], file_name=result['payments_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-                            st.success("Cured List processed successfully!")
-                        else:
-                            result_df, output_binary, output_filename = getattr(processor, bpi_automation_map[automation_type])(file_content, remove_duplicates, remove_blanks, trim_spaces)
-                            st.subheader("Processed Data")
-                            st.dataframe(result_df, use_container_width=True)
-                            st.download_button(label="Download Processed File", data=output_binary, file_name=output_filename, mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-                            st.success(f"File processed successfully! Download '{output_filename}'")
-                except Exception as e:
-                    st.error(f"Error processing file: {str(e)}")
-        
-        if uploaded_file is None:
-            st.warning("Please upload a file to get started.")
     with tab2:
         st.header("ROB Bike Automation")
-        uploaded_file, automation_type, remove_duplicates, remove_blanks, trim_spaces, preview, process_button = render_sidebar(rob_bike_automation_options, 'rob_bike')
-        processor = ROBBikeProcessor()
-
-        if uploaded_file is not None:
+        if active_tab == "ROB Bike" and uploaded_file is not None:
             file_content = uploaded_file.getvalue() if hasattr(uploaded_file, 'getvalue') else uploaded_file.read()
-            
-            if preview:
-                try:
-                    st.subheader("File Preview")
-                    preview_df = getattr(processor, rob_bike_automation_map[automation_type])(file_content, preview_only=True)
-                    st.dataframe(preview_df.head(10), use_container_width=True)
-                    uploaded_file.seek(0)
-                except Exception as e:
-                    st.error(f"Error previewing file: {str(e)}")
+            process_file(file_content, automation_type, automation_map, processor, remove_duplicates, remove_blanks, trim_spaces, preview, process_button)
 
-            if process_button:
-                try:
-                    with st.spinner("Processing file..."):
-                        result_df, output_binary, output_filename = getattr(processor, rob_bike_automation_map[automation_type])(file_content, remove_duplicates, remove_blanks, trim_spaces)
-                        st.subheader("Processed Data")
-                        st.dataframe(result_df, use_container_width=True)
-                        st.download_button(label="Download Processed File", data=output_binary, file_name=output_filename, mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-                        st.success(f"File processed successfully! Download '{output_filename}'")
-                except Exception as e:
-                    st.error(f"Error processing file: {str(e)}")
-        
-        if uploaded_file is None:
-            st.warning("Please upload a file to get started.")
-    
+    # Shared footer
     st.sidebar.markdown("---")
     st.sidebar.markdown("© 2025 Automation Tool")
+
+# Process file logic extracted for reuse
+def process_file(file_content, automation_type, automation_map, processor, remove_duplicates, remove_blanks, trim_spaces, preview, process_button):
+    if preview:
+        try:
+            st.subheader("File Preview")
+            if automation_type in ["Updates", "Uploads"]:
+                preview_df = getattr(processor, automation_map[automation_type])(file_content, preview_only=True)
+                st.dataframe(preview_df.head(10), use_container_width=True)
+            else:
+                with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as temp_input:
+                    temp_input.write(file_content)
+                    temp_input_path = temp_input.name
+                preview_df = pd.read_excel(temp_input_path)
+                st.dataframe(preview_df.head(10), use_container_width=True)
+                os.unlink(temp_input_path)
+        except Exception as e:
+            st.error(f"Error previewing file: {str(e)}")
+
+    if process_button:
+        try:
+            with st.spinner("Processing file..."):
+                if automation_type == "Cured List":
+                    result = processor.process_cured_list(file_content, remove_duplicates, remove_blanks, trim_spaces)
+                    tabs = st.tabs(["Remarks", "Reshuffle", "Payments"])
+                    with tabs[0]:
+                        st.subheader("Remarks Data")
+                        st.dataframe(result['remarks_df'], use_container_width=True)
+                        st.download_button(label="Download Remarks File", data=result['remarks_binary'], file_name=result['remarks_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                    with tabs[1]:
+                        st.subheader("Reshuffle Data")
+                        st.dataframe(result['others_df'], use_container_width=True)
+                        st.download_button(label="Download Reshuffle File", data=result['others_binary'], file_name=result['others_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                    with tabs[2]:
+                        st.subheader("Payments Data")
+                        st.dataframe(result['payments_df'], use_container_width=True)
+                        st.download_button(label="Download Payments File", data=result['payments_binary'], file_name=result['payments_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                    st.success("Cured List processed successfully!")
+                else:
+                    result_df, output_binary, output_filename = getattr(processor, automation_map[automation_type])(file_content, remove_duplicates, remove_blanks, trim_spaces)
+                    st.subheader("Processed Data")
+                    st.dataframe(result_df, use_container_width=True)
+                    st.download_button(label="Download Processed File", data=output_binary, file_name=output_filename, mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                    st.success(f"File processed successfully! Download '{output_filename}'")
+        except Exception as e:
+            st.error(f"Error processing file: {str(e)}")
 
 if __name__ == "__main__":
     main()
