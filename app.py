@@ -259,7 +259,6 @@ class BPIProcessor:
         df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
         
         if preview_only:
-            os.unlink(temp_input_path)
             return df
             
         current_date = datetime.now().strftime('%m%d%Y')
