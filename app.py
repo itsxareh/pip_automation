@@ -670,7 +670,7 @@ def main():
     st.title("Automation Tool")
     st.markdown("Transform Files into CMS Format")
 
-    campaign = st.selectbox("Select Campaign", ["BPI", "ROB Bike"], index=1)
+    campaign = st.sidebar.selectbox("Select Campaign", ["BPI", "ROB Bike"], index=0)
     config = CAMPAIGN_CONFIG[campaign]
     processor = config["processor"]()
     automation_map = config["automation_map"]
