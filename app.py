@@ -666,7 +666,7 @@ def main():
             try:
                 with st.spinner("Processing file..."):
                     if automation_type == "Data Clean":
-                        result_df, output_binary, output_filename = processor.clean_only(
+                        result_df, output_binary, output_filename = getattr(processor, "clean_only")(
                             file_content,
                             remove_duplicates=remove_duplicates,
                             remove_blanks=remove_blanks,
