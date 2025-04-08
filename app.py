@@ -40,7 +40,7 @@ class BPIProcessor:
             created_dirs[dir_name] = dir_path
             
         return created_dirs
-
+    
     def process_mobile_number(self, mobile_num):
         """Process mobile number to standardized format"""
         if not mobile_num:
@@ -69,10 +69,25 @@ class BPIProcessor:
         except:
             return str(date_value)
 
-    def process_updates_or_uploads(self, file_content, automation_type, preview_only=False):
+    def clean_data(self, df, remove_duplicates=False, remove_blanks=False, trim_spaces=False):
+        cleaned_df = df.copy
+        
+        if remove_blanks: 
+            cleaned_df = cleaned_df.dropna(how='all')
+        if remove_duplicates:
+            cleaned_df = cleaned_df.drop_duplicates()
+        if trim_spaces:
+            for col in cleaned_df.select_dtypes(includes=['object']).columns:
+                cleaned_df[col] = cleaned_df[col].str.strip()
+                
+        cleaned_df = cleaned_df.replace(r'^\s*$', pd.NA, regex=True)
+        return cleaned_df
+        
+    def process_updates_or_uploads(self, file_content, automation_type, preview_only=False,
+                                   remove_duplicates=False, remove_blanks=False, trim_spaces=False):
         try:
             df = pd.read_excel(io.BytesIO(file_content))
-            df = df.dropna(how='all').replace(r'^\s*$', pd.NA, regex=True).dropna(how='all')
+            df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
             
             if preview_only:
                 return df
@@ -180,21 +195,27 @@ class BPIProcessor:
             st.error(f"Error processing file: {str(e)}")
             raise
 
-    def process_updates(self, file_content, preview_only=False):
-        return self.process_updates_or_uploads(file_content, 'updates', preview_only)
+    def process_updates(self, file_content, preview_only=False,
+                        remove_duplicates=False, remove_blanks=False, trim_spaces=False):
+        return self.process_updates_or_uploads(file_content, 'updates', preview_only,
+                                               remove_duplicates, remove_blanks, trim_spaces)
         
-    def process_uploads(self, file_content, preview_only=False):
-        return self.process_updates_or_uploads(file_content, 'uploads', preview_only)
+    def process_uploads(self, file_content, preview_only=False,
+                        remove_duplicates=False, remove_blanks=False, trim_spaces=False):
+        return self.process_updates_or_uploads(file_content, 'uploads', preview_only,
+                                               remove_duplicates, remove_blanks, trim_spaces)
     
-    def process_cured_list(self, file_content, preview_only=False):
+    def process_cured_list(self, file_content, preview_only=False,
+                           remove_duplicates=False, remove_blanks=False, trim_spaces=False):
         with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as temp_input:
             temp_input.write(file_content)
             temp_input_path = temp_input.name
             
         df = pd.read_excel(temp_input_path)
-        df = df.dropna(how='all').replace(r'^\s*$', pd.NA, regex=True).dropna(how='all')
+        df = self.clean_data(remove_duplicates, remove_blanks, trim_spaces)
         
         if preview_only:
+            os.unlink(temp_input_path)
             return df
             
         current_date = datetime.now().strftime('%m%d%Y')
@@ -578,6 +599,11 @@ def main():
         help="Select the Excel file to be processed"
     )
     
+    st.sidebar.header("Data Cleaning Options")
+    remove_duplicates = st.sidebar.checkbox("Remove Duplicates", value=False)
+    remove_blanks = st.sidebar.checkbox("Remove Blanks", value=False)
+    trim_spaces = st.sidebar.checkbox("Trim Text", value=False)
+    
     processor = BPIProcessor()
     preview = st.sidebar.checkbox("Preview file before processing", value=True)
     process_button = st.sidebar.button("Process File", type="primary", disabled=uploaded_file is None)
@@ -589,34 +615,38 @@ def main():
             try:
                 st.subheader("File Preview")
                 
-                if automation_type in ["Updates", "Uploads"]:
-                    preview_df = getattr(processor, automation_map[automation_type])(file_content, preview_only=True)
-                    st.dataframe(preview_df.head(10), use_container_width=True)
-                else: 
-                    with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as temp_input:
-                        temp_input.write(file_content)
-                        temp_input_path = temp_input.name
-                    
-                    preview_df = pd.read_excel(temp_input_path)
-                    st.dataframe(preview_df.head(10), use_container_width=True)
-                    os.unlink(temp_input_path)
-                    
+                preview_df = getattr(processor, automation_map[automation_type])(
+                    file_content, 
+                    preview_only=True,
+                    remove_duplicates=remove_duplicates,
+                    remove_blanks=remove_blanks,
+                    trim_spaces=trim_spaces)
+                st.dataframe(preview_df.head(10), use_container_width=True)
+                
                 uploaded_file.seek(0)
                     
             except Exception as e:
                 st.error(f"Error previewing file: {str(e)}")
-            
+
         if process_button:
             try:
                 with st.spinner("Processing file..."):
                     if automation_type in ["Updates", "Uploads"]:
-                            result_df, output_binary, output_filename = getattr(processor, f"process_{automation_type.lower()}")(file_content)
+                            result_df, output_binary, output_filename = getattr(processor, f"process_{automation_type.lower()}")(
+                                file_content,
+                                remove_duplicates=remove_duplicates,
+                                remove_blanks=remove_blanks,
+                                trim_spaces=trim_spaces)
                             st.subheader("Processed Data")
                             st.dataframe(result_df, use_container_width=True)
                             st.download_button(label="Download Processed File", data=output_binary, file_name=output_filename, mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
                             st.success(f"File processed successfully! Download '{output_filename}'")
                     else: 
-                        result = processor.process_cured_list(file_content)
+                        result = processor.process_cured_list(
+                            file_content,
+                            remove_duplicates=remove_duplicates,
+                            remove_blanks=remove_blanks,
+                            trim_spaces=trim_spaces)
                         
                         tabs = st.tabs(["Remarks", "Reshuffle", "Payments"])
                         
@@ -658,7 +688,7 @@ def main():
         
     if uploaded_file is None:
         st.warning("Please upload a file to get started.")
-        
+    
     with st.expander("How to use this application"):
         st.markdown("""
         ### Instructions:
