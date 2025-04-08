@@ -670,14 +670,12 @@ def main():
     st.title("Automation Tool")
     st.markdown("Transform Files into CMS Format")
 
-    # Campaign selection
-    campaign = st.selectbox("Select Campaign", ["BPI", "ROB Bike"], index=0)
+    campaign = st.selectbox("Select Campaign", ["BPI", "ROB Bike"], index=1)
     config = CAMPAIGN_CONFIG[campaign]
     processor = config["processor"]()
     automation_map = config["automation_map"]
     automation_options = config["automation_options"]
 
-    # Sidebar
     st.sidebar.header(f"{campaign} Settings")
     automation_type = st.sidebar.selectbox("Select Automation Type", automation_options, key=f"{campaign}_automation_type")
     
@@ -698,7 +696,6 @@ def main():
     preview = st.sidebar.checkbox("Preview file before processing", value=True, key=f"{campaign}_preview")
     process_button = st.sidebar.button("Process File", type="primary", disabled=uploaded_file is None, key=f"{campaign}_process_button")
 
-    # Main content
     if uploaded_file is not None:
         file_content = uploaded_file.getvalue() if hasattr(uploaded_file, 'getvalue') else uploaded_file.read()
         
