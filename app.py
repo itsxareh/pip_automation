@@ -77,7 +77,7 @@ class BPIProcessor:
         if remove_duplicates:
             cleaned_df = cleaned_df.drop_duplicates()
         if trim_spaces:
-            for col in cleaned_df.select_dtypes(includes=['object']).columns:
+            for col in cleaned_df.select_dtypes(include=['object']).columns:
                 cleaned_df[col] = cleaned_df[col].str.strip()
                 
         cleaned_df = cleaned_df.replace(r'^\s*$', pd.NA, regex=True)
@@ -106,7 +106,7 @@ class BPIProcessor:
                         len(col)
                     ) + 2
                     col_letter = chr(65 + i)
-                    worksheet.column_dimension[col_letter].width = max_length
+                    worksheet.column_dimensions[col_letter].width = max_length
             with open(output_path, 'rb') as f:
                 output_binary = f.read()
                 
