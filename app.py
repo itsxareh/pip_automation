@@ -71,6 +71,9 @@ class BPIProcessor:
             return str(date_value)
 
     def clean_data(self, df, remove_duplicates=False, remove_blanks=False, trim_spaces=False):
+        if not isinstance(df, pd.DataFrame):
+            raise ValueError(f"Expected a pandas DataFrame, but got {type(df)}: {df}")
+        
         cleaned_df = df.copy()
         
         if remove_blanks: 
