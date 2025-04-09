@@ -701,19 +701,14 @@ def main():
         if preview:
             try:
                 st.subheader("File Preview")
-                if automation_type in ["Updates", "Uploads"]:
+                if automation_type in ["Data Clean", "Updates", "Uploads", "Cured List"]:
                     preview_df = getattr(processor, automation_map[automation_type])(file_content, preview_only=True)
-                    # Remove empty rows and columns for faster preview
-                    preview_df = preview_df.dropna(how='all', axis=0)  
-                    preview_df = preview_df.dropna(how='all', axis=1)  
                     st.dataframe(preview_df.head(10), use_container_width=True)
                 else:
                     with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as temp_input:
                         temp_input.write(file_content)
                         temp_input_path = temp_input.name
-                    preview_df = pd.read_excel(temp_input_path)
-                    preview_df = preview_df.dropna(how='all', axis=0)  
-                    preview_df = preview_df.dropna(how='all', axis=1)  
+                    preview_df = pd.read_excel(temp_input_path) 
                     st.dataframe(preview_df.head(10), use_container_width=True)
                     os.unlink(temp_input_path)
             except Exception as e:
