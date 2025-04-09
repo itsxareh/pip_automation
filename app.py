@@ -12,8 +12,7 @@ import re
 
 warnings.filterwarnings('ignore', category=UserWarning, 
                         message="Cell .* is marked as a date but the serial value .* is outside the limits for dates.*")
-
-class BPIProcessor:
+class BaseProcessor:
     def __init__(self):
         self.temp_dir = tempfile.mkdtemp()
         
@@ -23,7 +22,68 @@ class BPIProcessor:
                 shutil.rmtree(self.temp_dir)
         except:
             pass
+            
+    def clean_data(self, df, remove_duplicates=False, remove_blanks=False, trim_spaces=False):
+        if not isinstance(df, pd.DataFrame):
+            raise ValueError(f"Expected a pandas DataFrame, but got {type(df)}: {df}")
+        
+        cleaned_df = df.copy()
+        
+        if remove_blanks: 
+            cleaned_df = cleaned_df.dropna(how='all')
+        if remove_duplicates:
+            cleaned_df = cleaned_df.drop_duplicates()
+        if trim_spaces:
+            for col in cleaned_df.select_dtypes(include=['object']).columns:
+                cleaned_df[col] = cleaned_df[col].str.strip()
+                
+        cleaned_df = cleaned_df.replace(r'^\s*$', pd.NA, regex=True)
+        return cleaned_df
+        
+    def clean_only(self, file_content, preview_only=False, 
+               remove_duplicates=False, remove_blanks=False, trim_spaces=False, file_name=None):
+        try:
+            df = pd.read_excel(io.BytesIO(file_content))
 
+            sanitized_headers = [re.sub(r'[^A-Za-z0-9_]', '_', str(col)) for col in df.columns]
+            df.columns = sanitized_headers
+
+            cleaned_df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
+
+            if preview_only:
+                return cleaned_df
+
+            if file_name:
+                base_name = os.path.splitext(os.path.basename(file_name))[0]
+                output_filename = f"{base_name}.xlsx"
+            else:
+                output_filename = f"CLEANED_DATA.xlsx"
+
+            output_path = os.path.join(self.temp_dir, output_filename)
+
+            with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
+                cleaned_df.to_excel(writer, index=False, sheet_name='Sheet1')
+
+                worksheet = writer.sheets['Sheet1']
+                for i, col in enumerate(cleaned_df.columns):
+                    try:
+                        max_len_in_column = cleaned_df[col].astype(str).map(len).max()
+                        max_length = max(max_len_in_column, len(str(col))) + 2
+                    except:
+                        max_length = 15
+                    col_letter = get_column_letter(i + 1)
+                    worksheet.column_dimensions[col_letter].width = max_length
+
+            with open(output_path, 'rb') as f:
+                output_binary = f.read()
+
+            return cleaned_df, output_binary, output_filename
+
+        except Exception as e:
+            st.error(f"Error cleaning file: {str(e)}")
+            raise
+class BPIProcessor(BaseProcessor):
+    
     def setup_directories(self, automation_type):
         """Create necessary directories based on automation type"""
         directories = {
@@ -69,63 +129,6 @@ class BPIProcessor:
             return date_obj.strftime("%m/%d/%Y")
         except:
             return str(date_value)
-
-    def clean_data(self, df, remove_duplicates=False, remove_blanks=False, trim_spaces=False):
-        if not isinstance(df, pd.DataFrame):
-            raise ValueError(f"Expected a pandas DataFrame, but got {type(df)}: {df}")
-        
-        cleaned_df = df.copy()
-        
-        if remove_blanks: 
-            cleaned_df = cleaned_df.dropna(how='all')
-        if remove_duplicates:
-            cleaned_df = cleaned_df.drop_duplicates()
-        if trim_spaces:
-            for col in cleaned_df.select_dtypes(include=['object']).columns:
-                cleaned_df[col] = cleaned_df[col].str.strip()
-                
-        cleaned_df = cleaned_df.replace(r'^\s*$', pd.NA, regex=True)
-        return cleaned_df
-    
-    def clean_only(self, file_content, preview_only=False, 
-                  remove_duplicates=False, remove_blanks=False, trim_spaces=False):
-        try:
-            df = pd.read_excel(io.BytesIO(file_content))
-            cleaned_df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
-            
-            cleaned_df.columns = [re.sub(r'[^A-Za-z0-9_]', '_', str(col)) for col in cleaned_df.columns]
-            
-            invalid_cols = [col for col in cleaned_df.columns if not re.match(r'^[A-Za-z0-9_]+$', col)]
-            if invalid_cols:
-                st.warning(f"Found potentially problematic column names: {invalid_cols}. They have been sanitized.")
-            
-            if preview_only:
-                return cleaned_df
-                
-            current_date = datetime.now().strftime('%m%d%Y')
-            output_filename = f"CLEANED_DATA_{current_date}.xlsx"
-            output_path = os.path.join(self.temp_dir, output_filename)
-            
-            with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
-                cleaned_df.to_excel(writer, index=False, sheet_name='Sheet1')
-                
-                worksheet = writer.sheets['Sheet1']
-                for i, col in enumerate(cleaned_df.columns):
-                    max_length = max(
-                        cleaned_df[col].astype(str).map(len).max(),
-                        len(col)
-                    ) + 2
-                    col_letter = chr(65 + i)
-                    worksheet.column_dimensions[col_letter].width = max_length
-            
-            with open(output_path, 'rb') as f:
-                output_binary = f.read()
-                
-            return cleaned_df, output_binary, output_filename
-            
-        except Exception as e:
-            st.error(f"Error cleaning file: {str(e)}")
-            raise
         
     def process_updates_or_uploads(self, file_content, automation_type, preview_only=False,
                                    remove_duplicates=False, remove_blanks=False, trim_spaces=False):
@@ -619,32 +622,19 @@ class BPIProcessor:
             if os.path.exists(temp_input_path):
                 os.unlink(temp_input_path)
 
-class ROBBikeProcessor:
-    def clean_only(self, file_content, remove_duplicates=False, remove_blanks=False, trim_spaces=False, preview_only=False):
-        df = pd.read_excel(io.BytesIO(file_content))
-        if preview_only:
-            return df
-        if remove_duplicates:
-            df = df.drop_duplicates()
-        if remove_blanks:
-            df = df.dropna()
-        if trim_spaces:
-            df = df.apply(lambda x: x.str.strip() if x.dtype == "object" else x)
-        output = io.BytesIO()
-        df.to_excel(output, index=False, engine='openpyxl')
-        output.seek(0)
-        return df, output.getvalue(), "cleaned_rob_bike_data.xlsx"
-
-    def process_uploads(self, file_content, remove_duplicates=False, remove_blanks=False, trim_spaces=False, preview_only=False):
-        df = pd.read_excel(io.BytesIO(file_content))
-        if preview_only:
-            return df
-        output = io.BytesIO()
-        df.to_excel(output, index=False, engine='openpyxl')
-        output.seek(0)
-        return df, output.getvalue(), "uploaded_rob_bike_data.xlsx"
+class ROBBikeProcessor(BaseProcessor):
+    pass
+class NoProcessor(BaseProcessor):
+    pass
 
 CAMPAIGN_CONFIG = {
+    "No Campaign": {
+        "automation_options": ["Data Clean"],
+        "automation_map": {
+            "Data Clean": "clean_only",
+        },
+        "processor": NoProcessor    
+    },
     "BPI": {
         "automation_options": ["Data Clean", "Updates", "Uploads", "Cured List"],
         "automation_map": {
@@ -670,7 +660,7 @@ def main():
     st.title("Automation Tool")
     st.markdown("Transform Files into CMS Format")
 
-    campaign = st.sidebar.selectbox("Select Campaign", ["BPI", "ROB Bike"], index=0)
+    campaign = st.sidebar.selectbox("Select Campaign", ["No Campaign","BPI", "ROB Bike"], index=0)
     config = CAMPAIGN_CONFIG[campaign]
     processor = config["processor"]()
     automation_map = config["automation_map"]
@@ -688,31 +678,115 @@ def main():
         key=f"{campaign}_file_uploader"
     )
     
-    st.sidebar.header("Data Cleaning Options")
-    remove_duplicates = st.sidebar.checkbox("Remove Duplicates", value=False, key=f"{campaign}_remove_duplicates")
-    remove_blanks = st.sidebar.checkbox("Remove Blanks", value=False, key=f"{campaign}_remove_blanks")
-    trim_spaces = st.sidebar.checkbox("Trim Text", value=False, key=f"{campaign}_trim_spaces")
+    with st.sidebar.expander("Data Cleaning Options"):
+        remove_duplicates = st.checkbox("Remove Duplicates", value=False, key=f"{campaign}_remove_duplicates")
+        remove_blanks = st.checkbox("Remove Blanks", value=False, key=f"{campaign}_remove_blanks")
+        trim_spaces = st.checkbox("Trim Text", value=False, key=f"{campaign}_trim_spaces")
+    
+    with st.sidebar.expander("Data Manipulation"):
+        enable_column_removal = st.checkbox("Remove Column", value=False)
+        enable_column_renaming = st.checkbox("Rename Column", value=False)
+        enable_row_filtering = st.checkbox("Filter Row", value=False)
     
     process_button = st.sidebar.button("Process File", type="primary", disabled=uploaded_file is None, key=f"{campaign}_process_button")
 
     if uploaded_file is not None:
         file_content = uploaded_file.getvalue() if hasattr(uploaded_file, 'getvalue') else uploaded_file.read()
+        file_name = uploaded_file.name
         
         if preview:
             try:
                 st.subheader("File Preview")
-                if automation_type in ["Data Clean", "Updates", "Uploads", "Cured List"]:
+                if automation_type is not None:
                     preview_df = getattr(processor, automation_map[automation_type])(file_content, preview_only=True)
+                    preview_df = preview_df.dropna(how='all', axis=0)  
+                    preview_df = preview_df.dropna(how='all', axis=1)
                     st.dataframe(preview_df.head(10), use_container_width=True)
-                else:
-                    with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as temp_input:
-                        temp_input.write(file_content)
-                        temp_input_path = temp_input.name
-                    preview_df = pd.read_excel(temp_input_path) 
-                    st.dataframe(preview_df.head(10), use_container_width=True)
-                    os.unlink(temp_input_path)
             except Exception as e:
                 st.error(f"Error previewing file: {str(e)}")
+
+        try:
+            if "renamed_df" in st.session_state:
+                df = st.session_state["renamed_df"]
+            else:
+                df = pd.read_excel(io.BytesIO(file_content))
+            
+            df = df.dropna(how='all', axis=0) 
+            df = df.dropna(how='all', axis=1)
+
+            if enable_column_removal:
+                st.subheader("Column Removal")
+                cols = df.columns.tolist()
+                cols_to_remove = st.multiselect("Select columns to remove", cols)
+                if cols_to_remove:
+                    df = df.drop(columns=cols_to_remove)
+                    st.success(f"Removed columns: {', '.join(cols_to_remove)}")
+
+            if enable_column_renaming:
+                st.subheader("Column Renaming")
+                
+                rename_df = pd.DataFrame({
+                    "original_name": df.columns,
+                    "new_name": df.columns
+                })
+                
+                edited_df = st.data_editor(
+                    rename_df,
+                    column_config={
+                        "original_name": st.column_config.TextColumn("Original Column Name", disabled=True),
+                        "new_name": st.column_config.TextColumn("New Column Name")
+                    },
+                    hide_index=True,
+                    key="column_rename_editor"
+                )
+                
+                if st.button("Apply Column Renames", key="apply_multiple_renames"):
+                    rename_dict = {
+                        orig: new 
+                        for orig, new in zip(edited_df["original_name"], edited_df["new_name"]) 
+                        if orig != new
+                    }
+
+                    if rename_dict:
+                        df = df.rename(columns=rename_dict)
+                        st.session_state["renamed_df"] = df
+                        st.success(f"Renamed {len(rename_dict)} column(s): {', '.join([f'{k} → {v}' for k, v in rename_dict.items()])}")
+
+            if enable_row_filtering:
+                st.subheader("Row Filtering")
+                filter_col = st.selectbox("Select column to filter by", df.columns.tolist())
+                filter_value = st.text_input("Enter search/filter value")
+                
+                if filter_value and filter_col:
+                    if pd.api.types.is_numeric_dtype(df[filter_col]):
+                        try:
+                            filter_value_num = float(filter_value)
+                            filtered_df = df[df[filter_col] == filter_value_num]
+                        except ValueError:
+                            st.warning("Entered value is not numeric. Using string comparison instead.")
+                            filtered_df = df[df[filter_col].astype(str).str.contains(filter_value, case=False, na=False)]
+                    else:
+                        filtered_df = df[df[filter_col].astype(str).str.contains(filter_value, case=False, na=False)]
+
+                    st.write(f"Found {len(filtered_df)} rows matching filter: '{filter_value}' in column '{filter_col}'")
+                    df = filtered_df
+
+            if enable_column_removal or enable_column_renaming or  enable_row_filtering:
+                buffer = io.BytesIO()
+                df.to_excel(buffer, index=False, engine='openpyxl')
+                file_content = buffer.getvalue()
+                st.subheader("Modified Data Preview")
+                st.dataframe(df.head(10), use_container_width=True)
+
+        except Exception as e:
+            st.error(f"Error loading or manipulating file: {str(e)}")
+
+        if "renamed_df" in st.session_state:
+            df = st.session_state["renamed_df"]
+            buffer = io.BytesIO()
+            df.to_excel(buffer, index=False, engine='openpyxl')
+            buffer.seek(0)
+            file_content = buffer.getvalue()
 
         if process_button:
             try:
@@ -740,17 +814,31 @@ def main():
                             st.download_button(label="Download Payments File", data=result['payments_binary'], file_name=result['payments_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
                         st.success("Cured List processed successfully!")
                     else:
-                        result_df, output_binary, output_filename = getattr(processor, automation_map[automation_type])(
-                            file_content, 
-                            preview_only=False,
-                            remove_duplicates=remove_duplicates, 
-                            remove_blanks=remove_blanks, 
-                            trim_spaces=trim_spaces
-                        )
+                        if automation_type == "Data Clean":
+                            result_df, output_binary, output_filename = getattr(processor, automation_map[automation_type])(
+                                file_content,
+                                preview_only=False,
+                                remove_duplicates=remove_duplicates,
+                                remove_blanks=remove_blanks,
+                                trim_spaces=trim_spaces,
+                                file_name=uploaded_file.name
+                            )
+                        else:
+                            result_df, output_binary, output_filename = getattr(processor, automation_map[automation_type])(
+                                file_content,
+                                preview_only=False,
+                                remove_duplicates=remove_duplicates,
+                                remove_blanks=remove_blanks,
+                                trim_spaces=trim_spaces
+                            )
                         st.subheader("Processed Data")
                         st.dataframe(result_df, use_container_width=True)
-                        st.download_button(label="Download Processed File", data=output_binary, file_name=output_filename, mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                        st.download_button(label="Download File", data=output_binary, file_name=output_filename, mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
                         st.success(f"File processed successfully! Download '{output_filename}'")
+
+                if "renamed_df" in st.session_state:
+                    st.session_state.pop("renamed_df", None)
+
             except Exception as e:
                 st.error(f"Error processing file: {str(e)}")
 
