@@ -621,7 +621,7 @@ class BPIProcessor:
 
 class ROBBikeProcessor:
     def clean_only(self, file_content, remove_duplicates=False, remove_blanks=False, trim_spaces=False, preview_only=False):
-        df = pd.read_excel(file_content)
+        df = pd.read_excel(io.BytesIO(file_content))
         if preview_only:
             return df
         if remove_duplicates:
@@ -630,16 +630,16 @@ class ROBBikeProcessor:
             df = df.dropna()
         if trim_spaces:
             df = df.apply(lambda x: x.str.strip() if x.dtype == "object" else x)
-        output = BytesIO()
+        output = io.BytesIO()
         df.to_excel(output, index=False, engine='openpyxl')
         output.seek(0)
         return df, output.getvalue(), "cleaned_rob_bike_data.xlsx"
 
     def process_uploads(self, file_content, remove_duplicates=False, remove_blanks=False, trim_spaces=False, preview_only=False):
-        df = pd.read_excel(file_content)
+        df = pd.read_excel(io.BytesIO(file_content))
         if preview_only:
             return df
-        output = BytesIO()
+        output = io.BytesIO()
         df.to_excel(output, index=False, engine='openpyxl')
         output.seek(0)
         return df, output.getvalue(), "uploaded_rob_bike_data.xlsx"
@@ -718,7 +718,13 @@ def main():
             try:
                 with st.spinner("Processing file..."):
                     if automation_type == "Cured List":
-                        result = processor.process_cured_list(file_content, remove_duplicates, remove_blanks, trim_spaces)
+                        result = processor.process_cured_list(
+                            file_content, 
+                            preview_only=False,
+                            remove_duplicates=remove_duplicates, 
+                            remove_blanks=remove_blanks, 
+                            trim_spaces=trim_spaces
+                        )
                         tabs = st.tabs(["Remarks", "Reshuffle", "Payments"])
                         with tabs[0]:
                             st.subheader("Remarks Data")
@@ -734,7 +740,13 @@ def main():
                             st.download_button(label="Download Payments File", data=result['payments_binary'], file_name=result['payments_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
                         st.success("Cured List processed successfully!")
                     else:
-                        result_df, output_binary, output_filename = getattr(processor, automation_map[automation_type])(file_content, remove_duplicates, remove_blanks, trim_spaces)
+                        result_df, output_binary, output_filename = getattr(processor, automation_map[automation_type])(
+                            file_content, 
+                            preview_only=False,
+                            remove_duplicates=remove_duplicates, 
+                            remove_blanks=remove_blanks, 
+                            trim_spaces=trim_spaces
+                        )
                         st.subheader("Processed Data")
                         st.dataframe(result_df, use_container_width=True)
                         st.download_button(label="Download Processed File", data=output_binary, file_name=output_filename, mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
