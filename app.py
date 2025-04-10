@@ -678,6 +678,20 @@ def main():
         key=f"{campaign}_file_uploader"
     )
     
+    selected_sheet = None
+    if uploaded_file is not None:
+        try:
+            xlsx = pd.ExcelFile(uploaded_file)
+            sheet_names = xlsx.sheet_names
+            selected_sheet = st.sidebar.selectbox(
+                "Select Sheet", 
+                options=sheet_names,
+                index=0,
+                key=f"{campaign}_sheet_selector"
+            )
+        except Exception as e:
+            st.sidebar.error(f"Error reading sheets: {str(e)}")
+            
     with st.sidebar.expander("Data Cleaning Options"):
         remove_duplicates = st.checkbox("Remove Duplicates", value=False, key=f"{campaign}_remove_duplicates")
         remove_blanks = st.checkbox("Remove Blanks", value=False, key=f"{campaign}_remove_blanks")
@@ -695,7 +709,7 @@ def main():
         file_content = uploaded_file.getvalue() if hasattr(uploaded_file, 'getvalue') else uploaded_file.read()
         file_name = uploaded_file.name
         
-        if preview:
+        if preview and selected_sheet:
             try:
                 st.subheader("File Preview")
                 if automation_type is not None:
@@ -883,7 +897,7 @@ def main():
             buffer.seek(0)
             file_content = buffer.getvalue()
 
-        if process_button:
+        if process_button and selected_sheet:
             try:
                 with st.spinner("Processing file..."):
                     if automation_type == "Cured List":
