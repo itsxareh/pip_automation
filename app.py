@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import os
-import numpy
+import numpy as np
 import openpyxl
 from openpyxl.utils import get_column_letter
 import warnings
@@ -10,6 +10,16 @@ import io
 import tempfile
 import shutil
 import re 
+import datetime
+import json
+import psycopg2
+from supabase import create_client
+from dotenv import load_dotenv
+load_dotenv()
+
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 warnings.filterwarnings('ignore', category=UserWarning, 
                         message="Cell .* is marked as a date but the serial value .* is outside the limits for dates.*")
@@ -23,7 +33,34 @@ class BaseProcessor:
                 shutil.rmtree(self.temp_dir)
         except:
             pass
+          
+    def process_mobile_number(self, mobile_num):
+        """Process mobile number to standardized format"""
+        if not mobile_num:
+            return ""
+        
+        mobile_num = str(mobile_num).strip().replace('-', '')
+        
+        if mobile_num.startswith('639') and len(mobile_num) == 12:
+            return '0' + mobile_num[2:]
+        
+        if mobile_num.startswith('9') and len(mobile_num) == 10:
+            return '0' + mobile_num 
+        
+        return mobile_num if mobile_num.startswith('09') else str(mobile_num)
+
+    def format_date(self, date_value):
+        if pd.isna(date_value) or date_value is None:
+            return ""
             
+        if isinstance(date_value, (datetime, date)):
+            return date_value.strftime("%m/%d/%Y")
+        
+        try:
+            date_obj = pd.to_datetime(date_value)
+            return date_obj.strftime("%m/%d/%Y")
+        except:
+            return str(date_value)
     def clean_data(self, df, remove_duplicates=False, remove_blanks=False, trim_spaces=False):
         if not isinstance(df, pd.DataFrame):
             raise ValueError(f"Expected a pandas DataFrame, but got {type(df)}: {df}")
@@ -102,34 +139,6 @@ class BPIProcessor(BaseProcessor):
             created_dirs[dir_name] = dir_path
             
         return created_dirs
-    
-    def process_mobile_number(self, mobile_num):
-        """Process mobile number to standardized format"""
-        if not mobile_num:
-            return ""
-        
-        mobile_num = str(mobile_num).strip().replace('-', '')
-        
-        if mobile_num.startswith('639') and len(mobile_num) == 12:
-            return '0' + mobile_num[2:]
-        
-        if mobile_num.startswith('9') and len(mobile_num) == 10:
-            return '0' + mobile_num 
-        
-        return mobile_num if mobile_num.startswith('09') else str(mobile_num)
-
-    def format_date(self, date_value):
-        if pd.isna(date_value) or date_value is None:
-            return ""
-            
-        if isinstance(date_value, (datetime, date)):
-            return date_value.strftime("%m/%d/%Y")
-        
-        try:
-            date_obj = pd.to_datetime(date_value)
-            return date_obj.strftime("%m/%d/%Y")
-        except:
-            return str(date_value)
         
     def process_updates_or_uploads(self, file_content, automation_type, preview_only=False,
                                    remove_duplicates=False, remove_blanks=False, trim_spaces=False):
@@ -624,7 +633,13 @@ class BPIProcessor(BaseProcessor):
                 os.unlink(temp_input_path)
 
 class ROBBikeProcessor(BaseProcessor):
-    pass
+    def process_daily_remark(self, file_content, preview_only=False,
+                           remove_duplicates=False, remove_blanks=False, trim_spaces=False):
+        try:
+            return 
+        except Exception as e:
+            st.error(f"Error processing daily remark: {str(e)}")
+
 class NoProcessor(BaseProcessor):
     pass
 
@@ -647,9 +662,10 @@ CAMPAIGN_CONFIG = {
         "processor": BPIProcessor
     },
     "ROB Bike": {
-        "automation_options": ["Data Clean"],
+        "automation_options": ["Data Clean", "Daily Remark Report"],
         "automation_map": {
             "Data Clean": "clean_only",
+            "Daily Remark Report": "process_daily_remark",
         },
         "processor": ROBBikeProcessor
     }
@@ -668,16 +684,44 @@ def main():
 
     st.sidebar.header("Settings")
     automation_type = st.sidebar.selectbox("Select Automation Type", automation_options, key=f"{campaign}_automation_type")
-    
+
     st.sidebar.header("File Upload")
     preview = st.sidebar.checkbox("Preview file before processing", value=True, key=f"{campaign}_preview")
     uploaded_file = st.sidebar.file_uploader(
-        "Upload Excel file", 
+        "Upload File", 
         type=["xlsx", "xls"], 
-        help="Select the Excel file to be processed",
         key=f"{campaign}_file_uploader"
     )
+
+    if campaign == "ROB Bike" and automation_type == "Daily Remark Report":
+        st.sidebar.header("Field Result")
+        upload_field_result = st.sidebar.file_uploader(
+            "Upload File",
+            type=["xlsx", "xls"],
+            key=f"{campaign}_field_result"
+        )
+        
+        if upload_field_result:
+            TABLE_NAME = 'rob_bike_field_result'
+            df = pd.read_excel(upload_field_result, sheet_name="RESULT")
+            df_clean = df.replace({np.nan: 0})
+            st.dataframe(df_clean)
+            df_clean['TIME'] = pd.to_datetime(df_clean['TIME'], errors='coerce').dt.time
+            df_clean['TIME'] = df_clean['TIME'].fillna('').astype(str)
+            df_clean['PTP-Date'] = pd.to_datetime(df_clean['PTP-Date'], errors='coerce').fillna('').astype(str)
+            df_clean['DATE'] = pd.to_datetime(df_clean['DATE'], errors='coerce').fillna('').astype(str)
     
+
+            if st.button("Upload to Database"):
+                try:
+                    data = df_clean.to_dict(orient="records")
+                    response = supabase.table(TABLE_NAME).upsert(data).execute()
+                    if response:
+                        st.success("Field Result Updated!")
+                        
+                except Exception as e:
+                    st.error(f"Error uploading field result: {str(e)}")
+        
     selected_sheet = None
     if uploaded_file is not None:
         try:
@@ -691,7 +735,7 @@ def main():
             )
             df = xlsx.parse(selected_sheet)
             
-            if selected_sheet:
+            if selected_sheet and preview:
                 st.subheader(f"Preview of {selected_sheet}")
                 df_preview = df.copy()
                 df_preview = df_preview.dropna(how='all', axis=0)  
@@ -786,7 +830,6 @@ def main():
                         st.markdown(f"- **{col_def['name']}** from **{col_def['source']}**")
 
                     if st.button("Apply All Column Additions"):
-                        import numpy as np
                             
                         try:
                             for col_def in st.session_state.column_definitions:
