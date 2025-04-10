@@ -689,6 +689,7 @@ def main():
                 index=0,
                 key=f"{campaign}_sheet_selector"
             )
+            df = xlsx.parse(selected_sheet)
         except Exception as e:
             st.sidebar.error(f"Error reading sheets: {str(e)}")
             
@@ -724,7 +725,7 @@ def main():
             if "renamed_df" in st.session_state:
                 df = st.session_state["renamed_df"]
             else:
-                df = pd.read_excel(io.BytesIO(file_content))
+                pass
             
             df = df.dropna(how='all', axis=0) 
             df = df.dropna(how='all', axis=1)
