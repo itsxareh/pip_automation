@@ -737,11 +737,13 @@ def main():
 
                 with st.form("add_column_form", clear_on_submit=True):
                     new_column_name = st.text_input("New Column Name")
-                    column_source_type = st.radio("Column Source", ["Copy From Column", "Excel-like Formula"], key="source_type")
+                    column_source_type = st.radio("Column Source", ["Input Value", "Copy From Column", "Excel-like Formula"], key="source_type")
 
                     source_column = modification_type = prefix_text = suffix_text = selected_function = custom_function = formula = None
-
-                    if column_source_type == "Copy From Column":
+                    
+                    if column_source_type == "Input Value":
+                        input_value = st.text_input("Value to fill in each row")
+                    elif column_source_type == "Copy From Column":
                         source_column = st.selectbox("Source Column (copy from)", df.columns.tolist(), key="source_column")
                         modification_type = st.radio("Modification Type", ["Direct Copy", "Text Prefix", "Text Suffix", "Apply Function"], key="mod_type")
 
@@ -770,6 +772,7 @@ def main():
                             "function": selected_function,
                             "custom_function": custom_function,
                             "formula": formula,
+                            "input_value": input_value if column_source_type == "Input Value" else None,
                         })
                         st.success(f"Queued column: {new_column_name}")
 
@@ -785,8 +788,11 @@ def main():
                             for col_def in st.session_state.column_definitions:
                                 name = col_def["name"]
                                 source = col_def["source"]
-
-                                if source == "Copy From Column":
+                                
+                                if source == "Input Value":
+                                    input_value = col_def["input_value"]
+                                    df[name] = input_value
+                                elif source == "Copy From Column":
                                     source_col = col_def["source_column"]
                                     mod_type = col_def["modification_type"]
 
