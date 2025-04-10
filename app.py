@@ -647,10 +647,9 @@ CAMPAIGN_CONFIG = {
         "processor": BPIProcessor
     },
     "ROB Bike": {
-        "automation_options": ["Data Clean", "Uploads"],
+        "automation_options": ["Data Clean"],
         "automation_map": {
             "Data Clean": "clean_only",
-            "Uploads": "process_uploads"
         },
         "processor": ROBBikeProcessor
     }
