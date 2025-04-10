@@ -690,6 +690,13 @@ def main():
                 key=f"{campaign}_sheet_selector"
             )
             df = xlsx.parse(selected_sheet)
+            
+            if selected_sheet:
+                st.subheader(f"Preview of {selected_sheet}")
+                df_preview = df.copy()
+                df_preview = df_preview.dropna(how='all', axis=0)  
+                df_preview = df_preview.dropna(how='all', axis=1)
+                st.dataframe(df_preview, use_container_width=True)
         except Exception as e:
             st.sidebar.error(f"Error reading sheets: {str(e)}")
             
