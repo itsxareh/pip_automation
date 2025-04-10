@@ -717,83 +717,98 @@ def main():
             df = df.dropna(how='all', axis=1)
 
             if enable_add_column:
-                st.subheader("Add New Column")
-                new_column_name = st.text_input("New Column Name")
-                column_source_type = st.radio("Column Source", ["Copy From Column", "Excel-like Formula"])
-                
-                if column_source_type == "Copy From Column":
-                    source_column = st.selectbox("Source Column (copy from)", df.columns.tolist())
-                    modification_type = st.radio("Modification Type", ["Direct Copy", "Text Prefix", "Text Suffix", "Apply Function"])
-                    
-                    if modification_type == "Text Prefix":
-                        prefix_text = st.text_input("Enter prefix to add")
-                    elif modification_type == "Text Suffix":
-                        suffix_text = st.text_input("Enter suffix to add")
-                    elif modification_type == "Apply Function":
-                        function_options = ["To Uppercase", "To Lowercase", "Strip Spaces", "Custom Function"]
-                        selected_function = st.selectbox("Select Function", function_options)
-                        if selected_function == "Custom Function":
-                            custom_function = st.text_area("Enter Python function (use 'x' as input variable)", 
-                                                        value="lambda x: x")
-                else:
-                    st.info("Use column names in curly braces {ColumnName} with operators like +, -, *, / or functions")
-                    st.markdown("Examples:")
-                    st.markdown("- `{Amount} * 0.1` - Calculate 10% of Amount column")
-                    st.markdown("- `{First_Name} + ' ' + {Last_Name}` - Concatenate first and last names")
-                    st.markdown("- `IF({Amount} > 1000, 'High', 'Low')` - IF condition")
-                    formula = st.text_area("Enter Excel-like formula", height=100)
-                    
-                if st.button("Add Column"):
-                    if new_column_name:
+                st.subheader("Add New Columns")
+
+                if "column_definitions" not in st.session_state:
+                    st.session_state.column_definitions = []
+
+                with st.form("add_column_form", clear_on_submit=True):
+                    new_column_name = st.text_input("New Column Name")
+                    column_source_type = st.radio("Column Source", ["Copy From Column", "Excel-like Formula"], key="source_type")
+
+                    source_column = modification_type = prefix_text = suffix_text = selected_function = custom_function = formula = None
+
+                    if column_source_type == "Copy From Column":
+                        source_column = st.selectbox("Source Column (copy from)", df.columns.tolist(), key="source_column")
+                        modification_type = st.radio("Modification Type", ["Direct Copy", "Text Prefix", "Text Suffix", "Apply Function"], key="mod_type")
+
+                        if modification_type == "Text Prefix":
+                            prefix_text = st.text_input("Prefix to add")
+                        elif modification_type == "Text Suffix":
+                            suffix_text = st.text_input("Suffix to add")
+                        elif modification_type == "Apply Function":
+                            function_options = ["To Uppercase", "To Lowercase", "Strip Spaces", "Custom Function"]
+                            selected_function = st.selectbox("Select Function", function_options)
+                            if selected_function == "Custom Function":
+                                custom_function = st.text_area("Custom function (use 'x')", value="lambda x: x")
+                    else:
+                        st.info("Use column names in curly braces {} and expressions (e.g. `{Amount} * 2`, etc.)")
+                        formula = st.text_area("Excel-like formula", height=80)
+
+                    submitted = st.form_submit_button("Add to List")
+                    if submitted and new_column_name:
+                        st.session_state.column_definitions.append({
+                            "name": new_column_name,
+                            "source": column_source_type,
+                            "source_column": source_column,
+                            "modification_type": modification_type,
+                            "prefix_text": prefix_text,
+                            "suffix_text": suffix_text,
+                            "function": selected_function,
+                            "custom_function": custom_function,
+                            "formula": formula,
+                        })
+                        st.success(f"Queued column: {new_column_name}")
+
+                if st.session_state.column_definitions:
+                    st.write("🧾 Queued Columns to Add:")
+                    for idx, col_def in enumerate(st.session_state.column_definitions):
+                        st.markdown(f"- **{col_def['name']}** from **{col_def['source']}**")
+
+                    if st.button("Apply All Column Additions"):
+                        import numpy as np
+                            
                         try:
-                            if column_source_type == "Copy From Column" and source_column:
-                                if modification_type == "Direct Copy":
-                                    df[new_column_name] = df[source_column]
-                                elif modification_type == "Text Prefix":
-                                    df[new_column_name] = prefix_text + df[source_column].astype(str)
-                                elif modification_type == "Text Suffix":
-                                    df[new_column_name] = df[source_column].astype(str) + suffix_text
-                                elif modification_type == "Apply Function":
-                                    if selected_function == "To Uppercase":
-                                        df[new_column_name] = df[source_column].astype(str).str.upper()
-                                    elif selected_function == "To Lowercase":
-                                        df[new_column_name] = df[source_column].astype(str).str.lower()
-                                    elif selected_function == "Strip Spaces":
-                                        df[new_column_name] = df[source_column].astype(str).str.strip()
-                                    elif selected_function == "Custom Function":
-                                        try:
-                                            func = eval(custom_function)
-                                            df[new_column_name] = df[source_column].apply(func)
-                                        except Exception as e:
-                                            st.error(f"Error in custom function: {str(e)}")
-                            
-                            elif column_source_type == "Excel-like Formula" and formula:
-                                processed_formula = formula
-                                
-                                for col in df.columns:
-                                    pattern = r'\{' + re.escape(col) + r'\}'
-                                    processed_formula = re.sub(pattern, f"df['{col}']", processed_formula)
-                                
-                                processed_formula = processed_formula.replace("IF(", "np.where(")
-                                processed_formula = processed_formula.replace("SUM(", "np.sum(")
-                                processed_formula = processed_formula.replace("AVG(", "np.mean(")
-                                processed_formula = processed_formula.replace("MAX(", "np.max(")
-                                processed_formula = processed_formula.replace("MIN(", "np.min(")
-                                
-                                if "np." in processed_formula and "import numpy as np" not in globals():
-                                    import numpy as np
-                                
-                                try:
-                                    df[new_column_name] = eval(processed_formula)
-                                    st.success(f"Added new column '{new_column_name}' using formula")
-                                except Exception as e:
-                                    st.error(f"Error evaluating formula: {str(e)}")
-                                    st.code(processed_formula, language="python")
-                            
-                            st.session_state["renamed_df"] = df
-                            
+                            for col_def in st.session_state.column_definitions:
+                                name = col_def["name"]
+                                source = col_def["source"]
+
+                                if source == "Copy From Column":
+                                    source_col = col_def["source_column"]
+                                    mod_type = col_def["modification_type"]
+
+                                    if mod_type == "Direct Copy":
+                                        df[name] = df[source_col]
+                                    elif mod_type == "Text Prefix":
+                                        df[name] = col_def["prefix_text"] + df[source_col].astype(str)
+                                    elif mod_type == "Text Suffix":
+                                        df[name] = df[source_col].astype(str) + col_def["suffix_text"]
+                                    elif mod_type == "Apply Function":
+                                        if col_def["function"] == "To Uppercase":
+                                            df[name] = df[source_col].astype(str).str.upper()
+                                        elif col_def["function"] == "To Lowercase":
+                                            df[name] = df[source_col].astype(str).str.lower()
+                                        elif col_def["function"] == "Strip Spaces":
+                                            df[name] = df[source_col].astype(str).str.strip()
+                                        elif col_def["function"] == "Custom Function":
+                                            func = eval(col_def["custom_function"])
+                                            df[name] = df[source_col].apply(func)
+
+                                elif source == "Excel-like Formula":
+                                    formula = col_def["formula"]
+                                    processed = formula
+                                    for col in df.columns:
+                                        pattern = r'\{' + re.escape(col) + r'\}'
+                                        processed = re.sub(pattern, f"df['{col}']", processed)
+                                    processed = processed.replace("IF(", "np.where(").replace("SUM(", "np.sum(")
+                                    processed = processed.replace("AVG(", "np.mean(").replace("MAX(", "np.max(").replace("MIN(", "np.min(")
+                                    df[name] = eval(processed)
+
+                            st.success("All queued columns added successfully!")
+                            st.session_state.renamed_df = df
+                            st.session_state.column_definitions.clear()
                         except Exception as e:
-                            st.error(f"Error adding column: {str(e)}")
+                            st.error(f"Error applying column additions: {str(e)}")
 
             if enable_column_removal:
                 st.subheader("Column Removal")
@@ -923,7 +938,6 @@ def main():
             except Exception as e:
                 st.error(f"Error processing file: {str(e)}")
 
-    # Footer
     st.sidebar.markdown("---")
     st.sidebar.markdown("© 2025 Automation Tool")
 
