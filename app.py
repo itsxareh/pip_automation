@@ -706,10 +706,14 @@ def main():
         trim_spaces = st.checkbox("Trim Text", value=False, key=f"{campaign}_trim_spaces")
     
     with st.sidebar.expander("Data Manipulation"):
-        enable_add_column = st.checkbox("Add Column", value=False)
-        enable_column_removal = st.checkbox("Remove Column", value=False)
-        enable_column_renaming = st.checkbox("Rename Column", value=False)
-        enable_row_filtering = st.checkbox("Filter Row", value=False)
+        with st.expander("Columns"):
+            enable_add_column = st.checkbox("Add Column", value=False)
+            enable_column_removal = st.checkbox("Remove Column", value=False)
+            enable_column_renaming = st.checkbox("Rename Column", value=False)
+        with st.expander("Rows"):
+            enable_row_removal = st.checkbox("Remove Row", value=False)
+            enable_row_filtering = st.checkbox("Filter Row", value=False)
+       
     
     process_button = st.sidebar.button("Process File", type="primary", disabled=uploaded_file is None, key=f"{campaign}_process_button")
 
