@@ -715,19 +715,7 @@ def main():
 
     if uploaded_file is not None:
         file_content = uploaded_file.getvalue() if hasattr(uploaded_file, 'getvalue') else uploaded_file.read()
-        file_name = uploaded_file.name
         
-        if preview and selected_sheet:
-            try:
-                st.subheader("File Preview")
-                if automation_type is not None:
-                    preview_df = getattr(processor, automation_map[automation_type])(file_content, preview_only=True)
-                    preview_df = preview_df.dropna(how='all', axis=0)  
-                    preview_df = preview_df.dropna(how='all', axis=1)
-                    st.dataframe(preview_df, use_container_width=True)
-            except Exception as e:
-                st.error(f"Error previewing file: {str(e)}")
-
         try:
             if "renamed_df" in st.session_state:
                 df = st.session_state["renamed_df"]
