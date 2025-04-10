@@ -852,7 +852,7 @@ def main():
                     st.write(f"Found {len(filtered_df)} rows matching filter: '{filter_value}' in column '{filter_col}'")
                     df = filtered_df
 
-            if enable_column_removal or enable_column_renaming or  enable_row_filtering:
+            if enable_add_column or enable_column_removal or enable_column_renaming or  enable_row_filtering:
                 buffer = io.BytesIO()
                 df.to_excel(buffer, index=False, engine='openpyxl')
                 file_content = buffer.getvalue()
