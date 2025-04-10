@@ -706,14 +706,18 @@ def main():
         trim_spaces = st.checkbox("Trim Text", value=False, key=f"{campaign}_trim_spaces")
     
     with st.sidebar.expander("Data Manipulation"):
-        with st.expander("Columns"):
-            enable_add_column = st.checkbox("Add Column", value=False)
-            enable_column_removal = st.checkbox("Remove Column", value=False)
-            enable_column_renaming = st.checkbox("Rename Column", value=False)
-        with st.expander("Rows"):
-            enable_row_removal = st.checkbox("Remove Row", value=False)
-            enable_row_filtering = st.checkbox("Filter Row", value=False)
-       
+        st.markdown("#### Column Operations")
+        enable_add_column = st.checkbox("Add Column", value=False)
+        enable_column_removal = st.checkbox("Remove Column", value=False)
+        enable_column_renaming = st.checkbox("Rename Column", value=False)
+        
+        st.markdown("#### Row Operations")
+        enable_row_filtering = st.checkbox("Filter Row", value=False)
+        enable_add_row = st.checkbox("Add Row", value=False)
+        enable_row_removal = st.checkbox("Remove Row", value=False)
+        
+        st.markdown("#### Value Operations")
+        enable_edit_values = st.checkbox("Edit Values", value=False)
     
     process_button = st.sidebar.button("Process File", type="primary", disabled=uploaded_file is None, key=f"{campaign}_process_button")
 
@@ -885,8 +889,53 @@ def main():
 
                     st.write(f"Found {len(filtered_df)} rows matching filter: '{filter_value}' in column '{filter_col}'")
                     df = filtered_df
+                    
+            if enable_add_row:
+                st.subheader("Add New Rows")
+                with st.form("add_row_form"):
+                    row_data = {}
+                    for col in df.columns:
+                        row_data[col] = st.text_input(f"Value for {col}", "")
+                    
+                    add_row_submitted = st.form_submit_button("Add Row")
+                    
+                    if add_row_submitted:
+                        new_row = pd.DataFrame([row_data])
+                        df = pd.concat([df, new_row], ignore_index=True)
+                        st.success("Row added successfully!")
+                        st.session_state["renamed_df"] = df
 
-            if enable_add_column or enable_column_removal or enable_column_renaming or  enable_row_filtering:
+            if enable_row_removal:
+                st.subheader("Remove Rows")
+                st.info("Select rows to remove by index")
+                
+                with st.form("remove_row_form"):
+                    row_indices = st.multiselect("Select row indices to remove", 
+                                                options=list(range(len(df))),
+                                                format_func=lambda x: f"Row {x}")
+                    
+                    remove_rows_submitted = st.form_submit_button("Remove Selected Rows")
+                    
+                    if remove_rows_submitted and row_indices:
+                        df = df.drop(index=row_indices).reset_index(drop=True)
+                        st.success(f"Removed {len(row_indices)} row(s)")
+                        st.session_state["renamed_df"] = df
+
+            if enable_edit_values:
+                st.subheader("Edit Values")
+                
+                edited_df = st.data_editor(
+                    df,
+                    num_rows="dynamic",
+                    use_container_width=True,
+                    key="value_editor"
+                )
+                
+                if st.button("Apply Value Changes"):
+                    st.session_state["renamed_df"] = edited_df
+                    st.success("Value changes applied!")
+                    
+            if enable_add_column or enable_column_removal or enable_column_renaming or enable_row_filtering or enable_add_row or enable_row_removal or enable_edit_values:
                 buffer = io.BytesIO()
                 df.to_excel(buffer, index=False, engine='openpyxl')
                 file_content = buffer.getvalue()
