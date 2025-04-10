@@ -702,7 +702,7 @@ def main():
                     preview_df = getattr(processor, automation_map[automation_type])(file_content, preview_only=True)
                     preview_df = preview_df.dropna(how='all', axis=0)  
                     preview_df = preview_df.dropna(how='all', axis=1)
-                    st.dataframe(preview_df.head(), use_container_width=True)
+                    st.dataframe(preview_df, use_container_width=True)
             except Exception as e:
                 st.error(f"Error previewing file: {str(e)}")
 
