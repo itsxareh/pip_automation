@@ -716,7 +716,7 @@ def main():
             key=f"{campaign}_field_result"
         )
         upload_dataset = st.sidebar.file_uploader(
-            "Data Set",
+            "Dataset",
             type=["xlsx", "xls"],
             key=f"{campaign}_dataset"
         )
@@ -878,19 +878,35 @@ def main():
                             existing_df = pd.DataFrame(existing_records) if existing_records else pd.DataFrame()
                         else:
                             existing_df = pd.DataFrame()
-                            
+                    
+                    # Convert all values to properly JSON serializable format
+                    def clean_value(x):
+                        if pd.isna(x) or x is None or x == 'None' or x == 'nan':
+                            return None
+                        elif isinstance(x, (np.generic, pd.Timestamp)):
+                            return str(x)
+                        else:
+                            return x
+                    
                     for col in df_selected.columns:
-                        df_selected[col] = df_selected[col].apply(lambda x: str(x) if isinstance(x, (np.generic, pd.Timestamp)) else x)
+                        df_selected[col] = df_selected[col].apply(clean_value)
 
-                    new_records = df_selected.to_dict(orient="records")
-                    
-                    records_to_upsert = []
-                    
+                    # Define records_differ function before using it
                     def records_differ(new_record, existing_record):
                         for key, value in new_record.items():
                             if key in existing_record and str(value) != str(existing_record[key]):
                                 return True
                         return False
+                    
+                    # Create clean records that are JSON-serializable
+                    new_records = []
+                    for record in df_selected.to_dict(orient="records"):
+                        clean_record = {}
+                        for k, v in record.items():
+                            clean_record[k] = v  # Values are already cleaned above
+                        new_records.append(clean_record)
+                    
+                    records_to_upsert = []
                     
                     batch_size = 100
                     total_records = len(new_records)
@@ -921,30 +937,49 @@ def main():
                     
                     st.info(f"Found {len(records_to_upsert)} records that need to be inserted or updated.")
                     
+                    response = None  # Initialize response outside the loop
+                    
                     for i in range(0, len(records_to_upsert), batch_size):
                         batch = records_to_upsert[i:i+batch_size]
                         
                         if batch: 
-                            response = supabase.table(TABLE_NAME).upsert(batch, on_conflict=['Account Number']).execute()
-                            
-                            if response:
+                            try:
+                                # Convert any remaining problematic values before uploading
+                                json_safe_batch = []
+                                for record in batch:
+                                    json_safe_record = {}
+                                    for k, v in record.items():
+                                        # Final check to ensure all values are JSON compatible
+                                        if isinstance(v, (np.integer, np.floating)):
+                                            json_safe_record[k] = float(v) if isinstance(v, np.floating) else int(v)
+                                        else:
+                                            json_safe_record[k] = v
+                                    json_safe_batch.append(json_safe_record)
+                                
+                                response = supabase.table(TABLE_NAME).upsert(json_safe_batch, on_conflict=['Account Number']).execute()
                                 success_count += len(batch)
+                            except Exception as e:
+                                st.error(f"Error in batch upload: {str(e)}")
+                                st.error(f"Problem batch: {batch[:5]} (showing first 5 records)")
                         
                         progress = min(i + batch_size, len(records_to_upsert)) / max(1, len(records_to_upsert))
                         progress_bar.progress(progress)
                         status_text.text(f"Uploaded {success_count} of {len(records_to_upsert)} records...")
                     
-                    if hasattr(response, 'data') and response.data:
-                        st.toast(f"Dataset Updated! {success_count} records uploaded successfully.")
-                    elif hasattr(response, 'error') and response.error:
-                        st.error(f"Supabase error: {response.error}")
+                    if response:
+                        if hasattr(response, 'data') and response.data:
+                            st.toast(f"Dataset Updated! {success_count} records uploaded successfully.")
+                        elif hasattr(response, 'error') and response.error:
+                            st.error(f"Supabase error: {response.error}")
+                        else:
+                            st.warning("Upload may have succeeded, but response was unclear.")
                     else:
-                        st.warning("Upload may have succeeded, but response was unclear.")           
+                        st.warning("No data was uploaded or all uploads failed.")
+                        
                 except Exception as e:
                     st.error(f"Error uploading dataset: {str(e)}")
                     import traceback
                     st.code(traceback.format_exc())
-            
             
                 
             
