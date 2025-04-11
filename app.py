@@ -12,7 +12,6 @@ import shutil
 import re 
 import datetime
 import json
-import psycopg2
 from supabase import create_client
 from dotenv import load_dotenv
 load_dotenv()
