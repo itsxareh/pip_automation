@@ -12,6 +12,7 @@ import shutil
 import re 
 import datetime
 import json
+from supabase import create_client
 
 SUPABASE_URL="https://uhznrykopomcatatgcpi.supabase.co"
 SUPABASE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVoem5yeWtvcG9tY2F0YXRnY3BpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQyOTY2MTIsImV4cCI6MjA1OTg3MjYxMn0.bzq2Qq9O0DboBDxinH3SjdPImBWmV7LIECCF0p4PVbc"
