@@ -877,12 +877,12 @@ def main():
                     else:
                         existing_df = pd.DataFrame()
                     
-                    for col in df_filtered.columns:
-                        if pd.api.types.is_datetime64_any_dtype(df_filtered[col]):
-                            df_filtered[col] = df_filtered[col].dt.strftime('%Y-%m-%d')
-                    df_filtered = df_filtered.astype(object).where(pd.notnull(df_filtered), None)
+                    for col in df_selected.columns:
+                        if pd.api.types.is_datetime64_any_dtype(df_selected[col]):
+                            df_selected[col] = df_filtered[col].dt.strftime('%Y-%m-%d')
+                    df_selected = df_selected.astype(object).where(pd.notnull(df_selected), None)
 
-                    new_records = df_filtered.to_dict(orient="records")
+                    new_records = df_selected.to_dict(orient="records")
                     
                     records_to_upsert = []
                     
