@@ -868,14 +868,17 @@ def main():
                     
                     unique_ids = df_selected[unique_id_col].unique().tolist()
                     
-                    existing_records_response = supabase.table(TABLE_NAME).select("*").in_(unique_id_col, unique_ids).execute()
-                    
-                    if hasattr(existing_records_response, 'data'):
-                        existing_records = existing_records_response.data
-                        existing_df = pd.DataFrame(existing_records) if existing_records else pd.DataFrame()
+                    if not unique_ids:
+                        existing_df = pd.DataFrame() 
                     else:
-                        existing_df = pd.DataFrame()
-
+                        existing_records_response = supabase.table(TABLE_NAME).select("*").in_(unique_id_col, unique_ids).execute()
+                        
+                        if hasattr(existing_records_response, 'data'):
+                            existing_records = existing_records_response.data
+                            existing_df = pd.DataFrame(existing_records) if existing_records else pd.DataFrame()
+                        else:
+                            existing_df = pd.DataFrame()
+                            
                     for col in df_selected.columns:
                         df_selected[col] = df_selected[col].apply(lambda x: str(x) if isinstance(x, (np.generic, pd.Timestamp)) else x)
 
