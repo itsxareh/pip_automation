@@ -633,27 +633,184 @@ class BPIProcessor(BaseProcessor):
 
 class ROBBikeProcessor(BaseProcessor):
     def process_daily_remark(self, file_content, preview_only=False,
-                           remove_duplicates=False, remove_blanks=False, trim_spaces=False, report_date=None):
+                    remove_duplicates=False, remove_blanks=False, trim_spaces=False, report_date=None):
         try:
             df = pd.read_excel(io.BytesIO(file_content))
+            
             df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
-
+            
+            if 'Time' in df.columns:
+                df = df.sort_values(by='Time', ascending=False)
+            
+            if 'Account No.' in df.columns and 'Status' in df.columns:
+                df['COMBINED_KEY'] = df['Account No.'].astype(str) + '_' + df['Status'].astype(str)
+                
+                df = df.drop_duplicates(subset=['COMBINED_KEY'])
+                df = df.drop(columns=['COMBINED_KEY'])  
+            
             if preview_only:
-                return df
-
-            output_template = "DAILY MONITORING PTP, DEPO & REPO REPORT TEMPLATE"
+                return df, None, None
+            
+            output_template = "DAILY MONITORING PTP, DEPO & REPO REPORT TEMPLATE.xlsx"
             sheet1 = "MONITORING"
             sheet2 = "PTP"
             sheet5 = "EOD"
             
+            monitoring_columns = ['Account Name', 'Account Number', 'Principal', 'EndoDate', 'Stores', 
+                                'Cluster', 'DaysPastDue', 'Field Status', 'Field Substatus', 
+                                'Status', 'subStatus', 'Notes', 'BarcodeDate', 'PTP Amount', 'PTP Date']
+            monitoring_df = pd.DataFrame(columns=monitoring_columns)
+            
+            ptp_columns = ['Account Name', 'AccountNumber', 'Status', 'subStatus', 'Amount', 
+                        'StartDate', 'Notes', 'ResultDate', 'EndoDate']
+            ptp_df = pd.DataFrame(columns=ptp_columns)
+            
+            if 'Debtor' in df.columns:
+                monitoring_df['Account Name'] = df['Debtor']
+            
+            if 'Account No.' in df.columns:
+                monitoring_df['Account Number'] = df['Account No.']
+            
+            if 'Balance' in df.columns:
+                monitoring_df['Principal'] = df['Balance']
+            
+            if 'DPD' in df.columns:
+                monitoring_df['DaysPastDue'] = df['DPD']
+            
+            if 'Status' in df.columns:
+                status_parts = df['Status'].str.split('-', n=1)
+                monitoring_df['Status'] = status_parts.str[0].str.strip()
+                
+                monitoring_df['subStatus'] = status_parts.str[1].str.strip().where(status_parts.str.len() > 1, "")
+            
+            if 'Remark' in df.columns:
+                monitoring_df['Notes'] = df['Remark']
+            
+            if 'Date' in df.columns:
+                monitoring_df['BarcodeDate'] = df['Date']
+            
+            if 'PTP Amount' in df.columns:
+                monitoring_df['PTP Amount'] = df['PTP Amount']
+            
+            if 'PTP Date' in df.columns:
+                monitoring_df['PTP Date'] = df['PTP Date']
+            
+            if 'Account No.' in df.columns:
+                account_numbers = df['Account No.'].unique().tolist()
+                
+                dataset_response = supabase.table('rob_bike_dataset').select('*').in_('account_number', account_numbers).execute()
+                
+                if hasattr(dataset_response, 'data') and dataset_response.data:
+                    dataset_df = pd.DataFrame(dataset_response.data)
+                    
+                    account_data_map = {}
+                    for _, row in dataset_df.iterrows():
+                        account_data_map[row['account_number']] = {
+                            'EndoDate': row.get('endo_date', ''),
+                            'Stores': row.get('store', ''),
+                            'Cluster': row.get('cluster', ''),
+                            'Field_Status': row.get('field_status', ''),
+                            'Field_Substatus': row.get('field_substatus', '')
+                        }
+                    
+                    monitoring_df['EndoDate'] = monitoring_df['Account Number'].map(
+                        lambda acc_no: account_data_map.get(acc_no, {}).get('EndoDate', ''))
+                    
+                    monitoring_df['Stores'] = monitoring_df['Account Number'].map(
+                        lambda acc_no: account_data_map.get(acc_no, {}).get('Stores', ''))
+                    
+                    monitoring_df['Cluster'] = monitoring_df['Account Number'].map(
+                        lambda acc_no: account_data_map.get(acc_no, {}).get('Cluster', ''))
+                    
+                    monitoring_df['Field Status'] = monitoring_df['Account Number'].map(
+                        lambda acc_no: account_data_map.get(acc_no, {}).get('Field_Status', ''))
+                    
+                    monitoring_df['Field Substatus'] = monitoring_df['Account Number'].map(
+                        lambda acc_no: account_data_map.get(acc_no, {}).get('Field_Substatus', ''))
+                    
+            ptp_data = df[df['Status'].str.contains('PTP', case=False, na=False)].copy() if 'Status' in df.columns else pd.DataFrame()
+            
+            if not ptp_data.empty:
+                if 'Debtor' in ptp_data.columns:
+                    ptp_df['Account Name'] = ptp_data['Debtor']
+                
+                if 'Account No.' in ptp_data.columns:
+                    ptp_df['AccountNumber'] = ptp_data['Account No.']
+                
+                if 'Status' in ptp_data.columns:
+                    status_parts = ptp_data['Status'].str.split('-', n=1)
+                    ptp_df['Status'] = status_parts.str[0].str.strip()
+                    ptp_df['subStatus'] = status_parts.str[1].str.strip().where(status_parts.str.len() > 1, "")
+                
+                if 'PTP Amount' in ptp_data.columns:
+                    ptp_df['Amount'] = ptp_data['PTP Amount']
+                
+                if 'PTP Date' in ptp_data.columns:
+                    ptp_df['StartDate'] = ptp_data['PTP Date']
+                
+                if 'Remark' in ptp_data.columns:
+                    ptp_df['Notes'] = ptp_data['Remark']
+                
+                if 'Time' in ptp_data.columns:
+                    ptp_df['ResultDate'] = ptp_data['Time']
+                
+                if 'Account No.' in ptp_data.columns and 'account_data_map' in locals():
+                    ptp_df['EndoDate'] = ptp_df['AccountNumber'].map(
+                        lambda acc_no: account_data_map.get(acc_no, {}).get('EndoDate', ''))
+            
+            template_path = os.path.join(os.path.dirname(__file__), output_template)
+            
+            output_buffer = io.BytesIO()
+            
+            if os.path.exists(template_path):
+                from openpyxl import load_workbook
+                from openpyxl.utils.dataframe import dataframe_to_rows
+                
+                template_wb = load_workbook(template_path)
+                
+                if sheet1 in template_wb.sheetnames:
+                    sheet = template_wb[sheet1]
+                    start_row = sheet.max_row + 1
+                    for r_idx, row in enumerate(dataframe_to_rows(monitoring_df, index=False, header=False), start_row):
+                        for c_idx, value in enumerate(row, 1):
+                            sheet.cell(row=r_idx, column=c_idx).value = value
+                
+                if sheet2 in template_wb.sheetnames:
+                    sheet = template_wb[sheet2]
+                    start_row = sheet.max_row + 1
+                    for r_idx, row in enumerate(dataframe_to_rows(ptp_df, index=False, header=False), start_row):
+                        for c_idx, value in enumerate(row, 1):
+                            sheet.cell(row=r_idx, column=c_idx).value = value
+                
+                if sheet5 in template_wb.sheetnames:
+                    sheet = template_wb[sheet5]
+                    start_row = sheet.max_row + 1
+                    for r_idx, row in enumerate(dataframe_to_rows(monitoring_df, index=False, header=False), start_row):
+                        for c_idx, value in enumerate(row, 1):
+                            sheet.cell(row=r_idx, column=c_idx).value = value
+                
+                template_wb.save(output_buffer)
+            else:
+                with pd.ExcelWriter(output_buffer, engine='openpyxl') as writer:
+                    monitoring_df.to_excel(writer, sheet_name=sheet1, index=False)
+                    ptp_df.to_excel(writer, sheet_name=sheet2, index=False)
+                    monitoring_df.to_excel(writer, sheet_name=sheet5, index=False)
+            
+            output_buffer.seek(0)
+            
+            if not report_date:
+                report_date = datetime.now()
+
+            date_str = report_date.strftime("%d%b%Y").upper()
+            
+            output_filename = f"DAILY MONITORING PTP, DEPO & REPO REPORT as of {date_str}.xls"
+            
+            return monitoring_df, output_buffer.getvalue(), output_filename
         
-            # for col in ['Account Name', 'Account Number', 'Principal', 'EndoDate', 'Stores', 'Cluster', 
-            #             'DaysPastDue', 'Field Status', 'Field Substatus', 'Status', 'subStatus',
-            #             'Notes', 'BarcodeDate', 'PTP Amount', 'PTP Date']:
-            #     if
-            return 
         except Exception as e:
             st.error(f"Error processing daily remark: {str(e)}")
+            import traceback
+            return None, None, None
 
 class NoProcessor(BaseProcessor):
     pass
@@ -701,24 +858,32 @@ def main():
     automation_type = st.sidebar.selectbox("Select Automation Type", automation_options, key=f"{campaign}_automation_type")
 
     preview = st.sidebar.checkbox("Preview file before processing", value=True, key=f"{campaign}_preview")
+    st.markdown("""
+            <style>
+            div[data-testid="stFileUploaderDropzoneInstructions"] {
+                display: none;
+            }
+            section[data-testid="stFileUploaderDropzone"] {
+                padding: 0px;
+                margin: 0px;
+            }
+            button[data-testid="stBaseButton-secondary"] {
+                width: 100%;
+            }
+            </style>
+        """, unsafe_allow_html=True)
     uploaded_file = st.sidebar.file_uploader(
-        "Daily Remark Report File", 
+        "Upload File", 
         type=["xlsx", "xls"], 
         key=f"{campaign}_file_uploader"
     )
     
     if campaign == "ROB Bike" and automation_type == "Daily Remark Report":
         report_date = st.sidebar.date_input('Date Report', format="YYYY/MM/DD") 
-        
         upload_field_result = st.sidebar.file_uploader(
             "Field Result",
             type=["xlsx", "xls"],
             key=f"{campaign}_field_result"
-        )
-        upload_dataset = st.sidebar.file_uploader(
-            "Dataset",
-            type=["xlsx", "xls"],
-            key=f"{campaign}_dataset"
         )
         
         if upload_field_result:
@@ -834,6 +999,11 @@ def main():
                     import traceback
                     st.code(traceback.format_exc())
                     
+        upload_dataset = st.sidebar.file_uploader(
+            "Dataset",
+            type=["xlsx", "xls"],
+            key=f"{campaign}_dataset"
+        )
         if upload_dataset:
             TABLE_NAME = 'rob_bike_dataset'
             xls = pd.ExcelFile(upload_dataset)
@@ -841,22 +1011,22 @@ def main():
             df = pd.read_excel(xls)
             df_clean = df.replace({np.nan: 0})
         
+            df_filtered = df_clean.copy()
+            desired_columns = [
+                'ChCode',
+                'Account Number',
+                'Client Name',
+                'Endorsement Date',
+                'Endrosement DPD',
+                'Store',
+                'Cluster'
+            ]
+            df_selected = df_filtered[[col for col in desired_columns if col in df_filtered.columns]]
             st.subheader("Uploaded Dataset:")
             st.dataframe(df_clean)
             
             if st.button("Upload to Database"):
                 try:
-                    df_filtered = df_clean.copy()
-                    desired_columns = [
-                        'ChCode',
-                        'Account Number',
-                        'Client Name',
-                        'Endorsement Date',
-                        'Endrosement DPD',
-                        'Store',
-                        'Cluster'
-                    ]
-                    df_selected = df_filtered[[col for col in desired_columns if col in df_filtered.columns]]
                     
                     unique_id_col = 'Account Number'
                     unique_ids = df_selected[unique_id_col].unique().tolist()
@@ -1261,7 +1431,7 @@ def main():
                                 file_name=uploaded_file.name
                             )
                         elif automation_type == "Daily Remark Report":
-                            result = processor.process_daily_remark(
+                            result_df, output_binary, output_filename = getattr(processor, automation_map[automation_type])(
                                 file_content, 
                                 preview_only=False,
                                 remove_duplicates=remove_duplicates, 
