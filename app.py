@@ -633,8 +633,24 @@ class BPIProcessor(BaseProcessor):
 
 class ROBBikeProcessor(BaseProcessor):
     def process_daily_remark(self, file_content, preview_only=False,
-                           remove_duplicates=False, remove_blanks=False, trim_spaces=False):
+                           remove_duplicates=False, remove_blanks=False, trim_spaces=False, report_date=None):
         try:
+            df = pd.read_excel(io.BytesIO(file_content))
+            df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
+
+            if preview_only:
+                return df
+
+            output_template = "DAILY MONITORING PTP, DEPO & REPO REPORT TEMPLATE"
+            sheet1 = "MONITORING"
+            sheet2 = "PTP"
+            sheet5 = "EOD"
+            
+        
+            # for col in ['Account Name', 'Account Number', 'Principal', 'EndoDate', 'Stores', 'Cluster', 
+            #             'DaysPastDue', 'Field Status', 'Field Substatus', 'Status', 'subStatus',
+            #             'Notes', 'BarcodeDate', 'PTP Amount', 'PTP Date']:
+            #     if
             return 
         except Exception as e:
             st.error(f"Error processing daily remark: {str(e)}")
@@ -690,12 +706,18 @@ def main():
         type=["xlsx", "xls"], 
         key=f"{campaign}_file_uploader"
     )
-
+    report_date = st.date_input('Date Report', format="YYYY/MM/DD")
+    
     if campaign == "ROB Bike" and automation_type == "Daily Remark Report":
         upload_field_result = st.sidebar.file_uploader(
             "Field Result",
             type=["xlsx", "xls"],
             key=f"{campaign}_field_result"
+        )
+        upload_dataset = st.sidebar.file_uploader(
+            "Data Set",
+            type=["xlsx,", "xls"],
+            key=f"{campaign}_dataset"
         )
         
         if upload_field_result:
@@ -801,7 +823,7 @@ def main():
                         status_text.text(f"Uploaded {success_count} of {len(records_to_upsert)} records...")
                     
                     if hasattr(response, 'data') and response.data:
-                        st.success(f"Field Result Updated! {success_count} records uploaded successfully.")
+                        st.toast(f"Field Result Updated! {success_count} records uploaded successfully.")
                     elif hasattr(response, 'error') and response.error:
                         st.error(f"Supabase error: {response.error}")
                     else:
@@ -811,6 +833,33 @@ def main():
                     import traceback
                     st.code(traceback.format_exc())
                     
+        if upload_dataset:
+            TABLE_NAME = 'rob_bike_dataset'
+            xls = pd.ExcelFile(upload_dataset)
+            sheet_name = next((s for s in xls.sheet_names if s.lower() == 'Sheet1'), None)
+
+            if sheet_name:
+                df = pd.read_excel(xls, sheet_name=sheet_name)
+                df_clean = df.replace({np.nan: 0})
+            
+                df_filtered = df_clean.copy()
+                desired_columns = [
+                    'ChCode',
+                    'Account Number',
+                    'Client Name',
+                    'Endorsement Date',
+                    'Endrosement DPD',
+                    'Store',
+                    'Cluster'
+                ]
+                df_selected = df_filtered[[col for col in desired_columns if col in df_filtered.columns]]
+                
+                st.subheader("Uploaded Dataset:")
+                st.dataframe(df_selected)
+                
+            else:
+                st.error("Sheet named 'Sheet1' not found in the uploaded file.")
+            
     selected_sheet = None
     if uploaded_file is not None:
         try:
@@ -1118,6 +1167,15 @@ def main():
                                 remove_blanks=remove_blanks,
                                 trim_spaces=trim_spaces,
                                 file_name=uploaded_file.name
+                            )
+                        elif automation_type == "Daily Remark Report":
+                            result = processor.process_daily_remark(
+                                file_content, 
+                                preview_only=False,
+                                remove_duplicates=remove_duplicates, 
+                                remove_blanks=remove_blanks, 
+                                trim_spaces=trim_spaces,
+                                report_date = report_date
                             )
                         else:
                             result_df, output_binary, output_filename = getattr(processor, automation_map[automation_type])(
