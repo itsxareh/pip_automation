@@ -706,9 +706,10 @@ def main():
         type=["xlsx", "xls"], 
         key=f"{campaign}_file_uploader"
     )
-    report_date = st.date_input('Date Report', format="YYYY/MM/DD")
     
     if campaign == "ROB Bike" and automation_type == "Daily Remark Report":
+        report_date = st.sidebar.date_input('Date Report', format="YYYY/MM/DD") 
+        
         upload_field_result = st.sidebar.file_uploader(
             "Field Result",
             type=["xlsx", "xls"],
@@ -716,7 +717,7 @@ def main():
         )
         upload_dataset = st.sidebar.file_uploader(
             "Data Set",
-            type=["xlsx,", "xls"],
+            type=["xlsx", "xls"],
             key=f"{campaign}_dataset"
         )
         
