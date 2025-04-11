@@ -701,8 +701,14 @@ def main():
         
         if upload_field_result:
             TABLE_NAME = 'rob_bike_field_result'
-            df = pd.read_excel(upload_field_result, sheet_name="RESULT")
-            df_clean = df.replace({np.nan: 0})
+            xls = pd.ExcelFile(upload_field_result)
+            sheet_name = next((s for s in xls.sheet_names if s.lower() == 'result'), None)
+
+            if sheet_name:
+                df = pd.read_excel(xls, sheet_name=sheet_name)
+                df_clean = df.replace({np.nan: 0})
+            else:
+                st.error("Sheet named 'RESULT' not found in the uploaded file.")
             
             df_filtered = df_clean[(df_clean['status'] != 'CANCEL') & (df_clean['bank'] == 'ROB MOTOR LOAN')].copy()
             st.subheader("Uploaded Field Result:")
