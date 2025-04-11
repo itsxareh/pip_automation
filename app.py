@@ -12,6 +12,7 @@ import shutil
 import re 
 import datetime
 import json
+import msoffcrypto 
 from supabase import create_client
 
 SUPABASE_URL="https://uhznrykopomcatatgcpi.supabase.co"
@@ -1123,25 +1124,46 @@ def main():
                     import traceback
                     st.code(traceback.format_exc())
             
-    selected_sheet = None
+    
+    df = None
+    sheet_names = []
+
     if uploaded_file is not None:
+        use_password = st.sidebar.checkbox("🔒 File is password protected", value=False)
+        decrypted_file = io.BytesIO()
+
         try:
-            xlsx = pd.ExcelFile(uploaded_file)
+            file_content = uploaded_file.getvalue()
+            if use_password:
+                excel_password = st.sidebar.text_input("Enter Excel password", type="password")
+
+                if not excel_password:
+                    st.warning("Please enter the Excel file password.")
+                    st.stop()
+
+                office_file = msoffcrypto.OfficeFile(io.BytesIO(file_content))
+                office_file.load_key(password=excel_password)
+                office_file.decrypt(decrypted_file)
+            else:
+                decrypted_file = io.BytesIO(file_content)
+
+            xlsx = pd.ExcelFile(decrypted_file)
             sheet_names = xlsx.sheet_names
+
             selected_sheet = st.sidebar.selectbox(
                 "Select Sheet", 
                 options=sheet_names,
                 index=0,
                 key=f"{campaign}_sheet_selector"
             )
-            df = xlsx.parse(selected_sheet)
-            
+
+            df = pd.read_excel(xlsx, sheet_name=selected_sheet)
+
             if selected_sheet and preview:
                 st.subheader(f"Preview of {selected_sheet}")
-                df_preview = df.copy()
-                df_preview = df_preview.dropna(how='all', axis=0)  
-                df_preview = df_preview.dropna(how='all', axis=1)
+                df_preview = df.copy().dropna(how='all').dropna(how='all', axis=1)
                 st.dataframe(df_preview, use_container_width=True)
+
         except Exception as e:
             st.sidebar.error(f"Error reading sheets: {str(e)}")
             
