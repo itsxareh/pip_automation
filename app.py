@@ -855,6 +855,98 @@ def main():
             
             st.subheader("Uploaded Dataset:")
             st.dataframe(df_selected)
+            
+            try:
+                temp_dates = pd.to_datetime(df_filtered['Endorsement Date'], errors='coerce')
+                df_filtered.loc[:, 'Endorsement Date'] = temp_dates.astype(str).str.split(' ').str[0]
+                df_filtered.loc[:, 'Endorsement Date'] = df_filtered['Endorsement Date'].replace('NaT', '')
+            except:
+                df_filtered.loc[:, 'Endorsement Date'] = df_filtered['Endorsement Date'].astype(str).replace('NaT', '')
+
+            
+            if st.button("Upload to Database"):
+                try:
+                    unique_id_col = 'Account Number' 
+                    
+                    unique_ids = df_selected[unique_id_col].unique().tolist()
+                    
+                    existing_records_response = supabase.table(TABLE_NAME).select("*").in_(unique_id_col, unique_ids).execute()
+                    
+                    if hasattr(existing_records_response, 'data'):
+                        existing_records = existing_records_response.data
+                        existing_df = pd.DataFrame(existing_records) if existing_records else pd.DataFrame()
+                    else:
+                        existing_df = pd.DataFrame()
+                    
+                    for col in df_filtered.columns:
+                        if pd.api.types.is_datetime64_any_dtype(df_filtered[col]):
+                            df_filtered[col] = df_filtered[col].dt.strftime('%Y-%m-%d')
+                    df_filtered = df_filtered.astype(object).where(pd.notnull(df_filtered), None)
+
+                    new_records = df_filtered.to_dict(orient="records")
+                    
+                    records_to_upsert = []
+                    
+                    def records_differ(new_record, existing_record):
+                        for key, value in new_record.items():
+                            if key in existing_record and str(value) != str(existing_record[key]):
+                                return True
+                        return False
+                    
+                    batch_size = 100
+                    total_records = len(new_records)
+                    processed_count = 0
+                    success_count = 0
+                    
+                    progress_bar = st.progress(0)
+                    status_text = st.empty()
+                    
+                    for new_record in new_records:
+                        processed_count += 1
+                        
+                        if not existing_df.empty:
+                            matching_records = existing_df[existing_df[unique_id_col] == new_record[unique_id_col]]
+                            
+                            if not matching_records.empty:
+                                existing_record = matching_records.iloc[0].to_dict()
+                                if records_differ(new_record, existing_record):
+                                    records_to_upsert.append(new_record)
+                            else:
+                                records_to_upsert.append(new_record)
+                        else:
+                            records_to_upsert.append(new_record)
+                            
+                        progress = processed_count / total_records
+                        progress_bar.progress(progress)
+                        status_text.text(f"Processing {processed_count} of {total_records} records...")
+                    
+                    st.info(f"Found {len(records_to_upsert)} records that need to be inserted or updated.")
+                    
+                    for i in range(0, len(records_to_upsert), batch_size):
+                        batch = records_to_upsert[i:i+batch_size]
+                        
+                        if batch: 
+                            response = supabase.table(TABLE_NAME).upsert(batch, on_conflict=['Account Number']).execute()
+                            
+                            if response:
+                                success_count += len(batch)
+                        
+                        progress = min(i + batch_size, len(records_to_upsert)) / max(1, len(records_to_upsert))
+                        progress_bar.progress(progress)
+                        status_text.text(f"Uploaded {success_count} of {len(records_to_upsert)} records...")
+                    
+                    if hasattr(response, 'data') and response.data:
+                        st.toast(f"Dataset Updated! {success_count} records uploaded successfully.")
+                    elif hasattr(response, 'error') and response.error:
+                        st.error(f"Supabase error: {response.error}")
+                    else:
+                        st.warning("Upload may have succeeded, but response was unclear.")           
+                except Exception as e:
+                    st.error(f"Error uploading dataset: {str(e)}")
+                    import traceback
+                    st.code(traceback.format_exc())
+            
+            
                 
             
     selected_sheet = None
