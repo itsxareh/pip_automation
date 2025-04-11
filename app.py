@@ -837,7 +837,7 @@ def main():
         if upload_dataset:
             TABLE_NAME = 'rob_bike_dataset'
             xls = pd.ExcelFile(upload_dataset)
-            sheet_name = next((s for s in xls.sheet_names if s.lower() == 'Sheet1'), None)
+            sheet_name = next((s for s in xls.sheet_names if s.lower() == 'sheet'), None)
 
             if sheet_name:
                 df = pd.read_excel(xls, sheet_name=sheet_name)
