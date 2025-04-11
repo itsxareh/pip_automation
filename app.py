@@ -856,13 +856,6 @@ def main():
             st.subheader("Uploaded Dataset:")
             st.dataframe(df_selected)
             
-            try:
-                temp_dates = pd.to_datetime(df_selected['Endorsement Date'], errors='coerce')
-                df_selected.loc[:, 'Endorsement Date'] = temp_dates.astype(str).str.split(' ').str[0]
-                df_selected.loc[:, 'Endorsement Date'] = df_selected['Endorsement Date'].replace('NaT', '')
-            except:
-                df_selected.loc[:, 'Endorsement Date'] = df_selected['Endorsement Date'].astype(str).replace('NaT', '')
-
             if st.button("Upload to Database"):
                 try:
                     unique_id_col = 'Account Number' 
@@ -877,10 +870,14 @@ def main():
                     else:
                         existing_df = pd.DataFrame()
                     
+                    df_selected = df_selected.replace({np.nan: None})
+                    df_selected = df_selected.astype(str).replace({'None': None, 'nan': None})
+
+                    df_selected['Endorsement Date'] = pd.to_datetime(df_selected['Endorsement Date'], errors='coerce').dt.strftime('%Y-%m-%d')
+                    df_selected['Endorsement Date'] = df_selected['Endorsement Date'].fillna('')
+
                     for col in df_selected.columns:
-                        if pd.api.types.is_datetime64_any_dtype(df_selected[col]):
-                            df_selected[col] = df_filtered[col].dt.strftime('%Y-%m-%d')
-                    df_selected = df_selected.astype(object).where(pd.notnull(df_selected), None)
+                        df_selected[col] = df_selected[col].apply(lambda x: str(x) if isinstance(x, (np.generic, pd.Timestamp)) else x)
 
                     new_records = df_selected.to_dict(orient="records")
                     
