@@ -871,15 +871,36 @@ def main():
                     if not unique_ids:
                         existing_df = pd.DataFrame() 
                     else:
-                        existing_records_response = supabase.table(TABLE_NAME).select("*").in_(unique_id_col, unique_ids).execute()
-                        
+                        valid_unique_ids = [id for id in unique_ids if id is not None and str(id).strip() != '']
+        
+                        if not valid_unique_ids:
+                            existing_df = pd.DataFrame()
+                        else:
+                            # For troubleshooting
+                            print(f"Querying with IDs: {valid_unique_ids[:5]} (showing first 5)")
+                            
+                            # Option 1: Try the filter method instead of in_
+                            existing_records_response = supabase.table(TABLE_NAME).select("*").filter(unique_id_col, "in", valid_unique_ids).execute()
+                            
+                            # Option 2: If the above doesn't work, try this alternative approach
+                            # existing_records = []
+                            # for batch_ids in [valid_unique_ids[i:i+50] for i in range(0, len(valid_unique_ids), 50)]:
+                            #     batch_response = supabase.table(TABLE_NAME).select("*").filter(unique_id_col, "in", batch_ids).execute()
+                            #     if hasattr(batch_response, 'data') and batch_response.data:
+                            #         existing_records.extend(batch_response.data)
+                            # existing_records_response = type('obj', (object,), {'data': existing_records})
+                            
+                            if hasattr(existing_records_response, 'data'):
+                                existing_records = existing_records_response.data
+                                existing_df = pd.DataFrame(existing_records) if existing_records else pd.DataFrame()
+                            else:
+                                existing_df = pd.DataFrame()
                         if hasattr(existing_records_response, 'data'):
                             existing_records = existing_records_response.data
                             existing_df = pd.DataFrame(existing_records) if existing_records else pd.DataFrame()
                         else:
                             existing_df = pd.DataFrame()
                     
-                    # Convert all values to properly JSON serializable format
                     def clean_value(x):
                         if pd.isna(x) or x is None or x == 'None' or x == 'nan':
                             return None
