@@ -880,12 +880,17 @@ def main():
     
     if campaign == "ROB Bike" and automation_type == "Daily Remark Report":
         report_date = st.sidebar.date_input('Date Report', format="YYYY/MM/DD") 
-        upload_field_result = st.sidebar.file_uploader(
-            "Field Result",
-            type=["xlsx", "xls"],
-            key=f"{campaign}_field_result"
-        )
-        
+        with st.sidebar.expander("Upload Other File", expanded=True):
+            upload_field_result = st.file_uploader(
+                "Field Result",
+                type=["xlsx", "xls"],
+                key=f"{campaign}_field_result"
+            )
+            upload_dataset = st.file_uploader(
+                "Dataset",
+                type=["xlsx", "xls"],
+                key=f"{campaign}_dataset"
+            )
         if upload_field_result:
             TABLE_NAME = 'rob_bike_field_result'
             xls = pd.ExcelFile(upload_field_result)
@@ -999,11 +1004,7 @@ def main():
                     import traceback
                     st.code(traceback.format_exc())
                     
-        upload_dataset = st.sidebar.file_uploader(
-            "Dataset",
-            type=["xlsx", "xls"],
-            key=f"{campaign}_dataset"
-        )
+        
         if upload_dataset:
             TABLE_NAME = 'rob_bike_dataset'
             xls = pd.ExcelFile(upload_dataset)
