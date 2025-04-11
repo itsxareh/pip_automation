@@ -853,6 +853,12 @@ def main():
             ]
             df_selected = df_filtered[[col for col in desired_columns if col in df_filtered.columns]]
             
+            df_selected = df_selected.replace({np.nan: None})
+            df_selected = df_selected.astype(str).replace({'None': None, 'nan': None})
+
+            df_selected['Endorsement Date'] = pd.to_datetime(df_selected['Endorsement Date'], errors='coerce').dt.strftime('%Y-%m-%d')
+            df_selected['Endorsement Date'] = df_selected['Endorsement Date'].fillna('')
+            
             st.subheader("Uploaded Dataset:")
             st.dataframe(df_selected)
             
@@ -869,12 +875,6 @@ def main():
                         existing_df = pd.DataFrame(existing_records) if existing_records else pd.DataFrame()
                     else:
                         existing_df = pd.DataFrame()
-                    
-                    df_selected = df_selected.replace({np.nan: None})
-                    df_selected = df_selected.astype(str).replace({'None': None, 'nan': None})
-
-                    df_selected['Endorsement Date'] = pd.to_datetime(df_selected['Endorsement Date'], errors='coerce').dt.strftime('%Y-%m-%d')
-                    df_selected['Endorsement Date'] = df_selected['Endorsement Date'].fillna('')
 
                     for col in df_selected.columns:
                         df_selected[col] = df_selected[col].apply(lambda x: str(x) if isinstance(x, (np.generic, pd.Timestamp)) else x)
