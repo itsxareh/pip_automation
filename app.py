@@ -857,13 +857,12 @@ def main():
             st.dataframe(df_selected)
             
             try:
-                temp_dates = pd.to_datetime(df_filtered['Endorsement Date'], errors='coerce')
-                df_filtered.loc[:, 'Endorsement Date'] = temp_dates.astype(str).str.split(' ').str[0]
-                df_filtered.loc[:, 'Endorsement Date'] = df_filtered['Endorsement Date'].replace('NaT', '')
+                temp_dates = pd.to_datetime(df_selected['Endorsement Date'], errors='coerce')
+                df_selected.loc[:, 'Endorsement Date'] = temp_dates.astype(str).str.split(' ').str[0]
+                df_selected.loc[:, 'Endorsement Date'] = df_selected['Endorsement Date'].replace('NaT', '')
             except:
-                df_filtered.loc[:, 'Endorsement Date'] = df_filtered['Endorsement Date'].astype(str).replace('NaT', '')
+                df_selected.loc[:, 'Endorsement Date'] = df_selected['Endorsement Date'].astype(str).replace('NaT', '')
 
-            
             if st.button("Upload to Database"):
                 try:
                     unique_id_col = 'Account Number' 
