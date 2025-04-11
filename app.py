@@ -838,27 +838,24 @@ def main():
             TABLE_NAME = 'rob_bike_dataset'
             xls = pd.ExcelFile(upload_dataset)
 
-            if sheet_name:
-                df = pd.read_excel(xls)
-                df_clean = df.replace({np.nan: 0})
+            df = pd.read_excel(xls)
+            df_clean = df.replace({np.nan: 0})
+        
+            df_filtered = df_clean.copy()
+            desired_columns = [
+                'ChCode',
+                'Account Number',
+                'Client Name',
+                'Endorsement Date',
+                'Endrosement DPD',
+                'Store',
+                'Cluster'
+            ]
+            df_selected = df_filtered[[col for col in desired_columns if col in df_filtered.columns]]
             
-                df_filtered = df_clean.copy()
-                desired_columns = [
-                    'ChCode',
-                    'Account Number',
-                    'Client Name',
-                    'Endorsement Date',
-                    'Endrosement DPD',
-                    'Store',
-                    'Cluster'
-                ]
-                df_selected = df_filtered[[col for col in desired_columns if col in df_filtered.columns]]
+            st.subheader("Uploaded Dataset:")
+            st.dataframe(df_selected)
                 
-                st.subheader("Uploaded Dataset:")
-                st.dataframe(df_selected)
-                
-            else:
-                st.error("Sheet named 'Sheet1' not found in the uploaded file.")
             
     selected_sheet = None
     if uploaded_file is not None:
