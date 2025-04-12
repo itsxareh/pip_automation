@@ -882,7 +882,7 @@ def main():
     
     if campaign == "ROB Bike" and automation_type == "Daily Remark Report":
         report_date = st.sidebar.date_input('Date Report', format="YYYY/MM/DD") 
-        with st.sidebar.expander("Upload Other File", expanded=True):
+        with st.sidebar.expander("Upload Other File", expanded=False):
             upload_field_result = st.file_uploader(
                 "Field Result",
                 type=["xlsx", "xls"],
