@@ -639,6 +639,8 @@ class ROBBikeProcessor(BaseProcessor):
             df = pd.read_excel(io.BytesIO(file_content))
             
             df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
+            #Drop last row
+            df = df.iloc[:-1].reset_index(drop=True)
             
             if 'Time' in df.columns:
                 df = df.sort_values(by='Time', ascending=False)
