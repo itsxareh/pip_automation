@@ -14,7 +14,8 @@ import datetime
 import json
 import msoffcrypto 
 from supabase import create_client
-
+from dotenv import load_dotenv
+load_dotenv()
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
@@ -638,7 +639,6 @@ class ROBBikeProcessor(BaseProcessor):
             df = pd.read_excel(io.BytesIO(file_content))
             
             df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
-            #Drop last row
             df = df.iloc[:-1].reset_index(drop=True)
             
             if 'Time' in df.columns:
@@ -698,23 +698,25 @@ class ROBBikeProcessor(BaseProcessor):
                 monitoring_df['PTP Date'] = df['PTP Date']
             
             if 'Account No.' in df.columns:
-                account_numbers = df['Account No.'].unique().tolist()
+                account_numbers = [str(int(acc)) for acc in df['Account No.'].dropna().unique().tolist()]
                 
                 dataset_response = supabase.table('rob_bike_dataset').select('*').in_('account_number', account_numbers).execute()
                 
                 if hasattr(dataset_response, 'data') and dataset_response.data:
                     dataset_df = pd.DataFrame(dataset_response.data)
+                    monitoring_df['Account Number'] = monitoring_df['Account Number'].apply(lambda x: str(int(float(x))) if pd.notnull(x) else '')
                     
                     account_data_map = {}
                     for _, row in dataset_df.iterrows():
-                        account_data_map[row['account_number']] = {
+                        account_no = str(row['account_number']).strip()
+                        account_data_map[account_no] = {
                             'EndoDate': row.get('endo_date', ''),
-                            'Stores': row.get('store', ''),
+                            'Stores': row.get('stores', ''),
                             'Cluster': row.get('cluster', ''),
                             'Field_Status': row.get('field_status', ''),
                             'Field_Substatus': row.get('field_substatus', '')
                         }
-                    
+
                     monitoring_df['EndoDate'] = monitoring_df['Account Number'].map(
                         lambda acc_no: account_data_map.get(acc_no, {}).get('EndoDate', ''))
                     
@@ -757,6 +759,7 @@ class ROBBikeProcessor(BaseProcessor):
                     ptp_df['ResultDate'] = ptp_data['Time']
                 
                 if 'Account No.' in ptp_data.columns and 'account_data_map' in locals():
+                    ptp_df['AccountNumber'] = ptp_df['AccountNumber'].apply(lambda x: str(int(float(x))) if pd.notnull(x) else '')
                     ptp_df['EndoDate'] = ptp_df['AccountNumber'].map(
                         lambda acc_no: account_data_map.get(acc_no, {}).get('EndoDate', ''))
             
@@ -895,242 +898,320 @@ def main():
             )
         if upload_field_result:
             TABLE_NAME = 'rob_bike_field_result'
-            xls = pd.ExcelFile(upload_field_result)
-            sheet_name = next((s for s in xls.sheet_names if s.lower() == 'result'), None)
-
-            if sheet_name:
-                df = pd.read_excel(xls, sheet_name=sheet_name)
-                df_clean = df.replace({np.nan: 0})
-            else:
-                st.error("Sheet named 'RESULT' not found in the uploaded file.")
             
-            df_filtered = df_clean[(df_clean['status'] != 'CANCEL') & (df_clean['bank'] == 'ROB MOTOR LOAN')].copy()
-            st.subheader("Uploaded Field Result:")
-            st.dataframe(df_filtered)
+            try:
+                xls = pd.ExcelFile(upload_field_result)
+                sheet_name = next((s for s in xls.sheet_names if s.lower() == 'result'), None)
+
+                if sheet_name:
+                    df = pd.read_excel(xls, sheet_name=sheet_name)
+                    df_clean = df.replace({np.nan: 0})
+                else:
+                    st.error("Sheet named 'RESULT' not found in the uploaded file.")
+                
+                df_filtered = df_clean[(df_clean['status'] != 'CANCEL') & (df_clean['bank'] == 'ROB MOTOR LOAN')].copy()
+                
+                if 'chcode' in df_filtered.columns and 'status' in df_filtered.columns and 'SUB STATUS' in df_filtered.columns and 'DATE' in df_filtered.columns and 'TIME' in df_filtered.columns:
+                    df_extracted = df_filtered[['chcode', 'status', 'SUB STATUS', 'DATE', 'TIME']].copy()
+                    
+                    df_extracted = df_extracted.rename(columns={
+                        'SUB STATUS': 'substatus',
+                        'DATE': 'date',
+                        'TIME': 'time'
+                    })
+                    
+                    df_extracted.loc[:, 'time'] = df_extracted['time'].astype(str).replace('NaT', '')
             
-            df_filtered.loc[:, 'TIME'] = df_filtered['TIME'].astype(str).replace('NaT', '')
-
-            try:
-                temp_dates = pd.to_datetime(df_filtered['PTP-Date'], errors='coerce')
-                df_filtered.loc[:, 'PTP-Date'] = temp_dates.astype(str).str.split(' ').str[0]
-                df_filtered.loc[:, 'PTP-Date'] = df_filtered['PTP-Date'].replace('NaT', '')
-            except:
-                df_filtered.loc[:, 'PTP-Date'] = df_filtered['PTP-Date'].astype(str).replace('NaT', '')
-
-            try:
-                temp_dates = pd.to_datetime(df_filtered['DATE'], errors='coerce')
-                df_filtered.loc[:, 'DATE'] = temp_dates.astype(str).str.split(' ').str[0]
-                df_filtered.loc[:, 'DATE'] = df_filtered['DATE'].replace('NaT', '')
-            except:
-                df_filtered.loc[:, 'DATE'] = df_filtered['DATE'].astype(str).replace('NaT', '')
-
-            if st.button("Upload to Database"):
-                try:
-                    unique_id_col = 'reference_code' 
+                    try:
+                        temp_dates = pd.to_datetime(df_extracted['date'], errors='coerce')
+                        df_extracted.loc[:, 'date'] = temp_dates.astype(str).str.split(' ').str[0]
+                        df_extracted.loc[:, 'date'] = df_extracted['date'].replace('NaT', '')
+                    except:
+                        df_extracted.loc[:, 'date'] = df_extracted['date'].astype(str).replace('NaT', '')
                     
-                    unique_ids = df_filtered[unique_id_col].unique().tolist()
+                    st.subheader("Extracted Field Result Data:")
+                    st.dataframe(df_extracted)
                     
-                    existing_records_response = supabase.table(TABLE_NAME).select("*").in_(unique_id_col, unique_ids).execute()
+                    button_placeholder = st.empty()
+                    status_placeholder = st.empty()
                     
-                    if hasattr(existing_records_response, 'data'):
-                        existing_records = existing_records_response.data
-                        existing_df = pd.DataFrame(existing_records) if existing_records else pd.DataFrame()
-                    else:
-                        existing_df = pd.DataFrame()
+                    upload_button = button_placeholder.button("Upload to Database", key="upload_button")
                     
-                    for col in df_filtered.columns:
-                        if pd.api.types.is_datetime64_any_dtype(df_filtered[col]):
-                            df_filtered[col] = df_filtered[col].dt.strftime('%Y-%m-%d')
-                    df_filtered = df_filtered.astype(object).where(pd.notnull(df_filtered), None)
-
-                    new_records = df_filtered.to_dict(orient="records")
-                    
-                    records_to_upsert = []
-                    
-                    def records_differ(new_record, existing_record):
-                        for key, value in new_record.items():
-                            if key in existing_record and str(value) != str(existing_record[key]):
-                                return True
-                        return False
-                    
-                    batch_size = 100
-                    total_records = len(new_records)
-                    processed_count = 0
-                    success_count = 0
-                    
-                    progress_bar = st.progress(0)
-                    status_text = st.empty()
-                    
-                    for new_record in new_records:
-                        processed_count += 1
+                    if upload_button:
+                        button_placeholder.button("Processing...", disabled=True, key="processing_button")
                         
-                        if not existing_df.empty:
-                            matching_records = existing_df[existing_df[unique_id_col] == new_record[unique_id_col]]
+                        try:
+                            existing_records_response = supabase.table(TABLE_NAME).select("chcode, status, substatus").execute()
                             
-                            if not matching_records.empty:
-                                existing_record = matching_records.iloc[0].to_dict()
-                                if records_differ(new_record, existing_record):
-                                    records_to_upsert.append(new_record)
+                            if hasattr(existing_records_response, 'data'):
+                                existing_records = existing_records_response.data
+                                existing_df = pd.DataFrame(existing_records) if existing_records else pd.DataFrame()
                             else:
-                                records_to_upsert.append(new_record)
-                        else:
-                            records_to_upsert.append(new_record)
+                                existing_df = pd.DataFrame()
                             
-                        progress = processed_count / total_records
-                        progress_bar.progress(progress)
-                        status_text.text(f"Processing {processed_count} of {total_records} records...")
-                    
-                    st.info(f"Found {len(records_to_upsert)} records that need to be inserted or updated.")
-                    
-                    for i in range(0, len(records_to_upsert), batch_size):
-                        batch = records_to_upsert[i:i+batch_size]
-                        
-                        if batch: 
-                            response = supabase.table(TABLE_NAME).upsert(batch, on_conflict=['reference_code']).execute()
+                            df_to_upload = df_extracted.copy()
+                            for col in df_to_upload.columns:
+                                if pd.api.types.is_datetime64_any_dtype(df_to_upload[col]):
+                                    df_to_upload[col] = df_to_upload[col].dt.strftime('%Y-%m-%d')
                             
-                            if response:
-                                success_count += len(batch)
-                        
-                        progress = min(i + batch_size, len(records_to_upsert)) / max(1, len(records_to_upsert))
-                        progress_bar.progress(progress)
-                        status_text.text(f"Uploaded {success_count} of {len(records_to_upsert)} records...")
-                    
-                    if hasattr(response, 'data') and response.data:
-                        st.toast(f"Field Result Updated! {success_count} records uploaded successfully.")
-                    elif hasattr(response, 'error') and response.error:
-                        st.error(f"Supabase error: {response.error}")
-                    else:
-                        st.warning("Upload may have succeeded, but response was unclear.")           
-                except Exception as e:
-                    st.error(f"Error uploading field result: {str(e)}")
-                    import traceback
-                    st.code(traceback.format_exc())
-                    
+                            df_to_upload = df_to_upload.astype(object).where(pd.notnull(df_to_upload), None)
+                            records_to_insert = df_to_upload.to_dict(orient="records")
+                            
+                            filtered_records = []
+                            total_records = len(records_to_insert)
+                            duplicate_count = 0
+                            
+                            progress_bar = st.progress(0)
+                            status_text = status_placeholder.empty()
+                            
+                            for i, record in enumerate(records_to_insert):
+                                if not existing_df.empty:
+                                    matching = existing_df[
+                                        (existing_df['chcode'] == record['chcode']) & 
+                                        (existing_df['status'] == record['status']) & 
+                                        (existing_df['substatus'] == record['substatus'])
+                                    ]
+                                    
+                                    if matching.empty:
+                                        filtered_records.append(record)
+                                    else:
+                                        duplicate_count += 1
+                                else:
+                                    filtered_records.append(record)
+                                
+                                progress = (i + 1) / total_records
+                                progress_bar.progress(progress)
+                                status_text.text(f"Processing {i+1} of {total_records} records...")
+                            
+                            status_placeholder.info(f"Found {len(filtered_records)} unique records to insert. Skipping {duplicate_count} duplicates.")
+                            
+                            if filtered_records:
+                                batch_size = 100
+                                success_count = 0
+                                
+                                for i in range(0, len(filtered_records), batch_size):
+                                    batch = filtered_records[i:i+batch_size]
+                                    
+                                    if batch:
+                                        response = supabase.table(TABLE_NAME).insert(batch).execute()
+                                        
+                                        if hasattr(response, 'data') and response.data:
+                                            success_count += len(batch)
+                                    
+                                    progress = min(i + batch_size, len(filtered_records)) / max(1, len(filtered_records))
+                                    progress_bar.progress(progress)
+                                    status_text.text(f"Uploaded {success_count} of {len(filtered_records)} records...")
+                                
+                                st.toast(f"Field Result Updated! {success_count} unique records uploaded successfully.")
+                            else:
+                                st.warning("No new unique records to upload.")
+                            
+                            button_placeholder.button("Upload Complete!", disabled=True, key="complete_button")
+                                
+                        except Exception as e:
+                            st.error(f"Error uploading field result: {str(e)}")
+                            import traceback
+                            st.code(traceback.format_exc())
+                            
+                            button_placeholder.button("Upload Failed - Try Again", key="retry_button")
+                else:
+                    st.error("Required columns not found in the uploaded file. Please ensure the file contains: chcode, status, SUB STATUS, DATE, and TIME columns.")
+            except Exception as e:
+                st.error(f"Error processing Excel file: {str(e)}")
         
         if upload_dataset:
             TABLE_NAME = 'rob_bike_dataset'
-            xls = pd.ExcelFile(upload_dataset)
-
-            df = pd.read_excel(xls)
-            df_clean = df.replace({np.nan: 0})
-        
-            df_filtered = df_clean.copy()
-            desired_columns = [
-                'ChCode',
-                'Account Number',
-                'Client Name',
-                'Endorsement Date',
-                'Endrosement DPD',
-                'Store',
-                'Cluster'
-            ]
-            df_selected = df_filtered[[col for col in desired_columns if col in df_filtered.columns]]
-            st.subheader("Uploaded Dataset:")
-            st.dataframe(df_clean)
+            try:
+                xls = pd.ExcelFile(upload_dataset)
+                df = pd.read_excel(xls)
+                    
+                df_clean = df.replace({np.nan: 0})
             
-            if st.button("Upload to Database"):
-                try:
-                    
-                    unique_id_col = 'Account Number'
-                    unique_ids = df_selected[unique_id_col].unique().tolist()
-                    
-                    for col in df_selected.columns:
-                        if pd.api.types.is_datetime64_any_dtype(df_selected[col]):
-                            df_selected[col] = df_selected[col].dt.strftime('%Y-%m-%d')
-                    
-                    df_selected = df_selected.astype(object).where(pd.notnull(df_selected), None)
-                    
-                    new_records = df_selected.to_dict(orient="records")
-                    
-                    existing_records = []
-                    batch_size_for_query = 20 
-                    
-                    progress_bar = st.progress(0)
-                    status_text = st.empty()
-                    status_text.text("Fetching existing records...")
-                    
-                    for i in range(0, len(unique_ids), batch_size_for_query):
-                        batch_ids = unique_ids[i:i+batch_size_for_query]
-                        batch_ids = [id for id in batch_ids if id is not None and str(id).strip() != '']
+                df_filtered = df_clean.copy()
+                
+                st.subheader("Uploaded Dataset:")
+                st.dataframe(df_filtered)
+                
+                possible_column_variants = {
+                    'ChCode': ['ChCode'],
+                    'Account Number': ['Account Number', 'Account_Number'],
+                    'Client Name': ['Client Name', 'Client_Name'],
+                    'Endorsement Date': ['Endorsement Date', 'Endorsement_Date'],
+                    'Endrosement DPD': ['Endrosement DPD', 'Endrosement_DPD'],
+                    'Store': ['Store'],
+                    'Cluster': ['Cluster']
+                }
+                
+                target_columns = [
+                    'chcode',
+                    'account_number',
+                    'client_name',
+                    'endo_date',
+                    'endo_dpd',
+                    'stores',
+                    'cluster'
+                ]
+                
+                column_mapping = {}
+                for (key, variants), target in zip(possible_column_variants.items(), target_columns):
+                    for variant in variants:
+                        if variant in df_filtered.columns:
+                            column_mapping[variant] = target
+                            break 
                         
-                        if batch_ids:
-                            try:
-                                batch_response = supabase.table(TABLE_NAME).select("*").filter(unique_id_col, "in", batch_ids).execute()
+                if len(column_mapping) == len(target_columns):
+                    df_selected = df_filtered[list(column_mapping.keys())].rename(columns=column_mapping)
+                    
+                    df_selected = df_selected.rename(columns=column_mapping)
+                    
+                    button_placeholder = st.empty()
+                    status_placeholder = st.empty()
+                    
+                    upload_button = button_placeholder.button("Upload to Database", key="upload_dataset_button")
+                    
+                    if upload_button:
+                        button_placeholder.button("Processing...", disabled=True, key="processing_dataset_button")
+                        
+                        try:
+                            unique_id_col = 'account_number'
+                            unique_ids = df_selected[unique_id_col].unique().tolist()
+                            
+                            for col in df_selected.columns:
+                                if pd.api.types.is_datetime64_any_dtype(df_selected[col]):
+                                    df_selected[col] = df_selected[col].dt.strftime('%Y-%m-%d')
+                            
+                            df_selected = df_selected.astype(object).where(pd.notnull(df_selected), None)
+                            
+                            new_records = df_selected.to_dict(orient="records")
+                            
+                            existing_records = []
+                            batch_size_for_query = 20 
+                            
+                            progress_bar = st.progress(0)
+                            status_text = status_placeholder.empty()
+                            status_text.text("Fetching existing records...")
+                            
+                            for i in range(0, len(unique_ids), batch_size_for_query):
+                                batch_ids = unique_ids[i:i+batch_size_for_query]
+                                batch_ids = [id for id in batch_ids if id is not None and str(id).strip() != '']
                                 
-                                if hasattr(batch_response, 'data') and batch_response.data:
-                                    existing_records.extend(batch_response.data)
-                            except Exception as e:
-                                st.warning(f"Error fetching batch {i}: {str(e)}. Continuing...")
-                        
-                        progress_bar.progress((i + batch_size_for_query) / max(1, len(unique_ids)))
-                    
-                    existing_df = pd.DataFrame(existing_records) if existing_records else pd.DataFrame()
-                    
-                    def records_differ(new_record, existing_record):
-                        for key, value in new_record.items():
-                            if key in existing_record and str(value) != str(existing_record[key]):
-                                return True
-                        return False
-                    
-                    records_to_upsert = []
-                    total_records = len(new_records)
-                    processed_count = 0
-                    
-                    status_text.text("Identifying records to update...")
-                    progress_bar.progress(0)
-                    
-                    for new_record in new_records:
-                        processed_count += 1
-                        
-                        if not existing_df.empty:
-                            matching_records = existing_df[existing_df[unique_id_col] == new_record[unique_id_col]]
+                                if batch_ids:
+                                    try:
+                                        batch_response = supabase.table(TABLE_NAME).select("*").in_(unique_id_col, batch_ids).execute()
+                                        
+                                        if hasattr(batch_response, 'data') and batch_response.data:
+                                            existing_records.extend(batch_response.data)
+                                    except Exception as e:
+                                        st.warning(f"Error fetching batch {i}: {str(e)}. Continuing...")
+                                
+                                progress_value = min(1.0, (i + batch_size_for_query) / max(1, len(unique_ids)))
+                                progress_bar.progress(progress_value)
                             
-                            if not matching_records.empty:
-                                existing_record = matching_records.iloc[0].to_dict()
-                                if records_differ(new_record, existing_record):
-                                    records_to_upsert.append(new_record)
+                            existing_df = pd.DataFrame(existing_records) if existing_records else pd.DataFrame()
+                            
+                            records_to_insert = []
+                            records_to_update = []
+                            total_records = len(new_records)
+                            processed_count = 0
+                            
+                            status_text.text("Identifying records to insert or update...")
+                            progress_bar.progress(0)
+                            
+                            def records_differ(new_record, existing_record):
+                                for key, value in new_record.items():
+                                    if key in existing_record and str(value) != str(existing_record[key]):
+                                        return True
+                                return False
+                            
+                            for new_record in new_records:
+                                processed_count += 1
+                                
+                                if not existing_df.empty:
+                                    matching_records = existing_df[existing_df[unique_id_col] == new_record[unique_id_col]]
+                                    
+                                    if not matching_records.empty:
+                                        existing_record = matching_records.iloc[0].to_dict()
+                                        if records_differ(new_record, existing_record):
+                                            new_record['id'] = existing_record['id']
+                                            records_to_update.append(new_record)
+                                    else:
+                                        records_to_insert.append(new_record)
+                                else:
+                                    records_to_insert.append(new_record)
+                                    
+                                progress_value = min(1.0, processed_count / total_records)
+                                progress_bar.progress(progress_value)
+                            
+                            status_placeholder.info(f"Found {len(records_to_insert)} records to insert and {len(records_to_update)} records to update.")
+                            
+                            batch_size_for_db = 100
+                            success_count = 0
+                            
+                            if records_to_insert:
+                                status_text.text("Inserting new records...")
+                                progress_bar.progress(0)
+                                
+                                for i in range(0, len(records_to_insert), batch_size_for_db):
+                                    batch = records_to_insert[i:i+batch_size_for_db]
+                                    
+                                    if batch:
+                                        try:
+                                            response = supabase.table(TABLE_NAME).insert(batch).execute()
+                                            
+                                            if hasattr(response, 'data') and response.data:
+                                                success_count += len(batch)
+                                        except Exception as e:
+                                            st.error(f"Error inserting records batch: {str(e)}")
+                                    
+                                    progress_value = min(1.0, min(i + batch_size_for_db, len(records_to_insert)) / max(1, len(records_to_insert)))
+                                    progress_bar.progress(progress_value)
+                                    status_text.text(f"Inserted {success_count} of {len(records_to_insert)} new records...")
+                            
+                            update_count = 0
+                            if records_to_update:
+                                status_text.text("Updating existing records...")
+                                progress_bar.progress(0)
+                                
+                                for i, record in enumerate(records_to_update):
+                                    record_id = record.pop('id') 
+                                    
+                                    try:
+                                        response = supabase.table(TABLE_NAME).update(record).eq('id', record_id).execute()
+                                        
+                                        if hasattr(response, 'data') and response.data:
+                                            update_count += 1
+                                    except Exception as e:
+                                        st.error(f"Error updating record {record_id}: {str(e)}")
+                                    
+                                    progress_value = min(1.0, (i + 1) / len(records_to_update))
+                                    progress_bar.progress(progress_value)
+                                    status_text.text(f"Updated {update_count} of {len(records_to_update)} existing records...")
+                            
+                            total_processed = success_count + update_count
+                            if total_processed > 0:
+                                st.toast(f"Dataset Updated! {success_count} records inserted and {update_count} records updated successfully.")
+                                button_placeholder.button("Upload Complete!", disabled=True, key="complete_dataset_button")
                             else:
-                                records_to_upsert.append(new_record)
-                        else:
-                            records_to_upsert.append(new_record)
-                            
-                        progress = processed_count / total_records
-                        progress_bar.progress(progress)
-                        
-                    st.info(f"Found {len(records_to_upsert)} records that need to be inserted or updated.")
-                    
-                    batch_size_for_upload = 100
-                    success_count = 0
-                    
-                    for i in range(0, len(records_to_upsert), batch_size_for_upload):
-                        batch = records_to_upsert[i:i+batch_size_for_upload]
-                        
-                        if batch:
-                            response = supabase.table(TABLE_NAME).upsert(batch, on_conflict=[unique_id_col]).execute()
-                            
-                            if response:
-                                success_count += len(batch)
-                        
-                        progress = min(i + batch_size_for_upload, len(records_to_upsert)) / max(1, len(records_to_upsert))
-                        progress_bar.progress(progress)
-                        status_text.text(f"Uploaded {success_count} of {len(records_to_upsert)} records...")
-                    
-                    if success_count > 0:
-                        st.toast(f"Dataset Updated! {success_count} records uploaded successfully.")
-                    else:
-                        st.warning("No records were uploaded. Either no changes were needed or upload failed.")
-                            
-                except Exception as e:
-                    st.error(f"Error uploading dataset: {str(e)}")
-                    import traceback
-                    st.code(traceback.format_exc())
-            
+                                st.warning("No records were processed. Either no changes were needed or the operation failed.")
+                                button_placeholder.button("Try Again", key="retry_dataset_button")
+                                    
+                        except Exception as e:
+                            st.error(f"Error uploading dataset: {str(e)}")
+                            import traceback
+                            st.code(traceback.format_exc())
+                            button_placeholder.button("Upload Failed - Try Again", key="error_dataset_button")
+                else:
+                    missing_cols = [col for col in source_columns if col not in df_filtered.columns]
+                    st.error(f"Required columns not found in the uploaded file: {', '.join(missing_cols)}")
+            except Exception as e:
+                st.error(f"Error processing Excel file: {str(e)}")
+
     
     df = None
     sheet_names = []
 
     if uploaded_file is not None:
-        use_password = st.sidebar.checkbox("🔒 File is password protected", value=False)
+        use_password = st.sidebar.checkbox("File is password protected", value=False)
         decrypted_file = io.BytesIO()
 
         try:
@@ -1148,7 +1229,7 @@ def main():
             else:
                 decrypted_file = io.BytesIO(file_content)
 
-            xlsx = pd.ExcelFile(decrypted_file)
+            xlsx = pd.ExcelFile(io.BytesIO(file_content))
             sheet_names = xlsx.sheet_names
 
             selected_sheet = st.sidebar.selectbox(
