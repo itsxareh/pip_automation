@@ -4,6 +4,9 @@ import os
 import numpy as np
 import openpyxl
 from openpyxl.utils import get_column_letter
+from openpyxl import load_workbook
+from openpyxl.utils.dataframe import dataframe_to_rows
+from openpyxl.styles import Border, Side
 import warnings
 from datetime import datetime, date, time
 import io
@@ -11,7 +14,6 @@ import tempfile
 import shutil
 import re 
 import datetime
-import json
 import msoffcrypto 
 from supabase import create_client
 from dotenv import load_dotenv
@@ -649,7 +651,19 @@ class ROBBikeProcessor(BaseProcessor):
                 
                 df = df.drop_duplicates(subset=['COMBINED_KEY'])
                 df = df.drop(columns=['COMBINED_KEY'])  
-            
+                
+            if 'PTP Amount' in df.columns and 'Status' in df.columns:
+                voluntary_surrender_rows = df[df['Status'] == 'PTP - VOLUNTARY SURRENDER']
+
+                invalid_amount_rows = voluntary_surrender_rows[
+                    (voluntary_surrender_rows['PTP Amount'].isna()) |
+                    (voluntary_surrender_rows['PTP Amount'] == 0)
+                ]
+
+                if not invalid_amount_rows.empty:
+                    st.warning(f"Found {len(invalid_amount_rows)} row(s) with 'PTP - VOLUNTARY SURRENDER' but 0 or missing 'PTP Amount'.")
+                    st.dataframe(invalid_amount_rows, use_container_width=True)
+                    
             if preview_only:
                 return df, None, None
             
@@ -691,13 +705,13 @@ class ROBBikeProcessor(BaseProcessor):
                 monitoring_df['Notes'] = df['Remark']
             
             if 'Date' in df.columns:
-                monitoring_df['BarcodeDate'] = pd.to_datetime(df['Date']).dt.strftime('%Y-%m-%d')
+                monitoring_df['BarcodeDate'] = pd.to_datetime(df['Date']).dt.strftime('%m/%d/%Y')
             
             if 'PTP Amount' in df.columns:
                 monitoring_df['PTP Amount'] = df['PTP Amount']
             
             if 'PTP Date' in df.columns:
-                monitoring_df['PTP Date'] = df['PTP Date']
+                monitoring_df['PTP Date'] = pd.to_datetime(df['PTP Date']).dt.strftime('%m/%d/%Y')
             
             if 'Account No.' in df.columns:
                 account_numbers = [str(int(acc)) for acc in df['Account No.'].dropna().unique().tolist()]
@@ -794,51 +808,45 @@ class ROBBikeProcessor(BaseProcessor):
                     ptp_df['Amount'] = ptp_data['PTP Amount']
                 
                 if 'PTP Date' in ptp_data.columns:
-                    ptp_df['StartDate'] = ptp_data['PTP Date']
+                    ptp_df['StartDate'] = pd.to_datetime(ptp_data['PTP Date']).dt.strftime('%Y-%m-%d')
                 
                 if 'Remark' in ptp_data.columns:
                     ptp_df['Notes'] = ptp_data['Remark']
                 
                 if 'Time' in ptp_data.columns:
-                    ptp_df['ResultDate'] = ptp_data['Time']
+                    ptp_df['ResultDate'] = pd.to_datetime(ptp_data['Time']).dt.strftime('%m/%d/%Y %H:%M')
                 
                 if 'Account No.' in ptp_data.columns and 'account_data_map' in locals():
                     ptp_df['AccountNumber'] = ptp_df['AccountNumber'].apply(lambda x: str(int(float(x))) if pd.notnull(x) else '')
                     ptp_df['EndoDate'] = ptp_df['AccountNumber'].map(
                         lambda acc_no: account_data_map.get(acc_no, {}).get('EndoDate', ''))
+                    ptp_df['EndoDate'] = pd.to_datetime(ptp_df['EndoDate']).dt.strftime('%m/%d/%Y')
             
             template_path = os.path.join(os.path.dirname(__file__), output_template)
             
             output_buffer = io.BytesIO()
             
             if os.path.exists(template_path):
-                from openpyxl import load_workbook
-                from openpyxl.utils.dataframe import dataframe_to_rows
                 
-                template_wb = load_workbook(template_path)
+                with open(template_path, 'rb') as template_file:
+                    template_copy = io.BytesIO(template_file.read()) 
+
+                    template_wb = load_workbook(template_copy)
+
+                    def append_df_to_sheet(sheet_name, df):
+                        if sheet_name in template_wb.sheetnames:
+                            sheet = template_wb[sheet_name]
+                            start_row = sheet.max_row + 1
+                            for r_idx, row in enumerate(dataframe_to_rows(df, index=False, header=False), start_row):
+                                for c_idx, value in enumerate(row, 1):
+                                    sheet.cell(row=r_idx, column=c_idx).value = value
+
+                    append_df_to_sheet(sheet1, monitoring_df)
+                    append_df_to_sheet(sheet2, ptp_df)
+                    append_df_to_sheet(sheet5, monitoring_df)
+
+                    template_wb.save(output_buffer)
                 
-                if sheet1 in template_wb.sheetnames:
-                    sheet = template_wb[sheet1]
-                    start_row = sheet.max_row + 1
-                    for r_idx, row in enumerate(dataframe_to_rows(monitoring_df, index=False, header=False), start_row):
-                        for c_idx, value in enumerate(row, 1):
-                            sheet.cell(row=r_idx, column=c_idx).value = value
-                
-                if sheet2 in template_wb.sheetnames:
-                    sheet = template_wb[sheet2]
-                    start_row = sheet.max_row + 1
-                    for r_idx, row in enumerate(dataframe_to_rows(ptp_df, index=False, header=False), start_row):
-                        for c_idx, value in enumerate(row, 1):
-                            sheet.cell(row=r_idx, column=c_idx).value = value
-                
-                if sheet5 in template_wb.sheetnames:
-                    sheet = template_wb[sheet5]
-                    start_row = sheet.max_row + 1
-                    for r_idx, row in enumerate(dataframe_to_rows(monitoring_df, index=False, header=False), start_row):
-                        for c_idx, value in enumerate(row, 1):
-                            sheet.cell(row=r_idx, column=c_idx).value = value
-                
-                template_wb.save(output_buffer)
             else:
                 with pd.ExcelWriter(output_buffer, engine='openpyxl') as writer:
                     monitoring_df.to_excel(writer, sheet_name=sheet1, index=False)
@@ -852,7 +860,13 @@ class ROBBikeProcessor(BaseProcessor):
                     
                     def format_sheet(sheet_name, df=None):
                         sheet = writer.sheets.get(sheet_name) or workbook[sheet_name]
-                        sheet.sheet_view.showGridLines = True
+                        
+                        thin_border = Border(
+                            left=Side(style='thin'),
+                            right=Side(style='thin'),
+                            top=Side(style='thin'),
+                            bottom=Side(style='thin'),
+                        )
                         
                         if df is not None: 
                             for col_idx, col in enumerate(df.columns, 1):
@@ -862,7 +876,11 @@ class ROBBikeProcessor(BaseProcessor):
                                 )
                                 adjusted_width = max_length + 2
                                 sheet.column_dimensions[get_column_letter(col_idx)].width = adjusted_width
-
+                            
+                            for row in sheet.iter_rows(min_row=1, max_row=len(df)+1, min_col=1, max_col=len(df.columns)):
+                                for cell in row:
+                                    cell.border = thin_border
+                                    
                     format_sheet(sheet1, monitoring_df)
                     format_sheet(sheet2, ptp_df)
                     format_sheet(sheet3)
