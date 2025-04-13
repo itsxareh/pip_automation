@@ -4,3 +4,4 @@ pandas
 numpy
 supabase
 msoffcrypto-tool
+python-dotenv
