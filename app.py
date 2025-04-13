@@ -656,6 +656,8 @@ class ROBBikeProcessor(BaseProcessor):
             output_template = "DAILY MONITORING PTP, DEPO & REPO REPORT TEMPLATE.xlsx"
             sheet1 = "MONITORING"
             sheet2 = "PTP"
+            sheet3 = "REPO"
+            sheet4 = "DEPO"
             sheet5 = "EOD"
             
             monitoring_columns = ['Account Name', 'Account Number', 'Principal', 'EndoDate', 'Stores', 
@@ -689,7 +691,7 @@ class ROBBikeProcessor(BaseProcessor):
                 monitoring_df['Notes'] = df['Remark']
             
             if 'Date' in df.columns:
-                monitoring_df['BarcodeDate'] = df['Date']
+                monitoring_df['BarcodeDate'] = pd.to_datetime(df['Date']).dt.strftime('%Y-%m-%d')
             
             if 'PTP Amount' in df.columns:
                 monitoring_df['PTP Amount'] = df['PTP Amount']
@@ -707,16 +709,58 @@ class ROBBikeProcessor(BaseProcessor):
                     monitoring_df['Account Number'] = monitoring_df['Account Number'].apply(lambda x: str(int(float(x))) if pd.notnull(x) else '')
                     
                     account_data_map = {}
+                    chcode_list = []
+                    
                     for _, row in dataset_df.iterrows():
                         account_no = str(row['account_number']).strip()
+                        chcode = row.get('chcode', '')
+                        
+                        if chcode:
+                            chcode_list.append(chcode)
+                            
                         account_data_map[account_no] = {
+                            'ChCode': chcode,
                             'EndoDate': row.get('endo_date', ''),
                             'Stores': row.get('stores', ''),
-                            'Cluster': row.get('cluster', ''),
-                            'Field_Status': row.get('field_status', ''),
-                            'Field_Substatus': row.get('field_substatus', '')
+                            'Cluster': row.get('cluster', '')
                         }
-
+                    
+                    if chcode_list:
+                        try:
+                            field_results_response = supabase.table('rob_bike_field_result').select('*').in_('chcode', chcode_list).execute()
+                            
+                            if hasattr(field_results_response, 'data') and field_results_response.data:
+                                field_results_df = pd.DataFrame(field_results_response.data)
+                                
+                                if 'inserted_date' in field_results_df.columns:
+                                    field_results_df['inserted_date'] = pd.to_datetime(field_results_df['inserted_date'])
+                                
+                                latest_status_map = {}
+                                
+                                if 'inserted_date' in field_results_df.columns:
+                                    for chcode, group in field_results_df.groupby('chcode'):
+                                        latest_row = group.sort_values('inserted_date', ascending=False).iloc[0]
+                                        
+                                        latest_status_map[chcode] = {
+                                            'Field_Status': latest_row.get('status', ''),
+                                            'Field_Substatus': latest_row.get('substatus', ''),
+                                        }
+                                    
+                                    for account_no, data in account_data_map.items():
+                                        chcode = data['ChCode']
+                                        if chcode in latest_status_map:
+                                            account_data_map[account_no].update({
+                                                'Field_Status': latest_status_map[chcode]['Field_Status'],
+                                                'Field_Substatus': latest_status_map[chcode]['Field_Substatus'],
+                                            })
+                                        else:
+                                            account_data_map[account_no].update({
+                                                'Field_Status': '',
+                                                'Field_Substatus': '',
+                                            })
+                        except Exception as e:
+                            st.error(f"Error fetching field results: {str(e)}")
+                    
                     monitoring_df['EndoDate'] = monitoring_df['Account Number'].map(
                         lambda acc_no: account_data_map.get(acc_no, {}).get('EndoDate', ''))
                     
@@ -800,7 +844,31 @@ class ROBBikeProcessor(BaseProcessor):
                     monitoring_df.to_excel(writer, sheet_name=sheet1, index=False)
                     ptp_df.to_excel(writer, sheet_name=sheet2, index=False)
                     monitoring_df.to_excel(writer, sheet_name=sheet5, index=False)
-            
+
+                    workbook = writer.book
+                    
+                    workbook.create_sheet(title=sheet3)
+                    workbook.create_sheet(title=sheet4)
+                    
+                    def format_sheet(sheet_name, df=None):
+                        sheet = writer.sheets.get(sheet_name) or workbook[sheet_name]
+                        sheet.sheet_view.showGridLines = True
+                        
+                        if df is not None: 
+                            for col_idx, col in enumerate(df.columns, 1):
+                                max_length = max(
+                                    df[col].astype(str).map(len).max(),
+                                    len(str(col))
+                                )
+                                adjusted_width = max_length + 2
+                                sheet.column_dimensions[get_column_letter(col_idx)].width = adjusted_width
+
+                    format_sheet(sheet1, monitoring_df)
+                    format_sheet(sheet2, ptp_df)
+                    format_sheet(sheet3)
+                    format_sheet(sheet4)
+                    format_sheet(sheet5, monitoring_df)
+                    
             output_buffer.seek(0)
             
             if not report_date:
@@ -928,7 +996,14 @@ def main():
                         df_extracted.loc[:, 'date'] = df_extracted['date'].replace('NaT', '')
                     except:
                         df_extracted.loc[:, 'date'] = df_extracted['date'].astype(str).replace('NaT', '')
-                    
+
+                    df_extracted['inserted_date'] = pd.to_datetime(
+                        df_extracted['date'].astype(str) + ' ' + df_extracted['time'].astype(str), 
+                        errors='coerce'
+                    )
+
+                    df_extracted['inserted_date'] = df_extracted['inserted_date'].astype(str).replace('NaT', None)
+
                     st.subheader("Extracted Field Result Data:")
                     st.dataframe(df_extracted)
                     
@@ -953,7 +1028,7 @@ def main():
                             for col in df_to_upload.columns:
                                 if pd.api.types.is_datetime64_any_dtype(df_to_upload[col]):
                                     df_to_upload[col] = df_to_upload[col].dt.strftime('%Y-%m-%d')
-                            
+
                             df_to_upload = df_to_upload.astype(object).where(pd.notnull(df_to_upload), None)
                             records_to_insert = df_to_upload.to_dict(orient="records")
                             
@@ -1211,43 +1286,61 @@ def main():
     sheet_names = []
 
     if uploaded_file is not None:
-        use_password = st.sidebar.checkbox("File is password protected", value=False)
-        decrypted_file = io.BytesIO()
-
+        file_content = uploaded_file.getvalue()
+        file_buffer = io.BytesIO(file_content)
+        
         try:
-            file_content = uploaded_file.getvalue()
-            if use_password:
+            xlsx = pd.ExcelFile(file_buffer)
+            sheet_names = xlsx.sheet_names
+            is_encrypted = False
+            decrypted_file = file_buffer
+            
+        except Exception as e:
+            if "file has been corrupted" in str(e) or "Workbook is encrypted" in str(e):
+                is_encrypted = True
+                st.sidebar.warning("This file appears to be password protected.")
                 excel_password = st.sidebar.text_input("Enter Excel password", type="password")
-
+                
                 if not excel_password:
                     st.warning("Please enter the Excel file password.")
                     st.stop()
-
-                office_file = msoffcrypto.OfficeFile(io.BytesIO(file_content))
-                office_file.load_key(password=excel_password)
-                office_file.decrypt(decrypted_file)
+                
+                try:
+                    decrypted_file = io.BytesIO()
+                    office_file = msoffcrypto.OfficeFile(io.BytesIO(file_content))
+                    office_file.load_key(password=excel_password)
+                    office_file.decrypt(decrypted_file)
+                    decrypted_file.seek(0)
+                    xlsx = pd.ExcelFile(decrypted_file)
+                    sheet_names = xlsx.sheet_names
+                except Exception as decrypt_error:
+                    st.sidebar.error(f"Decryption failed: {str(decrypt_error)}")
+                    st.stop()
             else:
-                decrypted_file = io.BytesIO(file_content)
-
-            xlsx = pd.ExcelFile(io.BytesIO(file_content))
-            sheet_names = xlsx.sheet_names
-
-            selected_sheet = st.sidebar.selectbox(
-                "Select Sheet", 
-                options=sheet_names,
-                index=0,
-                key=f"{campaign}_sheet_selector"
-            )
-
-            df = pd.read_excel(xlsx, sheet_name=selected_sheet)
-
+                st.sidebar.error(f"Error reading file: {str(e)}")
+                st.stop()
+        
+        selected_sheet = st.sidebar.selectbox(
+            "Select Sheet", 
+            options=sheet_names,
+            index=0,
+            key=f"{campaign}_sheet_selector"
+        )
+        
+        try:
+            if is_encrypted:
+                decrypted_file.seek(0)
+                df = pd.read_excel(decrypted_file, sheet_name=selected_sheet)
+            else:
+                df = pd.read_excel(xlsx, sheet_name=selected_sheet)
+                
             if selected_sheet and preview:
                 st.subheader(f"Preview of {selected_sheet}")
                 df_preview = df.copy().dropna(how='all').dropna(how='all', axis=1)
                 st.dataframe(df_preview, use_container_width=True)
-
+                
         except Exception as e:
-            st.sidebar.error(f"Error reading sheets: {str(e)}")
+            st.sidebar.error(f"Error reading sheet: {str(e)}")
             
     with st.sidebar.expander("Data Cleaning Options"):
         remove_duplicates = st.checkbox("Remove Duplicates", value=False, key=f"{campaign}_remove_duplicates")
