@@ -687,8 +687,6 @@ class ROBBikeProcessor(BaseProcessor):
             
             if 'Account No.' in df.columns:
                 monitoring_df['Account Number'] = df['Account No.']
-                monitoring_df['Account Number'] = monitoring_df['Account Number'].apply(lambda x: str(int(float(x))) if pd.notnull(x) else '')
-                monitoring_df['Account Number'] = "00" + monitoring_df['Account Number']
             
             if 'Balance' in df.columns:
                 monitoring_df['Principal'] = df['Balance']
@@ -721,6 +719,7 @@ class ROBBikeProcessor(BaseProcessor):
                 
                 if hasattr(dataset_response, 'data') and dataset_response.data:
                     dataset_df = pd.DataFrame(dataset_response.data)
+                    monitoring_df['Account Number'] = monitoring_df['Account Number'].apply(lambda x: str(int(float(x))) if pd.notnull(x) else '')
                     
                     account_data_map = {}
                     chcode_list = []
@@ -776,21 +775,20 @@ class ROBBikeProcessor(BaseProcessor):
                             st.error(f"Error fetching field results: {str(e)}")
                     
                     monitoring_df['EndoDate'] = monitoring_df['Account Number'].map(
-                        lambda acc_no: account_data_map.get(acc_no.replace("00", ""), {}).get('EndoDate', ''))
+                        lambda acc_no: account_data_map.get(acc_no, {}).get('EndoDate', ''))
                     monitoring_df['EndoDate'] = pd.to_datetime(monitoring_df['EndoDate']).dt.strftime('%m/%d/%Y')
                     
-                    
                     monitoring_df['Stores'] = monitoring_df['Account Number'].map(
-                        lambda acc_no: account_data_map.get(acc_no.replace("00", ""), {}).get('Stores', ''))
+                        lambda acc_no: account_data_map.get(acc_no, {}).get('Stores', ''))
                     
                     monitoring_df['Cluster'] = monitoring_df['Account Number'].map(
-                        lambda acc_no: account_data_map.get(acc_no.replace("00", ""), {}).get('Cluster', ''))
+                        lambda acc_no: account_data_map.get(acc_no, {}).get('Cluster', ''))
                     
                     monitoring_df['Field Status'] = monitoring_df['Account Number'].map(
-                        lambda acc_no: account_data_map.get(acc_no.replace("00", ""), {}).get('Field_Status', ''))
+                        lambda acc_no: account_data_map.get(acc_no, {}).get('Field_Status', ''))
                     
                     monitoring_df['Field Substatus'] = monitoring_df['Account Number'].map(
-                        lambda acc_no: account_data_map.get(acc_no.replace("00", ""), {}).get('Field_Substatus', ''))
+                        lambda acc_no: account_data_map.get(acc_no, {}).get('Field_Substatus', ''))
                     
             ptp_data = df[df['Status'].str.contains('PTP', case=False, na=False)].copy() if 'Status' in df.columns else pd.DataFrame()
             
@@ -800,8 +798,6 @@ class ROBBikeProcessor(BaseProcessor):
                 
                 if 'Account No.' in ptp_data.columns:
                     ptp_df['AccountNumber'] = ptp_data['Account No.']
-                    ptp_df['AccountNumber'] = ptp_df['AccountNumber'].apply(lambda x: str(int(float(x))) if pd.notnull(x) else '')
-                    ptp_df['AccountNumber'] = "00" + ptp_df['AccountNumber']
                 
                 if 'Status' in ptp_data.columns:
                     status_parts = ptp_data['Status'].str.split('-', n=1)
@@ -821,8 +817,9 @@ class ROBBikeProcessor(BaseProcessor):
                     ptp_df['ResultDate'] = pd.to_datetime(ptp_data['Time']).dt.strftime('%m/%d/%Y %H:%M')
                 
                 if 'Account No.' in ptp_data.columns and 'account_data_map' in locals():
+                    ptp_df['AccountNumber'] = ptp_df['AccountNumber'].apply(lambda x: str(int(float(x))) if pd.notnull(x) else '')
                     ptp_df['EndoDate'] = ptp_df['AccountNumber'].map(
-                        lambda acc_no: account_data_map.get(acc_no.replace("00", ""), {}).get('EndoDate', ''))
+                        lambda acc_no: account_data_map.get(acc_no, {}).get('EndoDate', ''))
                     ptp_df['EndoDate'] = pd.to_datetime(ptp_df['EndoDate']).dt.strftime('%m/%d/%Y')
             
             template_path = os.path.join(os.path.dirname(__file__), output_template)
@@ -905,6 +902,7 @@ class ROBBikeProcessor(BaseProcessor):
             st.error(f"Error processing daily remark: {str(e)}")
             import traceback
             return None, None, None
+
 class NoProcessor(BaseProcessor):
     pass
 
@@ -1159,6 +1157,11 @@ def main():
                     
                     df_selected = df_selected.rename(columns=column_mapping)
                     
+                    if 'account_number' in df_selected.columns:
+                        df_selected['account_number'] = df_selected['account_number'].apply(
+                            lambda x: "00" + str(int(float(x))) if pd.notnull(x) and not str(x).startswith('00') else x
+                        )
+                    
                     button_placeholder = st.empty()
                     status_placeholder = st.empty()
                     
@@ -1170,7 +1173,7 @@ def main():
                         try:
                             unique_id_col = 'account_number'
                             unique_ids = df_selected[unique_id_col].unique().tolist()
-                            
+                            st.write(unique_ids)
                             for col in df_selected.columns:
                                 if pd.api.types.is_datetime64_any_dtype(df_selected[col]):
                                     df_selected[col] = df_selected[col].dt.strftime('%Y-%m-%d')
