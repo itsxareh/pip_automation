@@ -831,18 +831,17 @@ class ROBBikeProcessor(BaseProcessor):
                 if 'Account No.' in df.columns:
                     ptp_df['AccountNumber'] = ptp_df['AccountNumber'].map(
                         lambda acc_no: account_data_map.get(acc_no, {}).get('AccountNumber', ''))
-            
+        
+            payment_statuses = [
+                "PAYMENT", "PAYMENT VIA CALL", "PAYMENT VIA SMS", "PAYMENT VIA EMAIL",
+                "PAYMENT VIA FIELD VISIT", "PAYMENT VIA CARAVAN", "PAYMENT VIA SOCMED"
+            ]
             if 'Status' in df.columns:
                 status_parts = df['Status'].str.split('-', n=1)
                 df['Status'] = status_parts.str[0].str.strip()
                 
                 df['subStatus'] = status_parts.str[1].str.strip().where(status_parts.str.len() > 1, "")
                 
-            payment_statuses = [
-                "PAYMENT", "PAYMENT VIA CALL", "PAYMENT VIA SMS", "PAYMENT VIA EMAIL",
-                "PAYMENT VIA FIELD VISIT", "PAYMENT VIA CARAVAN", "PAYMENT VIA SOCMED"
-            ]
-            
             df['Status'] = df['Status'].astype(str)
             df['subStatus'] = df['subStatus'].astype(str)
 
@@ -856,6 +855,7 @@ class ROBBikeProcessor(BaseProcessor):
                 (df['Status'].isin(payment_statuses)) &
                 (df['subStatus'].str.upper() == "VOLUNTARY SURRENDER")
             ]
+            st.write(filtered_vs)
             vs_amount = filtered_vs['PTP Amount'].sum()
             vs_count = filtered_vs['PTP Amount'].count()
 
