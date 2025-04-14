@@ -831,36 +831,43 @@ class ROBBikeProcessor(BaseProcessor):
                 if 'Account No.' in df.columns:
                     ptp_df['AccountNumber'] = ptp_df['AccountNumber'].map(
                         lambda acc_no: account_data_map.get(acc_no, {}).get('AccountNumber', ''))
-                    
+            
+            if 'Status' in df.columns:
+                status_parts = df['Status'].str.split('-', n=1)
+                df['Status'] = status_parts.str[0].str.strip()
+                
+                df['subStatus'] = status_parts.str[1].str.strip().where(status_parts.str.len() > 1, "")
+                
             payment_statuses = [
                 "PAYMENT", "PAYMENT VIA CALL", "PAYMENT VIA SMS", "PAYMENT VIA EMAIL",
                 "PAYMENT VIA FIELD VISIT", "PAYMENT VIA CARAVAN", "PAYMENT VIA SOCMED"
             ]
-            monitoring_df['Status'] = monitoring_df['Status'].astype(str)
-            monitoring_df['subStatus'] = monitoring_df['subStatus'].astype(str)
+            
+            df['Status'] = df['Status'].astype(str)
+            df['subStatus'] = df['subStatus'].astype(str)
 
-            monitoring_df['PTP Amount'] = pd.to_numeric(monitoring_df['PTP Amount'], errors='coerce')
-            monitoring_df['Principal'] = pd.to_numeric(monitoring_df['Principal'], errors='coerce')
+            df['PTP Amount'] = pd.to_numeric(df['PTP Amount'], errors='coerce')
+            df['Balance'] = pd.to_numeric(df['Balance'], errors='coerce')
 
-            total_principal = monitoring_df['Principal'].sum()
-            total_accounts = monitoring_df['Principal'].count()
+            total_principal = df['Balance'].sum()
+            total_accounts = df['Balance'].count()
 
-            filtered_vs = monitoring_df[
-                (monitoring_df['Status'].isin(payment_statuses)) &
-                (monitoring_df['subStatus'].str.upper() == "VOLUNTARY SURRENDER")
+            filtered_vs = df[
+                (df['Status'].isin(payment_statuses)) &
+                (df['subStatus'].str.upper() == "VOLUNTARY SURRENDER")
             ]
             vs_amount = filtered_vs['PTP Amount'].sum()
             vs_count = filtered_vs['PTP Amount'].count()
 
-            filtered_payment = monitoring_df[
-                (monitoring_df['Status'].isin(payment_statuses)) &
-                (~monitoring_df['subStatus'].str.contains("Follow up", case=False, na=False))
+            filtered_payment = df[
+                (df['Status'].isin(payment_statuses)) &
+                (~df['subStatus'].str.contains("Follow up", case=False, na=False))
             ]
-            payment_sum = filtered_payment['Principal'].sum()
+            payment_sum = filtered_payment['Balance'].sum()
 
-            filtered_ptp = monitoring_df[
-                (monitoring_df['Status'] == "PTP") &
-                (~monitoring_df['subStatus'].str.contains("Follow up", case=False, na=False))
+            filtered_ptp = df[
+                (df['Status'] == "PTP") &
+                (~df['subStatus'].str.contains("Follow up", case=False, na=False))
             ]
             ptp_count = filtered_ptp.shape[0]
 
@@ -879,14 +886,14 @@ class ROBBikeProcessor(BaseProcessor):
             bottom_rows = []
             row_index = 12
             for substatus_value, label in priority_substatus:
-                temp_df = monitoring_df[
-                    (monitoring_df['Status'].isin(payment_statuses)) &
-                    (monitoring_df['subStatus'].str.upper() == substatus_value.upper())
+                temp_df = df[
+                    (df['Status'].isin(payment_statuses)) &
+                    (df['subStatus'].str.upper() == substatus_value.upper())
                 ]
                 if not temp_df.empty and row_index <= 14:
                     bottom_rows.append({
                         'Key': f'C{row_index}',
-                        'Value': temp_df['Principal'].sum()
+                        'Value': temp_df['Balance'].sum()
                     })
                     bottom_rows.append({
                         'Key': f'D{row_index}',
