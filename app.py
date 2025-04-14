@@ -714,7 +714,7 @@ class ROBBikeProcessor(BaseProcessor):
             
             if 'Account No.' in df.columns:
                 account_numbers = [str(int(acc)) for acc in df['Account No.'].dropna().unique().tolist()]
-                
+                st.write(account_numbers)
                 dataset_response = supabase.table('rob_bike_dataset').select('*').in_('account_number', account_numbers).execute()
                 
                 if hasattr(dataset_response, 'data') and dataset_response.data:
@@ -1173,7 +1173,6 @@ def main():
                         try:
                             unique_id_col = 'account_number'
                             unique_ids = df_selected[unique_id_col].unique().tolist()
-                            st.write(unique_ids)
                             for col in df_selected.columns:
                                 if pd.api.types.is_datetime64_any_dtype(df_selected[col]):
                                     df_selected[col] = df_selected[col].dt.strftime('%Y-%m-%d')
