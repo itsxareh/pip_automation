@@ -637,7 +637,7 @@ class ROBBikeProcessor(BaseProcessor):
     def process_daily_remark(self, file_content, preview_only=False,
                     remove_duplicates=False, remove_blanks=False, trim_spaces=False, report_date=None):
         try:
-            df = pd.read_excel(io.BytesIO(file_content), dtype={'Account No.': str})
+            df = pd.read_excel(io.BytesIO(file_content))
             
             df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
             df = df.iloc[:-1].reset_index(drop=True)
@@ -713,16 +713,14 @@ class ROBBikeProcessor(BaseProcessor):
                 monitoring_df['PTP Date'] = pd.to_datetime(df['PTP Date']).dt.strftime('%m/%d/%Y')
             
             if 'Account No.' in df.columns:
-                account_numbers = [
-                    acc for acc in df['Account No.'].dropna().astype(str).tolist()
-                    if acc.startswith('00')
-                ]
-                st.write(account_numbers)
+                account_numbers = [str(int(acc)) for acc in df['Account No.'].dropna().unique().tolist()]
+                
                 dataset_response = supabase.table('rob_bike_dataset').select('*').in_('account_number', account_numbers).execute()
                 
                 if hasattr(dataset_response, 'data') and dataset_response.data:
                     dataset_df = pd.DataFrame(dataset_response.data)
-                    monitoring_df['Account Number'] = monitoring_df['Account Number'].astype(str).str.strip()
+                    monitoring_df['Account Number'] = monitoring_df['Account Number'].apply(lambda x: str(int(float(x))) if pd.notnull(x) else '')
+                    monitoring_df['Account Number'] = "00" +  monitoring_df['Account Number']
                     
                     account_data_map = {}
                     chcode_list = []
@@ -800,7 +798,7 @@ class ROBBikeProcessor(BaseProcessor):
                     ptp_df['Account Name'] = ptp_data['Debtor']
                 
                 if 'Account No.' in ptp_data.columns:
-                    ptp_df['AccountNumber'] = ptp_data['Account No.']
+                    ptp_df['AccountNumber'] = "00" + ptp_data['Account No.']
                 
                 if 'Status' in ptp_data.columns:
                     status_parts = ptp_data['Status'].str.split('-', n=1)
@@ -1160,11 +1158,6 @@ def main():
                     
                     df_selected = df_selected.rename(columns=column_mapping)
                     
-                    if 'account_number' in df_selected.columns:
-                        df_selected['account_number'] = df_selected['account_number'].apply(
-                            lambda x: "00" + str(int(float(x))) if pd.notnull(x) and not str(x).startswith('00') else x
-                        )
-                    
                     button_placeholder = st.empty()
                     status_placeholder = st.empty()
                     
@@ -1176,6 +1169,7 @@ def main():
                         try:
                             unique_id_col = 'account_number'
                             unique_ids = df_selected[unique_id_col].unique().tolist()
+                            
                             for col in df_selected.columns:
                                 if pd.api.types.is_datetime64_any_dtype(df_selected[col]):
                                     df_selected[col] = df_selected[col].dt.strftime('%Y-%m-%d')
