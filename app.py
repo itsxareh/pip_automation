@@ -824,7 +824,8 @@ class ROBBikeProcessor(BaseProcessor):
                         lambda acc_no: account_data_map.get(acc_no, {}).get('EndoDate', ''))
                     ptp_df['EndoDate'] = pd.to_datetime(ptp_df['EndoDate']).dt.strftime('%m/%d/%Y')
             
-                ptp_df['Account Number'] = "00" +  ptp_df['Account Number'].astype(str).str.strip()
+                if 'Account No.' in df.columns:
+                    ptp_df['Account Number'] = "00" + ptp_df['Account Number'].astype(str).str.strip()
                 
             template_path = os.path.join(os.path.dirname(__file__), output_template)
             
