@@ -666,7 +666,7 @@ class ROBBikeProcessor(BaseProcessor):
             if preview_only:
                 return df, None, None
             
-            output_template = "DAILY MONITORING PTP, DEPO & REPO REPORT TEMPLATE.xlsx"
+            output_template = "DAILY MONITORING PTP, DEPO & REPO REPORT TEMPLATE.xls"
             sheet1 = "MONITORING"
             sheet2 = "PTP"
             sheet3 = "REPO"
@@ -835,6 +835,7 @@ class ROBBikeProcessor(BaseProcessor):
             output_buffer = io.BytesIO()
             
             if os.path.exists(template_path):
+                st.write("template exists")
                 
                 with open(template_path, 'rb') as template_file:
                     template_copy = io.BytesIO(template_file.read()) 
@@ -856,6 +857,7 @@ class ROBBikeProcessor(BaseProcessor):
                     template_wb.save(output_buffer)
                 
             else:
+                st.write("template not exist")
                 with pd.ExcelWriter(output_buffer, engine='openpyxl') as writer:
                     monitoring_df.to_excel(writer, sheet_name=sheet1, index=False)
                     ptp_df.to_excel(writer, sheet_name=sheet2, index=False)
