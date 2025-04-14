@@ -790,8 +790,9 @@ class ROBBikeProcessor(BaseProcessor):
                     monitoring_df['Field Substatus'] = monitoring_df['Account Number'].map(
                         lambda acc_no: account_data_map.get(acc_no, {}).get('Field_Substatus', ''))
                     
+                    st.write(monitoring_df['Account Number'])
                     monitoring_df['Account Number'] = "00" +  monitoring_df['Account Number'].astype(str).str.strip()
-                    
+                    st.write(monitoring_df['Account Number'])
             ptp_data = df[df['Status'].str.contains('PTP', case=False, na=False)].copy() if 'Status' in df.columns else pd.DataFrame()
             
             if not ptp_data.empty:
