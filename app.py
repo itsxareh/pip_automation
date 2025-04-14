@@ -637,7 +637,7 @@ class ROBBikeProcessor(BaseProcessor):
     def process_daily_remark(self, file_content, preview_only=False,
                     remove_duplicates=False, remove_blanks=False, trim_spaces=False, report_date=None):
         try:
-            df = pd.read_excel(io.BytesIO(file_content))
+            df = pd.read_excel(io.BytesIO(file_content), dtype={'Account No.': str})
             
             df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
             df = df.iloc[:-1].reset_index(drop=True)
@@ -722,7 +722,7 @@ class ROBBikeProcessor(BaseProcessor):
                 
                 if hasattr(dataset_response, 'data') and dataset_response.data:
                     dataset_df = pd.DataFrame(dataset_response.data)
-                    monitoring_df['Account Number'] = monitoring_df['Account Number'].apply(lambda x: str(int(float(x))) if pd.notnull(x) else '')
+                    monitoring_df['Account Number'] = monitoring_df['Account Number'].astype(str).str.strip()
                     
                     account_data_map = {}
                     chcode_list = []
