@@ -836,6 +836,10 @@ class ROBBikeProcessor(BaseProcessor):
                 "PAYMENT", "PAYMENT VIA CALL", "PAYMENT VIA SMS", "PAYMENT VIA EMAIL",
                 "PAYMENT VIA FIELD VISIT", "PAYMENT VIA CARAVAN", "PAYMENT VIA SOCMED"
             ]
+            ptp_statuses = [
+                "PTP", "PTP VIA CALL", "PTP VIA SMS", "PTP VIA EMAIL", "PTP VIA FIELD VISIT",
+                "PTP VIA CARAVAN", "PTP VIA SOCMED"
+            ]
             if 'Status' in df.columns:
                 status_parts = df['Status'].str.split('-', n=1)
                 df['Status'] = status_parts.str[0].str.strip()
@@ -854,13 +858,13 @@ class ROBBikeProcessor(BaseProcessor):
             filtered_vs = df[
                 (df['Status'].isin(payment_statuses)) &
                 (df['subStatus'].str.upper() == "VOLUNTARY SURRENDER")
-            ]
+            ]   
             st.write(filtered_vs)
-            vs_amount = filtered_vs['PTP Amount'].sum()
-            vs_count = filtered_vs['PTP Amount'].count()
+            repo_amount = filtered_vs['PTP Amount'].sum()
+            repo_count = filtered_vs['PTP Amount'].count()
 
             filtered_payment = df[
-                (df['Status'].isin(payment_statuses)) &
+                (df['Status'].isin(ptp_statuses)) &
                 (~df['subStatus'].str.contains("Follow up", case=False, na=False))
             ]
             st.write(filtered_payment)
@@ -874,7 +878,7 @@ class ROBBikeProcessor(BaseProcessor):
             st.write(filtered_ptp)
             eod_data = {
                 'Key': ['C2', 'D2', 'C5', 'D5', 'C9', 'D9'],
-                'Value': [total_principal, total_accounts, vs_amount, vs_count, ptp_amount, ptp_count]
+                'Value': [total_principal, total_accounts, repo_amount, repo_count, ptp_amount, ptp_count]
             }
             eod_df = pd.DataFrame(eod_data)
 
