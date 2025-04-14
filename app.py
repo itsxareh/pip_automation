@@ -910,7 +910,6 @@ class ROBBikeProcessor(BaseProcessor):
             output_buffer = io.BytesIO()
             
             if os.path.exists(template_path):
-
                 try:
                     with open(template_path, 'rb') as template_file:
                         template_copy = io.BytesIO(template_file.read())
@@ -928,7 +927,6 @@ class ROBBikeProcessor(BaseProcessor):
                         
                         append_df_to_sheet(sheet1, monitoring_df)
                         append_df_to_sheet(sheet2, ptp_df)
-                        append_df_to_sheet(sheet5, eod_df)
                         
                         def format_sheet(sheet_name, df=None):
                             sheet = template_wb[sheet_name]
@@ -966,7 +964,7 @@ class ROBBikeProcessor(BaseProcessor):
                         
                         format_sheet(sheet1, monitoring_df)
                         format_sheet(sheet2, ptp_df)
-                        format_sheet(sheet5, eod_df)
+                        format_sheet(sheet5, None)
                         
                         template_wb.save(output_buffer)
                         
@@ -977,7 +975,7 @@ class ROBBikeProcessor(BaseProcessor):
                     st.error(f"Error reading template file: {str(e)}")
                 
             else:
-                st.write("template not exist")
+                st.write("Template does not exist")
                 with pd.ExcelWriter(output_buffer, engine='openpyxl') as writer:
                     monitoring_df.to_excel(writer, sheet_name=sheet1, index=False)
                     ptp_df.to_excel(writer, sheet_name=sheet2, index=False)
@@ -1024,7 +1022,7 @@ class ROBBikeProcessor(BaseProcessor):
                     format_sheet(sheet2, ptp_df)
                     format_sheet(sheet3)
                     format_sheet(sheet4)
-                    format_sheet(sheet5, eod_df)
+                    format_sheet(sheet5, None)
                     
             output_buffer.seek(0)
             
