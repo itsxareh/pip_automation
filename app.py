@@ -3,7 +3,7 @@ import pandas as pd
 import os
 import numpy as np
 import openpyxl
-from openpyxl.utils import get_column_letter
+from openpyxl.utils import get_column_letter, column_index_from_string
 from openpyxl import load_workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.styles import Border, Side
@@ -682,6 +682,8 @@ class ROBBikeProcessor(BaseProcessor):
                         'StartDate', 'Notes', 'ResultDate', 'EndoDate']
             ptp_df = pd.DataFrame(columns=ptp_columns)
             
+            eod_df = pd.DataFrame()
+            
             if 'Debtor' in df.columns:
                 monitoring_df['Account Name'] = df['Debtor']
             
@@ -829,13 +831,85 @@ class ROBBikeProcessor(BaseProcessor):
                 if 'Account No.' in df.columns:
                     ptp_df['AccountNumber'] = ptp_df['AccountNumber'].map(
                         lambda acc_no: account_data_map.get(acc_no, {}).get('AccountNumber', ''))
+                    
+            payment_statuses = [
+                "PAYMENT", "PAYMENT VIA CALL", "PAYMENT VIA SMS", "PAYMENT VIA EMAIL",
+                "PAYMENT VIA FIELD VISIT", "PAYMENT VIA CARAVAN", "PAYMENT VIA SOCMED"
+            ]
+            monitoring_df['Status'] = monitoring_df['Status'].astype(str)
+            monitoring_df['subStatus'] = monitoring_df['subStatus'].astype(str)
+
+            monitoring_df['PTP Amount'] = pd.to_numeric(monitoring_df['PTP Amount'], errors='coerce')
+            monitoring_df['Principal'] = pd.to_numeric(monitoring_df['Principal'], errors='coerce')
+
+            total_principal = monitoring_df['Principal'].sum()
+            total_accounts = monitoring_df['Principal'].count()
+
+            filtered_vs = monitoring_df[
+                (monitoring_df['Status'].isin(payment_statuses)) &
+                (monitoring_df['subStatus'].str.upper() == "VOLUNTARY SURRENDER")
+            ]
+            vs_amount = filtered_vs['PTP Amount'].sum()
+            vs_count = filtered_vs['PTP Amount'].count()
+
+            filtered_payment = monitoring_df[
+                (monitoring_df['Status'].isin(payment_statuses)) &
+                (~monitoring_df['subStatus'].str.contains("Follow up", case=False, na=False))
+            ]
+            payment_sum = filtered_payment['Principal'].sum()
+
+            filtered_ptp = monitoring_df[
+                (monitoring_df['Status'] == "PTP") &
+                (~monitoring_df['subStatus'].str.contains("Follow up", case=False, na=False))
+            ]
+            ptp_count = filtered_ptp.shape[0]
+
+            eod_data = {
+                'Key': ['C2', 'D2', 'C5', 'D5', 'C9', 'D9'],
+                'Value': [total_principal, total_accounts, vs_amount, vs_count, payment_sum, ptp_count]
+            }
+            eod_df = pd.DataFrame(eod_data)
+
+            priority_substatus = [
+                ("FULLY PAID", "PAY OFF"),
+                ("PARTIAL PAYMENT", "STILL PD BUT WITH ARRANGEMENT"),
+                ("FULL UPDATE", "STILL PD BUT WITH ARRANGEMENT")
+            ]
+
+            bottom_rows = []
+            row_index = 12
+            for substatus_value, label in priority_substatus:
+                temp_df = monitoring_df[
+                    (monitoring_df['Status'].isin(payment_statuses)) &
+                    (monitoring_df['subStatus'].str.upper() == substatus_value.upper())
+                ]
+                if not temp_df.empty and row_index <= 14:
+                    bottom_rows.append({
+                        'Key': f'C{row_index}',
+                        'Value': temp_df['Principal'].sum()
+                    })
+                    bottom_rows.append({
+                        'Key': f'D{row_index}',
+                        'Value': temp_df['PTP Amount'].sum()
+                    })
+                    bottom_rows.append({
+                        'Key': f'E{row_index}',
+                        'Value': label
+                    })
+                    row_index += 1
+
+            for blank_row in range(row_index, 15):
+                bottom_rows.append({'Key': f'C{blank_row}', 'Value': ''})
+                bottom_rows.append({'Key': f'D{blank_row}', 'Value': ''})
+                bottom_rows.append({'Key': f'E{blank_row}', 'Value': ''})
+                
+            eod_df = pd.concat([eod_df, pd.DataFrame(bottom_rows)], ignore_index=True)
             
             template_path = os.path.join(os.path.dirname(__file__), output_template)
             
             output_buffer = io.BytesIO()
             
             if os.path.exists(template_path):
-                st.write("template exists")
 
                 try:
                     with open(template_path, 'rb') as template_file:
@@ -854,7 +928,45 @@ class ROBBikeProcessor(BaseProcessor):
                         
                         append_df_to_sheet(sheet1, monitoring_df)
                         append_df_to_sheet(sheet2, ptp_df)
-                        append_df_to_sheet(sheet5, monitoring_df)
+                        append_df_to_sheet(sheet5, eod_df)
+                        
+                        def format_sheet(sheet_name, df=None):
+                            sheet = template_wb[sheet_name]
+                            
+                            thin_border = Border(
+                                left=Side(style='thin'),
+                                right=Side(style='thin'),
+                                top=Side(style='thin'),
+                                bottom=Side(style='thin'),
+                            )
+
+                            if df is not None:
+                                for col_idx, col in enumerate(df.columns, 1):
+                                    max_length = max(
+                                        df[col].astype(str).map(len).max(),
+                                        len(str(col))
+                                    )
+                                    adjusted_width = max_length + 2
+                                    sheet.column_dimensions[get_column_letter(col_idx)].width = adjusted_width
+
+                                start_row = sheet.max_row - len(df) + 1
+                                for row in sheet.iter_rows(min_row=start_row, max_row=sheet.max_row, min_col=1, max_col=len(df.columns)):
+                                    for cell in row:
+                                        cell.border = thin_border
+                                        
+                        if sheet5 in template_wb.sheetnames:
+                            eod_sheet = template_wb[sheet5]
+                            for _, row in eod_df.iterrows():
+                                cell_key = row['Key']
+                                value = row['Value']
+                                column_letter = cell_key[0]
+                                row_number = int(cell_key[1:])
+                                column_index = column_index_from_string(column_letter)
+                                eod_sheet.cell(row=row_number, column=column_index).value = value
+                        
+                        format_sheet(sheet1, monitoring_df)
+                        format_sheet(sheet2, ptp_df)
+                        format_sheet(sheet5, eod_df)
                         
                         template_wb.save(output_buffer)
                         
@@ -869,7 +981,7 @@ class ROBBikeProcessor(BaseProcessor):
                 with pd.ExcelWriter(output_buffer, engine='openpyxl') as writer:
                     monitoring_df.to_excel(writer, sheet_name=sheet1, index=False)
                     ptp_df.to_excel(writer, sheet_name=sheet2, index=False)
-                    monitoring_df.to_excel(writer, sheet_name=sheet5, index=False)
+                    eod_df.to_excel(writer, sheet_name=sheet5, index=False)
 
                     workbook = writer.book
                     
@@ -899,11 +1011,20 @@ class ROBBikeProcessor(BaseProcessor):
                                 for cell in row:
                                     cell.border = thin_border
                                     
+                    eod_sheet = workbook[sheet5]
+                    for _, row in eod_df.iterrows():
+                        cell_key = row['Key']
+                        value = row['Value']
+                        column_letter = cell_key[0]
+                        row_number = int(cell_key[1:])
+                        column_index = column_index_from_string(column_letter)
+                        eod_sheet.cell(row=row_number, column=column_index).value = value
+                        
                     format_sheet(sheet1, monitoring_df)
                     format_sheet(sheet2, ptp_df)
                     format_sheet(sheet3)
                     format_sheet(sheet4)
-                    format_sheet(sheet5, monitoring_df)
+                    format_sheet(sheet5, eod_df)
                     
             output_buffer.seek(0)
             
