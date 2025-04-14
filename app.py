@@ -666,7 +666,7 @@ class ROBBikeProcessor(BaseProcessor):
             if preview_only:
                 return df, None, None
             
-            output_template = "DAILY MONITORING PTP, DEPO & REPO REPORT TEMPLATE.xls"
+            output_template = "DAILY MONITORING PTP, DEPO & REPO REPORT TEMPLATE.xlsx"
             sheet1 = "MONITORING"
             sheet2 = "PTP"
             sheet3 = "REPO"
@@ -836,6 +836,11 @@ class ROBBikeProcessor(BaseProcessor):
             
             if os.path.exists(template_path):
                 st.write("template exists")
+
+                import zipfile
+                if not zipfile.is_zipfile(template_path):
+                    st.error("Template file is not a valid .xlsx zip file.")
+                    return
                 
                 with open(template_path, 'rb') as template_file:
                     template_copy = io.BytesIO(template_file.read()) 
