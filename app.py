@@ -861,14 +861,15 @@ class ROBBikeProcessor(BaseProcessor):
                 (df['Status'].isin(payment_statuses)) &
                 (df['subStatus'].str.upper() == "VOLUNTARY SURRENDER")
             ]   
-            ptp_amount = filtered_vs['PTP Amount'].sum()
+            repo_amount = filtered_vs['PTP Amount'].sum()
             repo_count = filtered_vs['PTP Amount'].count()
 
             filtered_payment = df[
                 (df['Status'].isin(ptp_statuses)) &
                 (~df['subStatus'].str.contains("Follow up", case=False, na=False))
             ]
-            repo_amount = filtered_payment['Balance'].sum()
+            ptp_amount = filtered_payment['Balance'].sum()
+            
             st.write("Repo: ", repo_amount)
             filtered_ptp = df[
                 (df['Status'].str.contains("PTP", case=False, na=False)) &
