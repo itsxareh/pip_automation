@@ -854,7 +854,7 @@ class ROBBikeProcessor(BaseProcessor):
 
             total_principal = df['Balance'].sum()
             total_accounts = df['Balance'].count()
-            
+            st.write("Count: ", total_accounts)
             st.write("Worked: ", total_principal)
             
             filtered_vs = df[
@@ -869,13 +869,14 @@ class ROBBikeProcessor(BaseProcessor):
                 (~df['subStatus'].str.contains("Follow up", case=False, na=False))
             ]
             ptp_amount = filtered_payment['Balance'].sum()
-            
+            st.write("Count: ", repo_count)
             st.write("Repo: ", repo_amount)
             filtered_ptp = df[
                 (df['Status'].str.contains("PTP", case=False, na=False)) &
                 (~df['subStatus'].str.contains("Follow up", case=False, na=False))
             ]
             ptp_count = filtered_ptp.shape[0]
+            st.write("Count: ", ptp_count)
             st.write("PTP: ", ptp_amount)
             eod_data = {
                 'Key': ['C2', 'D2', 'C5', 'D5', 'C9', 'D9'],
