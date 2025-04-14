@@ -713,7 +713,10 @@ class ROBBikeProcessor(BaseProcessor):
                 monitoring_df['PTP Date'] = pd.to_datetime(df['PTP Date']).dt.strftime('%m/%d/%Y')
             
             if 'Account No.' in df.columns:
-                account_numbers = [str(int(acc)) for acc in df['Account No.'].dropna().unique().tolist()]
+                account_numbers = [
+                    acc for acc in df['Account No.'].dropna().astype(str).tolist()
+                    if acc.startswith('00')
+                ]
                 st.write(account_numbers)
                 dataset_response = supabase.table('rob_bike_dataset').select('*').in_('account_number', account_numbers).execute()
                 
