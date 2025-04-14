@@ -860,7 +860,7 @@ class ROBBikeProcessor(BaseProcessor):
                 (df['subStatus'].str.upper() == "VOLUNTARY SURRENDER")
             ]   
             st.write(filtered_vs)
-            repo_amount = filtered_vs['PTP Amount'].sum()
+            ptp_amount = filtered_vs['PTP Amount'].sum()
             repo_count = filtered_vs['PTP Amount'].count()
 
             filtered_payment = df[
@@ -868,7 +868,7 @@ class ROBBikeProcessor(BaseProcessor):
                 (~df['subStatus'].str.contains("Follow up", case=False, na=False))
             ]
             st.write(filtered_payment)
-            ptp_amount = filtered_payment['Balance'].sum()
+            repo_amount = filtered_payment['Balance'].sum()
 
             filtered_ptp = df[
                 (df['Status'].str.contains("PTP", case=False, na=False)) &
