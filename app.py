@@ -790,7 +790,7 @@ class ROBBikeProcessor(BaseProcessor):
                     monitoring_df['Field Substatus'] = monitoring_df['Account Number'].map(
                         lambda acc_no: account_data_map.get(acc_no, {}).get('Field_Substatus', ''))
                     
-                    
+                    st.write("Account No. dtype:", monitoring_df['Account Number'].dtype)
                     #monitoring_df['Account Number'] = "00" +  monitoring_df['Account Number'].astype(str).str.strip()
                     
             ptp_data = df[df['Status'].str.contains('PTP', case=False, na=False)].copy() if 'Status' in df.columns else pd.DataFrame()
@@ -827,7 +827,7 @@ class ROBBikeProcessor(BaseProcessor):
             
                 #if 'Account No.' in df.columns:
                     #ptp_df['Account Number'] = "00" + ptp_df['Account Number'].astype(str).str.strip()
-                
+                st.write("Account No. dtype:", ptp_df['Account Number'].dtype)
             template_path = os.path.join(os.path.dirname(__file__), output_template)
             
             output_buffer = io.BytesIO()
