@@ -837,29 +837,32 @@ class ROBBikeProcessor(BaseProcessor):
             if os.path.exists(template_path):
                 st.write("template exists")
 
-                import zipfile
-                if not zipfile.is_zipfile(template_path):
-                    st.error("Template file is not a valid .xlsx zip file.")
-                    return
-                
-                with open(template_path, 'rb') as template_file:
-                    template_copy = io.BytesIO(template_file.read()) 
-
-                    template_wb = load_workbook(template_copy)
-
-                    def append_df_to_sheet(sheet_name, df):
-                        if sheet_name in template_wb.sheetnames:
-                            sheet = template_wb[sheet_name]
-                            start_row = sheet.max_row + 1
-                            for r_idx, row in enumerate(dataframe_to_rows(df, index=False, header=False), start_row):
-                                for c_idx, value in enumerate(row, 1):
-                                    sheet.cell(row=r_idx, column=c_idx).value = value
-
-                    append_df_to_sheet(sheet1, monitoring_df)
-                    append_df_to_sheet(sheet2, ptp_df)
-                    append_df_to_sheet(sheet5, monitoring_df)
-
-                    template_wb.save(output_buffer)
+                try:
+                    with open(template_path, 'rb') as template_file:
+                        template_copy = io.BytesIO(template_file.read())
+                        
+                    try:
+                        template_wb = load_workbook(template_copy)
+                        
+                        def append_df_to_sheet(sheet_name, df):
+                            if sheet_name in template_wb.sheetnames:
+                                sheet = template_wb[sheet_name]
+                                start_row = sheet.max_row + 1
+                                for r_idx, row in enumerate(dataframe_to_rows(df, index=False, header=False), start_row):
+                                    for c_idx, value in enumerate(row, 1):
+                                        sheet.cell(row=r_idx, column=c_idx).value = value
+                        
+                        append_df_to_sheet(sheet1, monitoring_df)
+                        append_df_to_sheet(sheet2, ptp_df)
+                        append_df_to_sheet(sheet5, monitoring_df)
+                        
+                        template_wb.save(output_buffer)
+                        
+                    except Exception as e:
+                        st.error(f"Error processing template: {str(e)}")
+                        
+                except Exception as e:
+                    st.error(f"Error reading template file: {str(e)}")
                 
             else:
                 st.write("template not exist")
