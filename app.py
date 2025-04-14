@@ -720,7 +720,6 @@ class ROBBikeProcessor(BaseProcessor):
                 if hasattr(dataset_response, 'data') and dataset_response.data:
                     dataset_df = pd.DataFrame(dataset_response.data)
                     monitoring_df['Account Number'] = monitoring_df['Account Number'].apply(lambda x: str(int(float(x))) if pd.notnull(x) else '')
-                    monitoring_df['Account Number'] = "00" +  monitoring_df['Account Number']
                     
                     account_data_map = {}
                     chcode_list = []
@@ -791,6 +790,8 @@ class ROBBikeProcessor(BaseProcessor):
                     monitoring_df['Field Substatus'] = monitoring_df['Account Number'].map(
                         lambda acc_no: account_data_map.get(acc_no, {}).get('Field_Substatus', ''))
                     
+                    monitoring_df['Account Number'] = "00" +  monitoring_df['Account Number'].astype(str).str.strip()
+                    
             ptp_data = df[df['Status'].str.contains('PTP', case=False, na=False)].copy() if 'Status' in df.columns else pd.DataFrame()
             
             if not ptp_data.empty:
@@ -798,7 +799,7 @@ class ROBBikeProcessor(BaseProcessor):
                     ptp_df['Account Name'] = ptp_data['Debtor']
                 
                 if 'Account No.' in ptp_data.columns:
-                    ptp_df['AccountNumber'] = "00" + ptp_data['Account No.']
+                    ptp_df['AccountNumber'] = ptp_data['Account No.']
                 
                 if 'Status' in ptp_data.columns:
                     status_parts = ptp_data['Status'].str.split('-', n=1)
@@ -823,6 +824,8 @@ class ROBBikeProcessor(BaseProcessor):
                         lambda acc_no: account_data_map.get(acc_no, {}).get('EndoDate', ''))
                     ptp_df['EndoDate'] = pd.to_datetime(ptp_df['EndoDate']).dt.strftime('%m/%d/%Y')
             
+                ptp_df['Account Number'] = "00" +  ptp_df['Account No.'].astype(str).str.strip()
+                
             template_path = os.path.join(os.path.dirname(__file__), output_template)
             
             output_buffer = io.BytesIO()
