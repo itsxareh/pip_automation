@@ -648,9 +648,11 @@ class ROBBikeProcessor(BaseProcessor):
                 #dnc_rows = df['Status'].str.contains('DNC', case=False, na=False)
                 #if dnc_rows:
                     #st.warning(f"Found {len(dnc_rows)} row(s) with 'DNC'")
-                df = df[~df['Status'].str.contains('DNC', case=False, na=False)]
+                df['Status'] = df['Status'].fillna('')
+                to_remove = df['Status'].str.contains('DNC', case=False) | (df['Status'].str.strip() == '')
+                st.write(f"Removing {to_remove.sum()} rows where Status contains 'DNC' or is blank.")
+                df = df[~to_remove]
                 
-            
             if 'Account No.' in df.columns and 'Status' in df.columns:
                 df['COMBINED_KEY'] = df['Account No.'].astype(str) + '_' + df['Status'].astype(str)
                 
@@ -1451,7 +1453,7 @@ def main():
                             st.code(traceback.format_exc())
                             button_placeholder.button("Upload Failed - Try Again", key="error_dataset_button")
                 else:
-                    missing_cols = [col for col in source_columns if col not in df_filtered.columns]
+                    missing_cols = [col for col in possible_column_variants if col not in df_filtered.columns]
                     st.error(f"Required columns not found in the uploaded file: {', '.join(missing_cols)}")
             except Exception as e:
                 st.error(f"Error processing Excel file: {str(e)}")
@@ -1537,7 +1539,7 @@ def main():
         enable_edit_values = st.checkbox("Edit Values", value=False)
     
     process_button = st.sidebar.button("Process File", type="primary", disabled=uploaded_file is None, key=f"{campaign}_process_button")
-    
+
     if uploaded_file is not None:
         file_content = uploaded_file.getvalue() if hasattr(uploaded_file, 'getvalue') else uploaded_file.read()
         
@@ -1823,7 +1825,7 @@ def main():
                         st.subheader("Processed Data")
                         st.dataframe(result_df, use_container_width=True)
                         st.download_button(label="Download File", data=output_binary, file_name=output_filename, mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-                        st.success(f"File ready! Download '{output_filename}'")
+                        st.success(f"File processed successfully! Download '{output_filename}'")
 
                 if "renamed_df" in st.session_state:
                     st.session_state.pop("renamed_df", None)
