@@ -13,6 +13,7 @@ import io
 import tempfile
 import shutil
 import re 
+import pkg_resources
 import msoffcrypto 
 import pyminizip
 from supabase import create_client
@@ -1538,7 +1539,7 @@ def main():
         enable_edit_values = st.checkbox("Edit Values", value=False)
     
     process_button = st.sidebar.button("Process File", type="primary", disabled=uploaded_file is None, key=f"{campaign}_process_button")
-
+    st.write("xlwt installed:", "xlwt" in {pkg.key for pkg in pkg_resources.working_set})
     if uploaded_file is not None:
         file_content = uploaded_file.getvalue() if hasattr(uploaded_file, 'getvalue') else uploaded_file.read()
         
