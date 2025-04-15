@@ -640,7 +640,6 @@ class ROBBikeProcessor(BaseProcessor):
             df = pd.read_excel(io.BytesIO(file_content))
             
             df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
-            df = df.iloc[:-1].reset_index(drop=True)
             
             if 'Time' in df.columns:
                 df = df.sort_values(by='Time', ascending=False)
@@ -1511,24 +1510,25 @@ def main():
         except Exception as e:
             st.sidebar.error(f"Error reading sheet: {str(e)}")
             
-    with st.sidebar.expander("Data Cleaning Options"):
-        remove_duplicates = st.checkbox("Remove Duplicates", value=False, key=f"{campaign}_remove_duplicates")
-        remove_blanks = st.checkbox("Remove Blanks", value=False, key=f"{campaign}_remove_blanks")
-        trim_spaces = st.checkbox("Trim Text", value=False, key=f"{campaign}_trim_spaces")
-    
-    with st.sidebar.expander("Data Manipulation"):
-        st.markdown("#### Column Operations")
-        enable_add_column = st.checkbox("Add Column", value=False)
-        enable_column_removal = st.checkbox("Remove Column", value=False)
-        enable_column_renaming = st.checkbox("Rename Column", value=False)
+    if campaign and automation_type == "Data Clean":
+        with st.sidebar.expander("Data Cleaning Options"):
+            remove_duplicates = st.checkbox("Remove Duplicates", value=False, key=f"{campaign}_remove_duplicates")
+            remove_blanks = st.checkbox("Remove Blanks", value=False, key=f"{campaign}_remove_blanks")
+            trim_spaces = st.checkbox("Trim Text", value=False, key=f"{campaign}_trim_spaces")
         
-        st.markdown("#### Row Operations")
-        enable_row_filtering = st.checkbox("Filter Row", value=False)
-        enable_add_row = st.checkbox("Add Row", value=False)
-        enable_row_removal = st.checkbox("Remove Row", value=False)
-        
-        st.markdown("#### Value Operations")
-        enable_edit_values = st.checkbox("Edit Values", value=False)
+        with st.sidebar.expander("Data Manipulation"):
+            st.markdown("#### Column Operations")
+            enable_add_column = st.checkbox("Add Column", value=False)
+            enable_column_removal = st.checkbox("Remove Column", value=False)
+            enable_column_renaming = st.checkbox("Rename Column", value=False)
+            
+            st.markdown("#### Row Operations")
+            enable_row_filtering = st.checkbox("Filter Row", value=False)
+            enable_add_row = st.checkbox("Add Row", value=False)
+            enable_row_removal = st.checkbox("Remove Row", value=False)
+            
+            st.markdown("#### Value Operations")
+            enable_edit_values = st.checkbox("Edit Values", value=False)
     
     process_button = st.sidebar.button("Process File", type="primary", disabled=uploaded_file is None, key=f"{campaign}_process_button")
 
