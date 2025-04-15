@@ -645,9 +645,9 @@ class ROBBikeProcessor(BaseProcessor):
                 df = df.sort_values(by='Time', ascending=False)
             
             if 'Status' in df.columns:
-                dnc_rows = df['Status'].str.contains('DNC', case=False, na=False)
-                if dnc_rows:
-                    st.warning(f"Found {len(dnc_rows)} row(s) with 'DNC'")
+                #dnc_rows = df['Status'].str.contains('DNC', case=False, na=False)
+                #if dnc_rows:
+                    #st.warning(f"Found {len(dnc_rows)} row(s) with 'DNC'")
                 df = df[~df['Status'].str.contains('DNC', case=False, na=False)]
                 
             
