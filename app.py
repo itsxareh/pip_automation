@@ -724,7 +724,6 @@ class ROBBikeProcessor(BaseProcessor):
             
             if 'Account No.' in df.columns:
                 account_numbers = [str(int(acc)) for acc in df['Account No.'].dropna().unique().tolist()]
-                st.write(account_numbers)
                 dataset_response = supabase.table('rob_bike_dataset').select('*').in_('account_number', account_numbers).execute()
                 
                 if hasattr(dataset_response, 'data') and dataset_response.data:
@@ -862,8 +861,7 @@ class ROBBikeProcessor(BaseProcessor):
 
             total_principal = df['Balance'].sum()
             total_accounts = df['Balance'].count()
-            st.write("Count: ", total_accounts)
-            st.write("Worked: ", total_principal)
+            st.write("Worked: ", total_principal, " Count: ", total_accounts)
             
             filtered_vs = df[
                 (df['Status'].isin(payment_statuses)) &
@@ -877,15 +875,15 @@ class ROBBikeProcessor(BaseProcessor):
                 (~df['subStatus'].str.contains("Follow up", case=False, na=False))
             ]
             ptp_amount = filtered_payment['Balance'].sum()
-            st.write("Count: ", repo_count)
-            st.write("Repo: ", repo_amount)
+            st.write("Repo: ", repo_amount, " Count: ", repo_count)
+            
             filtered_ptp = df[
                 (df['Status'].str.contains("PTP", case=False, na=False)) &
                 (~df['subStatus'].str.contains("Follow up", case=False, na=False))
             ]
             ptp_count = filtered_ptp.shape[0]
-            st.write("Count: ", ptp_count)
-            st.write("PTP: ", ptp_amount)
+            st.write("Count: ", ptp_count, " PTP: ", ptp_amount)
+            
             eod_data = {
                 'Key': ['C2', 'D2', 'C5', 'D5', 'C9', 'D9'],
                 'Value': [total_principal, total_accounts, repo_amount, repo_count, ptp_amount, ptp_count]
