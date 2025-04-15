@@ -882,7 +882,7 @@ class ROBBikeProcessor(BaseProcessor):
                 (~df['subStatus'].str.contains("Follow up", case=False, na=False))
             ]
             ptp_count = filtered_ptp.shape[0]
-            st.write("Count: ", ptp_count, " PTP: ", ptp_amount)
+            st.write("PTP: ", ptp_amount, " Count: ", ptp_count)
             
             eod_data = {
                 'Key': ['C2', 'D2', 'C5', 'D5', 'C9', 'D9'],
