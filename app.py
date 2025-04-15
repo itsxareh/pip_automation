@@ -14,7 +14,6 @@ import tempfile
 import shutil
 import re 
 import msoffcrypto 
-import pyminizip
 from supabase import create_client
 from dotenv import load_dotenv
 load_dotenv()
@@ -1832,28 +1831,19 @@ def main():
                         xls_binary = xls_buffer.getvalue()
 
                         if password:
-                            with tempfile.NamedTemporaryFile(delete=False, suffix=".xls") as tmp_xls:
-                                tmp_xls.write(xls_binary)
-                                tmp_xls_path = tmp_xls.name
-
-                            tmp_zip_path = tmp_xls_path.replace(".xls", ".zip")
-
-                            pyminizip.compress(tmp_xls_path, None, tmp_zip_path, password, 5)
-
-                            with open(tmp_zip_path, "rb") as f:
-                                zip_binary = f.read()
-
+                            secured_buffer = io.BytesIO()
+                            with io.BytesIO(xls_binary) as file:
+                                excel = msoffcrypto.OfficeFile(file)
+                                excel.encrypt(password)
+                                excel.save(secured_buffer)
+                            
                             st.download_button(
-                                label="Download File",
-                                data=zip_binary,
-                                file_name=xls_filename.replace('.xls', '.zip'),
-                                mime="application/zip"
+                                label="Download Password-Protected File",
+                                data=secured_buffer.getvalue(),
+                                file_name=xls_filename,
+                                mime="application/vnd.ms-excel"
                             )
-
                             st.success(f"File ready! Use your password to open it.")
-
-                            os.remove(tmp_xls_path)
-                            os.remove(tmp_zip_path)
 
                         else:
                             st.download_button(label="Download File", data=output_binary, file_name=output_filename, mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
