@@ -806,7 +806,7 @@ class ROBBikeProcessor(BaseProcessor):
             
             if not ptp_data.empty:
                 if 'Debtor' in ptp_data.columns:
-                    ptp_df['Account Name'] = ptp_data['Debtor']
+                    ptp_df['Account Name'] = ptp_data['Debtor'].str.upper()
                 
                 if 'Account No.' in ptp_data.columns:
                     ptp_df['AccountNumber'] = ptp_data['Account No.']
