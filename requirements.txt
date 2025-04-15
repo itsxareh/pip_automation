@@ -6,3 +6,4 @@ supabase
 msoffcrypto-tool
 python-dotenv
 xlrd
+pyminizip

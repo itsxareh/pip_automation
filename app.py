@@ -14,6 +14,7 @@ import tempfile
 import shutil
 import re 
 import msoffcrypto 
+import pyminizip
 from supabase import create_client
 from dotenv import load_dotenv
 load_dotenv()
@@ -1822,8 +1823,41 @@ def main():
                             )
                         st.subheader("Processed Data")
                         st.dataframe(result_df, use_container_width=True)
-                        st.download_button(label="Download File", data=output_binary, file_name=output_filename, mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-                        st.success(f"File processed successfully! Download '{output_filename}'")
+                        password = st.text_input("Enter a password (optional)", type="password")
+
+                        xls_filename = output_filename.replace('.xlsx', '.xls')
+
+                        xls_buffer = io.BytesIO()
+                        result_df.to_excel(xls_buffer, index=False, engine='xlwt')
+                        xls_binary = xls_buffer.getvalue()
+
+                        if password:
+                            with tempfile.NamedTemporaryFile(delete=False, suffix=".xls") as tmp_xls:
+                                tmp_xls.write(xls_binary)
+                                tmp_xls_path = tmp_xls.name
+
+                            tmp_zip_path = tmp_xls_path.replace(".xls", ".zip")
+
+                            pyminizip.compress(tmp_xls_path, None, tmp_zip_path, password, 5)
+
+                            with open(tmp_zip_path, "rb") as f:
+                                zip_binary = f.read()
+
+                            st.download_button(
+                                label="Download File",
+                                data=zip_binary,
+                                file_name=xls_filename.replace('.xls', '.zip'),
+                                mime="application/zip"
+                            )
+
+                            st.success(f"File ready! Use your password to open it.")
+
+                            os.remove(tmp_xls_path)
+                            os.remove(tmp_zip_path)
+
+                        else:
+                            st.download_button(label="Download File", data=output_binary, file_name=output_filename, mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                            st.success(f"File ready! Download '{output_filename}'")
 
                 if "renamed_df" in st.session_state:
                     st.session_state.pop("renamed_df", None)
