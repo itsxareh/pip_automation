@@ -1824,30 +1824,52 @@ def main():
                         st.dataframe(result_df, use_container_width=True)
                         password = st.text_input("Enter a password (optional)", type="password")
 
-                        xls_filename = output_filename.replace('.xlsx', '.xls')
+                        output_filename_xlsx = output_filename if output_filename.endswith('.xlsx') else output_filename.replace('.xls', '.xlsx')
 
-                        xls_buffer = io.BytesIO()
-                        result_df.to_excel(xls_buffer, index=False, engine='xlwt')
-                        xls_binary = xls_buffer.getvalue()
+                        buffer = io.BytesIO()
+                        result_df.to_excel(buffer, index=False, engine='openpyxl')
+                        buffer.seek(0)
+                        xlsx_binary = buffer.getvalue()
 
-                        if password:
-                            secured_buffer = io.BytesIO()
-                            with io.BytesIO(xls_binary) as file:
-                                excel = msoffcrypto.OfficeFile(file)
+                        try:
+                            if password:
+                                st.text("Processing with password...")
+                                
+                                secured_buffer = io.BytesIO()
+                                
+                                file_object = io.BytesIO(xlsx_binary)
+                                excel = msoffcrypto.OfficeFile(file_object)
                                 excel.encrypt(password)
                                 excel.save(secured_buffer)
-                            
+                                
+                                secured_buffer.seek(0)
+                                
+                                data_to_download = secured_buffer.getvalue()
+                                st.text(f"Secured file size: {len(data_to_download)} bytes")
+                                
+                                st.download_button(
+                                    label="Download Password-Protected File",
+                                    data=data_to_download,
+                                    file_name=output_filename_xlsx,
+                                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                                )
+                                st.success(f"File ready! Use your password to open it.")
+                            else:
+                                st.download_button(
+                                    label="Download File", 
+                                    data=xlsx_binary, 
+                                    file_name=output_filename_xlsx, 
+                                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                                )
+                                st.success(f"File ready! Download '{output_filename_xlsx}'")
+                        except Exception as e:
+                            st.error(f"Error processing file: {str(e)}")
                             st.download_button(
-                                label="Download Password-Protected File",
-                                data=secured_buffer.getvalue(),
-                                file_name=xls_filename,
-                                mime="application/vnd.ms-excel"
+                                label="Download File (without password)", 
+                                data=xlsx_binary, 
+                                file_name=output_filename_xlsx, 
+                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                             )
-                            st.success(f"File ready! Use your password to open it.")
-
-                        else:
-                            st.download_button(label="Download File", data=output_binary, file_name=output_filename, mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-                            st.success(f"File ready! Download '{output_filename}'")
 
                 if "renamed_df" in st.session_state:
                     st.session_state.pop("renamed_df", None)
