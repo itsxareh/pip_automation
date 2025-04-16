@@ -645,11 +645,18 @@ class ROBBikeProcessor(BaseProcessor):
                 df = df.sort_values(by='Time', ascending=False)
             
             if 'Status' in df.columns:
-                #dnc_rows = df['Status'].str.contains('DNC', case=False, na=False)
-                #if dnc_rows:
-                    #st.warning(f"Found {len(dnc_rows)} row(s) with 'DNC'")
+                disposition = supabase.table('rob_bike_disposition').select("disposition").execute()
+
+                if disposition.data is None:
+                    valid_dispo = []
+                else:
+                    valid_dispo = [record['disposition'] for record in disposition.data]
+                    
+                df = df[df['Status'].isin(valid_dispo)]
+                
                 df['Status'] = df['Status'].fillna('')
                 to_remove = df['Status'].str.contains('DNC', case=False) | (df['Status'].str.strip() == '')
+                
                 st.write(f"Removing {to_remove.sum()} rows where Status contains 'DNC' or is blank.")
                 df = df[~to_remove]
                 
@@ -908,16 +915,22 @@ class ROBBikeProcessor(BaseProcessor):
                         'Key': f'C{row_index}',
                         'Value': temp_df['Balance'].sum()
                     })
+                    
+                    if substatus_value.upper() == "FULLY PAID":
+                        ptp_value = temp_df['Claim Paid Amount'].sum()
+                    else:
+                        ptp_value = temp_df['PTP Amount'].sum()
+
                     bottom_rows.append({
                         'Key': f'D{row_index}',
-                        'Value': temp_df['PTP Amount'].sum()
+                        'Value': ptp_value
                     })
                     bottom_rows.append({
                         'Key': f'E{row_index}',
                         'Value': label
                     })
                     row_index += 1
-
+            
             for blank_row in range(row_index, 15):
                 bottom_rows.append({'Key': f'C{blank_row}', 'Value': ''})
                 bottom_rows.append({'Key': f'D{blank_row}', 'Value': ''})
@@ -1138,6 +1151,11 @@ def main():
                 "Dataset",
                 type=["xlsx", "xls"],
                 key=f"{campaign}_dataset"
+            )
+            upload_disposition = st.file_uploader(
+                "Disposition",
+                type=["xlsx", "xls"],
+                key=f"{campaign}_disposition"
             )
         if upload_field_result:
             TABLE_NAME = 'rob_bike_field_result'
@@ -1456,7 +1474,55 @@ def main():
             except Exception as e:
                 st.error(f"Error processing Excel file: {str(e)}")
 
-    
+        if upload_disposition:
+            TABLE_NAME = 'rob_bike_disposition'
+            try:
+                xls = pd.ExcelFile(upload_disposition)
+                df = pd.read_excel(xls)
+                df_clean = df.replace({np.nan: ''})
+                df_filtered = df_clean.copy()
+
+                st.subheader("Uploaded Disposition:")
+                st.dataframe(df_filtered)
+
+                button_placeholder = st.empty()
+                upload_button = button_placeholder.button("Upload to Database", key="upload_disposition_button")
+
+                if upload_button:
+                    button_placeholder.button("Processing...", disabled=True, key="processing_disposition_button")
+                    try:
+                        if 'CMS Disposition' in df_filtered.columns:
+                            unique_dispositions = df_filtered['CMS Disposition'].drop_duplicates().tolist()
+                            unique_df = pd.DataFrame({'disposition': unique_dispositions})
+
+                            existing_response = supabase.table(TABLE_NAME).select("disposition").execute()
+                            if existing_response.data is None:
+                                existing_dispositions = []
+                            else:
+                                existing_dispositions = [record['disposition'] for record in existing_response.data]
+
+                            records_to_insert = [
+                                {"disposition": d} for d in unique_dispositions if d not in existing_dispositions
+                            ]
+
+                            if records_to_insert:
+                                insert_response = supabase.table(TABLE_NAME).insert(records_to_insert).execute()
+                                toast_placeholder = st.empty()
+                                toast_placeholder.success("Upload successful!")
+                                time.sleep(3)
+                                toast_placeholder.empty()
+                            else:
+                                st.info("No new dispositions to add; all values already exists.")
+
+                            button_placeholder.empty()
+                        else:
+                            st.error("'CMS Disposition' column was not found in the uploaded file.")
+                    except Exception as e:
+                        st.error(f"Error uploading disposition: {str(e)}")
+                        button_placeholder.button("Upload Failed - Try Again", key="error_disposition_button")        
+            except Exception as e:
+                st.error(f"An error occurred: {str(e)}")
+
     df = None
     sheet_names = []
 
