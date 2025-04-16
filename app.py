@@ -656,7 +656,7 @@ class ROBBikeProcessor(BaseProcessor):
                 
                 df['Status'] = df['Status'].fillna('')
                 to_remove = df['Status'].str.contains('DNC', case=False) | (df['Status'].str.strip() == '')
-                
+
                 st.write(f"Removing {to_remove.sum()} rows where Status contains 'DNC' or is blank.")
                 df = df[~to_remove]
                 
@@ -665,7 +665,10 @@ class ROBBikeProcessor(BaseProcessor):
                 
                 df = df.drop_duplicates(subset=['COMBINED_KEY'])
                 df = df.drop(columns=['COMBINED_KEY'])  
-                
+            
+            if 'Remark By' in df.columns:
+                df = df[~df['Remark By'].str.contains('SYSTEM', case=False, na=False)]
+
             if 'PTP Amount' in df.columns and 'Status' in df.columns:
                 voluntary_surrender_rows = df[df['Status'] == 'PTP - VOLUNTARY SURRENDER']
 
