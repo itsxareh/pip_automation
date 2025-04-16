@@ -1108,7 +1108,9 @@ CAMPAIGN_CONFIG = {
 }
 
 def main():
-    st.set_page_config(page_title="Automation Tool", layout="wide")
+    st.set_page_config(
+        page_title="Automation Tool",
+        layout="wide")
     st.title("Automation Tool")
     st.markdown("Transform Files into CMS Format")
 
@@ -1212,9 +1214,8 @@ def main():
                         button_placeholder.button("Processing...", disabled=True, key="processing_button")
                         
                         try:
-                            existing_records_response = supabase.table(TABLE_NAME).select("chcode, status, substatus").execute()
-                            
-                            if hasattr(existing_records_response, 'data'):
+                            existing_records_response = supabase.table(TABLE_NAME).select("chcode, status, inserted_date").execute()
+                            if hasattr(existing_records_response, 'data'):  
                                 existing_records = existing_records_response.data
                                 existing_df = pd.DataFrame(existing_records) if existing_records else pd.DataFrame()
                             else:
@@ -1240,7 +1241,7 @@ def main():
                                     matching = existing_df[
                                         (existing_df['chcode'] == record['chcode']) & 
                                         (existing_df['status'] == record['status']) & 
-                                        (existing_df['substatus'] == record['substatus'])
+                                        (existing_df['inserted_date'] == record['inserted_date'])
                                     ]
                                     
                                     if matching.empty:
