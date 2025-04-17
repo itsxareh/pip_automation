@@ -1287,7 +1287,7 @@ def main():
                             
                             button_placeholder.button("Upload Failed - Try Again", key="retry_button")
                 else:
-                    st.error("Required columns not found in the uploaded file. Please ensure the file contains: chcode, status, SUB STATUS, DATE, and TIME columns.")
+                    st.error("Required columns not found in the uploaded file.")
             except Exception as e:
                 st.error(f"Error processing Excel file: {str(e)}")
         
@@ -1474,7 +1474,7 @@ def main():
                             button_placeholder.button("Upload Failed - Try Again", key="error_dataset_button")
                 else:
                     missing_cols = [col for col in possible_column_variants if col not in df_filtered.columns]
-                    st.error(f"Required columns not found in the uploaded file: {', '.join(missing_cols)}")
+                    st.error(f"Required columns not found in the uploaded file.")
             except Exception as e:
                 st.error(f"Error processing Excel file: {str(e)}")
 
@@ -1520,7 +1520,7 @@ def main():
 
                             button_placeholder.empty()
                         else:
-                            st.error("'CMS Disposition' column was not found in the uploaded file.")
+                            st.error("Required columns was not found in the uploaded file.")
                     except Exception as e:
                         st.error(f"Error uploading disposition: {str(e)}")
                         button_placeholder.button("Upload Failed - Try Again", key="error_disposition_button")        
