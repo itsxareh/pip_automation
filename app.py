@@ -655,7 +655,8 @@ class ROBBikeProcessor(BaseProcessor):
                 not_in_valid_dispo = ~df['Status'].isin(valid_dispo)
                 removed_invalid_dispo_count = not_in_valid_dispo.sum()
                 df = df[~not_in_valid_dispo]
-                st.write(f"Removed {removed_invalid_dispo_count} rows with non-existing dispositions.")
+                if removed_invalid_dispo_count:
+                  st.write(f"Removed {removed_invalid_dispo_count} rows with non-existing dispositions.")
             
                 df['Status'] = df['Status'].fillna('')
             
@@ -665,8 +666,10 @@ class ROBBikeProcessor(BaseProcessor):
                 removed_dnc_count = dnc_mask.sum()
                 removed_blank_count = blank_mask.sum()
             
-                st.write(f"Removed {removed_dnc_count} rows where status contains 'DNC'.")
-                st.write(f"Removed {removed_blank_count} rows where status is blank.")
+                if removed_dnc_count:
+                  st.write(f"Removed {removed_dnc_count} rows where status contains 'DNC'.")
+                if removed_blank_count: 
+                  st.write(f"Removed {removed_blank_count} rows where status is blank.")
             
                 df = df[~(dnc_mask | blank_mask)]
                 
@@ -1155,7 +1158,7 @@ def main():
     )
     
     if campaign == "ROB Bike" and automation_type == "Daily Remark Report":
-        report_date = st.sidebar.date_input('Date Report', format="YYYY/MM/DD") 
+        report_date = st.sidebar.date_input('Date Report', format="MM/DD/YYYY") 
         with st.sidebar.expander("Upload Other File", expanded=False):
             upload_field_result = st.file_uploader(
                 "Field Result",
