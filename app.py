@@ -642,7 +642,7 @@ class ROBBikeProcessor(BaseProcessor):
             df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
             
             if 'Time' in df.columns:
-                if pd.api.types.is_objects_dtype(df['Time']):
+                if pd.api.types.is_object_dtype(df['Time']):
                     try:
                         df['Time'] = pd.to_datetime(df['Time'], format='%I:%M:%S %p')
                     except ValueError:
