@@ -651,19 +651,32 @@ class ROBBikeProcessor(BaseProcessor):
             
             if 'Status' in df.columns:
                 disposition = supabase.table('rob_bike_disposition').select("disposition").execute()
-
+            
                 if disposition.data is None:
                     valid_dispo = []
                 else:
                     valid_dispo = [record['disposition'] for record in disposition.data]
-                    
-                df = df[df['Status'].isin(valid_dispo)]
-                
+            
+                not_in_valid_dispo = ~df['Status'].isin(valid_dispo)
+                removed_invalid_dispo_count = not_in_valid_dispo.sum()
+                df = df[~not_in_valid_dispo]
+                if removed_invalid_dispo_count:
+                  st.write(f"Removed {removed_invalid_dispo_count} rows with non-existing dispositions.")
+            
                 df['Status'] = df['Status'].fillna('')
-                to_remove = df['Status'].str.contains('DNC', case=False) | (df['Status'].str.strip() == '')
-
-                st.write(f"Removing {to_remove.sum()} rows where Status contains 'DNC' or is blank.")
-                df = df[~to_remove]
+            
+                dnc_mask = df['Status'].str.contains('DNC', case=False)
+                blank_mask = df['Status'].str.strip() == ''
+            
+                removed_dnc_count = dnc_mask.sum()
+                removed_blank_count = blank_mask.sum()
+            
+                if removed_dnc_count:
+                  st.write(f"Removed {removed_dnc_count} rows where status contains 'DNC'.")
+                if removed_blank_count: 
+                  st.write(f"Removed {removed_blank_count} rows where status is blank.")
+            
+                df = df[~(dnc_mask | blank_mask)]
                 
             if 'Account No.' in df.columns and 'Status' in df.columns:
                 df['COMBINED_KEY'] = df['Account No.'].astype(str) + '_' + df['Status'].astype(str)
@@ -1150,7 +1163,7 @@ def main():
     )
     
     if campaign == "ROB Bike" and automation_type == "Daily Remark Report":
-        report_date = st.sidebar.date_input('Date Report', format="YYYY/MM/DD") 
+        report_date = st.sidebar.date_input('Date Report', format="MM/DD/YYYY") 
         with st.sidebar.expander("Upload Other File", expanded=False):
             upload_field_result = st.file_uploader(
                 "Field Result",
@@ -1292,7 +1305,7 @@ def main():
                             
                             button_placeholder.button("Upload Failed - Try Again", key="retry_button")
                 else:
-                    st.error("Required columns not found in the uploaded file. Please ensure the file contains: chcode, status, SUB STATUS, DATE, and TIME columns.")
+                    st.error("Required columns not found in the uploaded file.")
             except Exception as e:
                 st.error(f"Error processing Excel file: {str(e)}")
         
@@ -1479,7 +1492,7 @@ def main():
                             button_placeholder.button("Upload Failed - Try Again", key="error_dataset_button")
                 else:
                     missing_cols = [col for col in possible_column_variants if col not in df_filtered.columns]
-                    st.error(f"Required columns not found in the uploaded file: {', '.join(missing_cols)}")
+                    st.error(f"Required columns not found in the uploaded file.")
             except Exception as e:
                 st.error(f"Error processing Excel file: {str(e)}")
 
@@ -1525,7 +1538,7 @@ def main():
 
                             button_placeholder.empty()
                         else:
-                            st.error("'CMS Disposition' column was not found in the uploaded file.")
+                            st.error("Required columns was not found in the uploaded file.")
                     except Exception as e:
                         st.error(f"Error uploading disposition: {str(e)}")
                         button_placeholder.button("Upload Failed - Try Again", key="error_disposition_button")        
