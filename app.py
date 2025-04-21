@@ -745,7 +745,9 @@ class ROBBikeProcessor(BaseProcessor):
                 monitoring_df['BarcodeDate'] = pd.to_datetime(df['Date']).dt.strftime('%m/%d/%Y')
             
             if 'PTP Amount' in df.columns:
-                monitoring_df['PTP Amount'] = df['PTP Amount']
+                monitoring_df['PTP Amount'] = df['PTP Amount'].apply(
+                    lambda x: '' if isinstance(x, (int, float)) and x == 0 else x
+                )
             
             if 'PTP Date' in df.columns:
                 monitoring_df['PTP Date'] = pd.to_datetime(df['PTP Date']).dt.strftime('%m/%d/%Y')
@@ -846,7 +848,9 @@ class ROBBikeProcessor(BaseProcessor):
                     ptp_df['subStatus'] = status_parts.str[1].str.strip().where(status_parts.str.len() > 1, "")
                 
                 if 'PTP Amount' in ptp_data.columns:
-                    ptp_df['Amount'] = ptp_data['PTP Amount']
+                    ptp_df['Amount'] = ptp_data['PTP Amount'].apply(
+                        lambda x: '' if isinstance(x, (int, float)) and x == 0 else x
+                    )
                 
                 if 'PTP Date' in ptp_data.columns:
                     ptp_df['StartDate'] = pd.to_datetime(ptp_data['PTP Date']).dt.strftime('%Y-%m-%d')
@@ -855,7 +859,7 @@ class ROBBikeProcessor(BaseProcessor):
                     ptp_df['Notes'] = ptp_data['Remark']
                 
                 if 'Time' in ptp_data.columns:
-                    ptp_df['ResultDate'] = pd.to_datetime(ptp_data['Time']).dt.strftime('%m/%d/%Y %H:%M')
+                    ptp_df['ResultDate'] = f"{report_date} {pd.to_datetime(ptp_data['Time']).dt.strftime('%H:%M')}"
                 
                 if 'Account No.' in ptp_data.columns and 'account_data_map' in locals():
                     ptp_df['AccountNumber'] = ptp_df['AccountNumber'].apply(lambda x: str(int(float(x))) if pd.notnull(x) else '')
@@ -1144,6 +1148,9 @@ def main():
     preview = st.sidebar.checkbox("Preview file before processing", value=True, key=f"{campaign}_preview")
     st.markdown("""
             <style>
+            div[data-testid="stToolbar"] {
+                display: none;
+            }
             div[data-testid="stFileUploaderDropzoneInstructions"] {
                 display: none;
             }
