@@ -745,8 +745,8 @@ class ROBBikeProcessor(BaseProcessor):
                 monitoring_df['BarcodeDate'] = pd.to_datetime(df['Date']).dt.strftime('%m/%d/%Y')
             
             if 'PTP Amount' in df.columns:
-                df['PTP Amount'] = np.where(df['PTP Amount'].astype(float) == 0, '', df['PTP Amount'])
-                monitoring_df['PTP Amount'] = df['PTP Amount']
+                df['PTP Amount'] = pd.to_numeric(df['PTP Amount'].replace({',': ''}, regex=True), errors='coerce')
+                monitoring_df['PTP Amount'] = np.where(df['PTP Amount'] == 0, '', df['PTP Amount'])
             
             if 'PTP Date' in df.columns:
                 monitoring_df['PTP Date'] = pd.to_datetime(df['PTP Date']).dt.strftime('%m/%d/%Y')
