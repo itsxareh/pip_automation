@@ -771,6 +771,7 @@ class ROBBikeProcessor(BaseProcessor):
                 )
 
                 monitoring_df['PTP Date'] = monitoring_df['PTP Date'].fillna('')
+                monitoring_df['PTP Amount'] = np.where(df['PTP Amount'] == 0, '', df['PTP Amount'])
                 
             if 'Account No.' in df.columns:
                 account_numbers = [str(int(acc)) for acc in df['Account No.'].dropna().unique().tolist()]
