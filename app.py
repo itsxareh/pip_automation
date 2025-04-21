@@ -856,7 +856,10 @@ class ROBBikeProcessor(BaseProcessor):
                     ptp_df['Notes'] = ptp_data['Remark']
                 
                 if 'Time' in ptp_data.columns:
-                    ptp_df['ResultDate'] = f"{report_date} {pd.to_datetime(ptp_data['Time']).dt.strftime('%H:%M')}"
+                    report_date_str = report_date.strftime("%Y-%m-%d")
+                    time_series = pd.to_datetime(ptp_data['Time'], errors='coerce').dt.strftime('%H:%M')
+                    
+                    ptp_df['ResultDate'] = report_date_str + ' ' + time_series
                 
                 if 'Account No.' in ptp_data.columns and 'account_data_map' in locals():
                     ptp_df['AccountNumber'] = ptp_df['AccountNumber'].apply(lambda x: str(int(float(x))) if pd.notnull(x) else '')
@@ -885,9 +888,10 @@ class ROBBikeProcessor(BaseProcessor):
             df['Status'] = df['Status'].astype(str)
             df['subStatus'] = df['subStatus'].astype(str)
 
-            df['PTP Amount'] = pd.to_numeric(df['PTP Amount'], errors='coerce')
-            df['Balance'] = pd.to_numeric(df['Balance'], errors='coerce')
-
+            df['PTP Amount'] = pd.to_numeric(df['PTP Amount'].replace({',': ''}, regex=True), errors='coerce')
+            df['Balance'] = pd.to_numeric(df['Balance'].replace({',': ''}, regex=True), errors='coerce')
+            df['Claim Paid Amount'] = pd.to_numeric(df['Claim Paid Amount'].replace({',': ''}, regex=True), errors='coerce')
+            
             total_principal = df['Balance'].sum()
             total_accounts = df['Balance'].count()
             st.write("Worked: ", total_principal, " Count: ", total_accounts)
