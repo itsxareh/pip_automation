@@ -745,9 +745,8 @@ class ROBBikeProcessor(BaseProcessor):
                 monitoring_df['BarcodeDate'] = pd.to_datetime(df['Date']).dt.strftime('%m/%d/%Y')
             
             if 'PTP Amount' in df.columns:
-                monitoring_df['PTP Amount'] = df['PTP Amount'].apply(
-                    lambda x: '' if isinstance(x, (int, float)) and x == 0 else x
-                )
+                df['PTP Amount'] = np.where(df['PTP Amount'].astype(float) == 0, '', df['PTP Amount'])
+                monitoring_df['PTP Amount'] = df['PTP Amount']
             
             if 'PTP Date' in df.columns:
                 monitoring_df['PTP Date'] = pd.to_datetime(df['PTP Date']).dt.strftime('%m/%d/%Y')
@@ -848,9 +847,7 @@ class ROBBikeProcessor(BaseProcessor):
                     ptp_df['subStatus'] = status_parts.str[1].str.strip().where(status_parts.str.len() > 1, "")
                 
                 if 'PTP Amount' in ptp_data.columns:
-                    ptp_df['Amount'] = ptp_data['PTP Amount'].apply(
-                        lambda x: '' if isinstance(x, (int, float)) and x == 0 else x
-                    )
+                    ptp_df['Amount'] = ptp_data['PTP Amount']
                 
                 if 'PTP Date' in ptp_data.columns:
                     ptp_df['StartDate'] = pd.to_datetime(ptp_data['PTP Date']).dt.strftime('%Y-%m-%d')
