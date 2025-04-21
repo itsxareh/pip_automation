@@ -856,9 +856,16 @@ class ROBBikeProcessor(BaseProcessor):
                     ptp_df['Notes'] = ptp_data['Remark']
                 
                 if 'Time' in ptp_data.columns:
-                    result_datetime = pd.to_datetime(report_date.strftime("%Y-%m-%d") + ' ' + ptp_data['Time'], errors='coerce')
-                    ptp_df['ResultDate'] = result_datetime.dt.strftime('%-m/%-d/%Y  %-I:%M:%S %p')
-                
+                    time_only = pd.to_datetime(ptp_data['Time'], errors='coerce').dt.time
+
+                    result_datetime = [
+                        datetime.combine(report_date, t) if pd.notnull(t) else None for t in time_only
+                    ]
+
+                    ptp_df['ResultDate'] = [
+                        dt.strftime('%m/%d/%Y %I:%M:%S %p').replace(' 0', ' ') if dt else '' for dt in result_datetime
+                    ]
+                    
                 if 'Account No.' in ptp_data.columns and 'account_data_map' in locals():
                     ptp_df['AccountNumber'] = ptp_df['AccountNumber'].apply(lambda x: str(int(float(x))) if pd.notnull(x) else '')
                     ptp_df['EndoDate'] = ptp_df['AccountNumber'].map(
