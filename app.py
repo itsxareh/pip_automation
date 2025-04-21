@@ -685,8 +685,16 @@ class ROBBikeProcessor(BaseProcessor):
                 df = df.drop(columns=['COMBINED_KEY'])  
             
             if 'Remark By' in df.columns:
-                df = df[~df['Remark By'].str.contains('SYSTEM', case=False, na=False)]
-
+                system_remarks = df['Remark By'].str.contains('SYSTEM', case=False, na=False)
+                system_remarks_count = system_remarks.sum()
+                st.write(f"Removed {system_remarks_count} rows with SYSTEM remarks")
+                df = df[~system_remarks]
+                
+            if 'PTP Amount' in df.columns and 'Balance' in df.columns and 'Claim Paid Amount' in df.columns:
+                df['PTP Amount'] = pd.to_numeric(df['PTP Amount'].replace({',': ''}, regex=True), errors='coerce')
+                df['Balance'] = pd.to_numeric(df['Balance'].replace({',': ''}, regex=True), errors='coerce')
+                df['Claim Paid Amount'] = pd.to_numeric(df['Claim Paid Amount'].replace({',': ''}, regex=True), errors='coerce')
+            
             if 'PTP Amount' in df.columns and 'Status' in df.columns:
                 voluntary_surrender_rows = df[df['Status'] == 'PTP - VOLUNTARY SURRENDER']
 
@@ -745,7 +753,6 @@ class ROBBikeProcessor(BaseProcessor):
                 monitoring_df['BarcodeDate'] = pd.to_datetime(df['Date']).dt.strftime('%m/%d/%Y')
             
             if 'PTP Amount' in df.columns:
-                df['PTP Amount'] = pd.to_numeric(df['PTP Amount'].replace({',': ''}, regex=True), errors='coerce')
                 monitoring_df['PTP Amount'] = np.where(df['PTP Amount'] == 0, '', df['PTP Amount'])
             
             if 'PTP Date' in df.columns:
@@ -892,10 +899,6 @@ class ROBBikeProcessor(BaseProcessor):
                 
             df['Status'] = df['Status'].astype(str)
             df['subStatus'] = df['subStatus'].astype(str)
-
-            df['PTP Amount'] = pd.to_numeric(df['PTP Amount'].replace({',': ''}, regex=True), errors='coerce')
-            df['Balance'] = pd.to_numeric(df['Balance'].replace({',': ''}, regex=True), errors='coerce')
-            df['Claim Paid Amount'] = pd.to_numeric(df['Claim Paid Amount'].replace({',': ''}, regex=True), errors='coerce')
             
             total_principal = df['Balance'].sum()
             total_accounts = df['Balance'].count()
