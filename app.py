@@ -857,7 +857,6 @@ class ROBBikeProcessor(BaseProcessor):
                 
                 if 'Time' in ptp_data.columns:
                     result_datetime = pd.to_datetime(report_date.strftime("%Y-%m-%d") + ' ' + ptp_data['Time'], errors='coerce')
-
                     ptp_df['ResultDate'] = result_datetime.dt.strftime('%-m/%-d/%Y  %-I:%M:%S %p')
                 
                 if 'Account No.' in ptp_data.columns and 'account_data_map' in locals():
