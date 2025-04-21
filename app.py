@@ -687,7 +687,8 @@ class ROBBikeProcessor(BaseProcessor):
             if 'Remark By' in df.columns:
                 system_remarks = df['Remark By'].str.contains('SYSTEM', case=False, na=False)
                 system_remarks_count = system_remarks.sum()
-                st.write(f"Removed {system_remarks_count} rows with SYSTEM remarks")
+                if system_remarks_count:
+                    st.write(f"Removed {system_remarks_count} rows with SYSTEM remarks")
                 df = df[~system_remarks]
                 
             if 'PTP Amount' in df.columns and 'Balance' in df.columns and 'Claim Paid Amount' in df.columns:
@@ -752,9 +753,16 @@ class ROBBikeProcessor(BaseProcessor):
             if 'Date' in df.columns:
                 monitoring_df['BarcodeDate'] = pd.to_datetime(df['Date']).dt.strftime('%m/%d/%Y')
             
-            if 'PTP Amount' in df.columns:
-                monitoring_df['PTP Amount'] = np.where(df['PTP Amount'] == 0, '', df['PTP Amount'])
-            
+            if 'PTP Amount' in df.columns and 'Claim Paid Amount' in df.columns:
+                monitoring_df['PTP Amount'] = np.where(
+                    (df['PTP Amount'].isna()) | (df['PTP Amount'] == 0), 
+                    np.where(df['Claim Paid Amount'].notna() & (df['Claim Paid Amount'] != 0),
+                             df['Claim Paid Amount'],
+                             ''
+                             ),
+                    df['PTP Amount']
+                )
+                        
             if 'PTP Date' in df.columns:
                 monitoring_df['PTP Date'] = pd.to_datetime(df['PTP Date']).dt.strftime('%m/%d/%Y')
             
