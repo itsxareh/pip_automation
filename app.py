@@ -1942,7 +1942,7 @@ def main():
                                 trim_spaces=trim_spaces
                             )
                             
-                        result_sheet_names = list(result_df.keys())
+                        result_sheet_names = result_df.sheet_names
                         result_sheet = st.selectbox(
                             "Select Sheet",
                             options=result_sheet_names,
