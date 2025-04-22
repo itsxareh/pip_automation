@@ -1432,10 +1432,11 @@ def main():
                                 except Exception as e:
                                     st.warning(f"Error fetching records: {str(e)}")
                                     
+                            existing_df = pd.DataFrame(existing_records) if existing_records else pd.DataFrame()
+                            
                             if not existing_df.empty:
                                 existing_df['account_number'] = existing_df['account_number'].astype(str).str.strip()
                                 
-                            existing_df = pd.DataFrame(existing_records) if existing_records else pd.DataFrame()
 
                             records_to_insert = []
                             records_to_update = []
