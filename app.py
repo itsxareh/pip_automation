@@ -744,7 +744,6 @@ class ROBBikeProcessor(BaseProcessor):
             if 'Status' in df.columns:
                 status_parts = df['Status'].str.split('-', n=1)
                 monitoring_df['Status'] = status_parts.str[0].str.strip()
-                
                 monitoring_df['subStatus'] = status_parts.str[1].str.strip().where(status_parts.str.len() > 1, "")
             
             if 'Remark' in df.columns:
@@ -754,23 +753,20 @@ class ROBBikeProcessor(BaseProcessor):
                 monitoring_df['BarcodeDate'] = pd.to_datetime(df['Date']).dt.strftime('%m/%d/%Y')
             
             if 'PTP Amount' in df.columns and 'Claim Paid Amount' in df.columns:
-                ptp_from_claim_paid = df['PTP Amount'].isna() | (df['PTP Amount'] == 0)
-
-                monitoring_df['PTP Amount'] = np.where(
-                    ptp_from_claim_paid & df['Claim Paid Amount'].notna() & (df['Claim Paid Amount'] != 0),
-                    df['Claim Paid Amount'],
-                    df['PTP Amount'].fillna('')
-                )
                 ptp_dates = pd.to_datetime(df['PTP Date'], errors='coerce')
                 claim_paid_dates = pd.to_datetime(df['Claim Paid Date'], errors='coerce')
 
-                monitoring_df['PTP Date'] = np.where(
-                    ptp_from_claim_paid & df['Claim Paid Amount'].notna() & (df['Claim Paid Amount'] != 0),
-                    claim_paid_dates.dt.strftime('%m/%d/%Y'),
-                    ptp_dates.dt.strftime('%m/%d/%Y')
-                )
+                is_payment_vol_surrender = (monitoring_df['Status'] == 'PAYMENT') & (monitoring_df['subStatus'] == 'VOLUNTARY SURRENDER')
+                is_ptp_vol_surrender = (monitoring_df['Status'] == 'PTP') & (monitoring_df['subStatus'] == 'VOLUNTARY SURRENDER')
 
-                monitoring_df['PTP Date'] = monitoring_df['PTP Date'].fillna('')
+                monitoring_df['PTP Amount'] = ''
+                monitoring_df['PTP Date'] = ''
+
+                monitoring_df.loc[is_payment_vol_surrender, 'PTP Amount'] = df.loc[is_payment_vol_surrender, 'Claim Paid Amount']
+                monitoring_df.loc[is_payment_vol_surrender, 'PTP Date'] = claim_paid_dates.loc[is_payment_vol_surrender].dt.strftime('%m/%d/%Y')
+
+                monitoring_df.loc[is_ptp_vol_surrender, 'PTP Amount'] = df.loc[is_ptp_vol_surrender, 'PTP Amount']
+                monitoring_df.loc[is_ptp_vol_surrender, 'PTP Date'] = ptp_dates.loc[is_ptp_vol_surrender].dt.strftime('%m/%d/%Y')
                 
             if 'Account No.' in df.columns:
                 account_numbers = [str(int(acc)) for acc in df['Account No.'].dropna().unique().tolist()]
