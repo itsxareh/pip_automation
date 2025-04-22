@@ -1034,6 +1034,26 @@ class ROBBikeProcessor(BaseProcessor):
                                     for cell in row:
                                         cell.border = thin_border
                                         
+                        def format_excel_with_date_formats(sheet_name, df, format_dict):
+                            output = io.BytesIO()
+                            
+                            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                                df.to_excel(writer, index=False, sheet_name=sheet_name)
+                                
+                                workbook = writer.book
+                                worksheet = writer.sheets[sheet_name]
+                                
+                                for col_name, date_format in format_dict.items():
+                                    if col_name in df.columns:
+                                        col_idx = df.columns.get_loc(col_name) + 1 
+                                        
+                                        for row_idx in range(2, len(df) + 2):
+                                            cell = worksheet.cell(row=row_idx, column=col_idx)
+                                            cell.number_format = date_format
+                                            
+                            output.seek(0)
+                            return output.getvalue()
+                        
                         if sheet5 in template_wb.sheetnames:
                             eod_sheet = template_wb[sheet5]
                             for _, row in eod_df.iterrows():
@@ -1043,6 +1063,14 @@ class ROBBikeProcessor(BaseProcessor):
                                 row_number = int(cell_key[1:])
                                 column_index = column_index_from_string(column_letter)
                                 eod_sheet.cell(row=row_number, column=column_index).value = value
+                        
+                        ptp_date_formats = {
+                            'StartDate': 'yyyy-mm-dd',
+                            'ResultDate': 'mm/dd/yyyy h:mm AM/PM',
+                            'EndoDate': 'mm/dd/yyyy'
+                        }
+
+                        format_excel_with_date_formats(sheet2, ptp_df, ptp_date_formats)
                         
                         format_sheet(sheet1, monitoring_df)
                         format_sheet(sheet2, ptp_df)
