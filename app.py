@@ -1582,6 +1582,16 @@ def main():
     sheet_names = []
 
     if uploaded_file is not None:
+        if 'previous_filename' not in st.session_state or st.session_state['previous_filename'] != uploaded_file.name:
+            if 'output_binary' in st.session_state:
+                del st.session_state['output_binary']
+            if 'output_filename' in st.session_state:
+                del st.session_state['output_filename']
+            if 'result_sheet_names' in st.session_state:
+                del st.session_state['result_sheet_names']
+                
+            st.session_state['previous_filename'] = uploaded_file.name
+        
         with st.sidebar.expander("Data Cleaning Options"):
             remove_duplicates = st.checkbox("Remove Duplicates", value=False, key=f"{campaign}_remove_duplicates")
             remove_blanks = st.checkbox("Remove Blanks", value=False, key=f"{campaign}_remove_blanks")
