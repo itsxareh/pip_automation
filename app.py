@@ -658,11 +658,6 @@ class ROBBikeProcessor(BaseProcessor):
                 removed_dnc_count = dnc_mask.sum()
                 removed_blank_count = blank_mask.sum()
             
-                if removed_dnc_count:
-                  st.write(f"Removed {removed_dnc_count} rows where status contains 'DNC'.")
-                if removed_blank_count: 
-                  st.write(f"Removed {removed_blank_count} rows where status is blank.")
-            
                 df = df[~(dnc_mask | blank_mask)]
                 
                 disposition = supabase.table('rob_bike_disposition').select("disposition").execute()
@@ -675,20 +670,18 @@ class ROBBikeProcessor(BaseProcessor):
                 not_in_valid_dispo = ~df['Status'].isin(valid_dispo)
                 removed_invalid_dispo_count = not_in_valid_dispo.sum()
                 df = df[~not_in_valid_dispo]
-                if removed_invalid_dispo_count:
-                  st.write(f"Removed {removed_invalid_dispo_count} rows with non-existing dispositions.")
                 
             if 'Account No.' in df.columns and 'Status' in df.columns:
+                initial_duplicates = df.duplicated(subset=['Account No.', 'Status']).sum()
+                                
                 df['COMBINED_KEY'] = df['Account No.'].astype(str) + '_' + df['Status'].astype(str)
-                
+                remaining_duplicates = df.duplicated(subset=['COMBINED_KEY']).sum()
                 df = df.drop_duplicates(subset=['COMBINED_KEY'])
-                df = df.drop(columns=['COMBINED_KEY'])  
+                df = df.drop(columns=['COMBINED_KEY'])
             
             if 'Remark By' in df.columns:
                 system_remarks = df['Remark By'].str.contains('SYSTEM', case=False, na=False)
                 system_remarks_count = system_remarks.sum()
-                if system_remarks_count:
-                    st.write(f"Removed {system_remarks_count} rows with SYSTEM remarks")
                 df = df[~system_remarks]
                 
             if 'PTP Amount' in df.columns and 'Balance' in df.columns and 'Claim Paid Amount' in df.columns:
@@ -708,6 +701,8 @@ class ROBBikeProcessor(BaseProcessor):
                     st.warning(f"Found {len(invalid_amount_rows)} row(s) with 'PTP - VOLUNTARY SURRENDER' but 0 or missing 'PTP Amount'.")
                     st.dataframe(invalid_amount_rows, use_container_width=True)
                     
+            st.write(f"Removed: {removed_dnc_count} DNC, {removed_blank_count} blank status, {removed_invalid_dispo_count} invalid disposition, {system_remarks_count} SYSTEM remarks, {initial_duplicates - remaining_duplicates} duplicates.")
+
             if preview_only:
                 return df, None, None
             
