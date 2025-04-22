@@ -986,8 +986,8 @@ class ROBBikeProcessor(BaseProcessor):
                     })
                     row_index += 1
                     
-                st.write(bottom_rows)
-                
+            st.write(bottom_rows)
+            
             for blank_row in range(row_index, 15):
                 bottom_rows.append({'Key': f'C{blank_row}', 'Value': ''})
                 bottom_rows.append({'Key': f'D{blank_row}', 'Value': ''})
