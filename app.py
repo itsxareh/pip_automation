@@ -1943,29 +1943,13 @@ def main():
                             )
                             
                         if output_binary:
+                            st.session_state['output_binary'] = output_binary
+                            st.session_state['output_filename'] = output_filename
+                            
                             excel_file = pd.ExcelFile(io.BytesIO(output_binary))
-                            
                             result_sheet_names = excel_file.sheet_names
-                            
-                            result_sheet = st.selectbox(
-                                "Select Sheet",
-                                options=result_sheet_names,
-                                index=0,
-                                key=f"{campaign}_result_sheet"
-                            )
-                            
-                            selected_df = pd.read_excel(io.BytesIO(output_binary), sheet_name=result_sheet)
-                            
-                            st.subheader("Processed Preview")
-                            st.dataframe(selected_df, use_container_width=True)
-                            
-                            st.download_button(
-                                label="Download File", 
-                                data=output_binary, 
-                                file_name=output_filename, 
-                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                            )
-                            st.success(f"File processed successfully! Download '{output_filename}'")
+                            st.session_state['result_sheet_names'] = result_sheet_names
+                        
                         else:
                             st.error("No output file was generated")
                         
@@ -1976,6 +1960,29 @@ def main():
             except Exception as e:
                 st.error(f"Error processing file: {str(e)}")
 
+        if 'output_binary' in st.session_state and 'result_sheet_names' in st.session_state:
+            excel_file = pd.ExcelFile(io.BytesIO(st.session_state['output_binary']))
+            result_sheet_names = st.session_state['result_sheet_names']
+            
+            result_sheet = st.selectbox(
+                "Select Sheet",
+                options=result_sheet_names,
+                index=0,
+                key=f"{campaign}_result_sheet"
+            )
+            
+            selected_df = pd.read_excel(io.BytesIO(st.session_state['output_binary']), sheet_name=result_sheet)
+            
+            st.subheader("Processed Preview")
+            st.dataframe(selected_df, use_container_width=True)
+            
+            st.download_button(
+                label="Download File", 
+                data=st.session_state['output_binary'], 
+                file_name=st.session_state['output_filename'], 
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+            st.success(f"File processed successfully! Download '{st.session_state['output_filename']}'")
     st.sidebar.markdown("---")
     st.sidebar.markdown("© 2025 Automation Tool")
 
