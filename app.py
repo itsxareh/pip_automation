@@ -961,7 +961,7 @@ class ROBBikeProcessor(BaseProcessor):
             row_index = 12
             for substatus_value, label in priority_substatus:
                 common_statuses = list(set(payment_statuses) & set(ptp_statuses))
-                st.write(common_statuses)
+                st.write("Common statuses: ",common_statuses)
                 temp_df = df[
                     (df['Status'].isin(common_statuses)) &
                     (df['subStatus'].str.upper() == substatus_value.upper())
