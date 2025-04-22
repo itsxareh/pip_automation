@@ -872,25 +872,27 @@ class ROBBikeProcessor(BaseProcessor):
                     ptp_df['Amount'] = ptp_data['PTP Amount']
                 
                 if 'PTP Date' in ptp_data.columns:
-                    ptp_df['StartDate'] = pd.to_datetime(ptp_data['PTP Date'])
+                    ptp_df['StartDate'] = pd.to_datetime(ptp_data['PTP Date']).dt.strftime('%Y-%m-%d')
                 
                 if 'Remark' in ptp_data.columns:
                     ptp_df['Notes'] = ptp_data['Remark']
                 
                 if 'Time' in ptp_data.columns:
                     time_only = pd.to_datetime(ptp_data['Time'], errors='coerce').dt.time
-    
+
                     result_datetime = [
                         datetime.combine(report_date, t) if pd.notnull(t) else None for t in time_only
                     ]
-    
-                    ptp_df['ResultDate'] = result_datetime
+
+                    ptp_df['ResultDate'] = [
+                        dt.strftime('%m/%d/%Y %I:%M:%S %p').replace(' 0', ' ') if dt else '' for dt in result_datetime
+                    ]
                     
                 if 'Account No.' in ptp_data.columns and 'account_data_map' in locals():
                     ptp_df['AccountNumber'] = ptp_df['AccountNumber'].apply(lambda x: str(int(float(x))) if pd.notnull(x) else '')
                     ptp_df['EndoDate'] = ptp_df['AccountNumber'].map(
                         lambda acc_no: account_data_map.get(acc_no, {}).get('EndoDate', ''))
-                    ptp_df['EndoDate'] = pd.to_datetime(ptp_df['EndoDate'])
+                    ptp_df['EndoDate'] = pd.to_datetime(ptp_df['EndoDate']).dt.strftime('%m/%d/%Y')
             
                 if 'Account No.' in df.columns:
                     ptp_df['AccountNumber'] = ptp_df['AccountNumber'].map(
@@ -1034,17 +1036,6 @@ class ROBBikeProcessor(BaseProcessor):
                                     for cell in row:
                                         cell.border = thin_border
                                         
-                        def apply_date_formats_to_sheet(sheet, df, format_dict):
-                            for col_name, date_format in format_dict.items():
-                                if col_name in df.columns:
-                                    col_idx = df.columns.get_loc(col_name) + 1
-
-                                    for row_idx, value in enumerate(df[col_name], start=sheet.max_row - len(df) + 1):
-                                        cell = sheet.cell(row=row_idx + 1, column=col_idx)
-                                        if pd.notna(value):
-                                            cell.value = pd.to_datetime(value)
-                                            cell.number_format = date_format
-                        
                         if sheet5 in template_wb.sheetnames:
                             eod_sheet = template_wb[sheet5]
                             for _, row in eod_df.iterrows():
@@ -1055,16 +1046,6 @@ class ROBBikeProcessor(BaseProcessor):
                                 column_index = column_index_from_string(column_letter)
                                 eod_sheet.cell(row=row_number, column=column_index).value = value
                         
-                        ptp_date_formats = {
-                            'StartDate': 'yyyy-mm-dd',
-                            'ResultDate': 'mm/dd/yyyy h:mm AM/PM',
-                            'EndoDate': 'mm/dd/yyyy'
-                        }
-
-                        if sheet2 in template_wb.sheetnames:
-                            ptp_sheet = template_wb[sheet2]
-                            apply_date_formats_to_sheet(ptp_sheet, ptp_df, ptp_date_formats)
-                            
                         format_sheet(sheet1, monitoring_df)
                         format_sheet(sheet2, ptp_df)
                         format_sheet(sheet5, None)
