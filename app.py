@@ -753,21 +753,31 @@ class ROBBikeProcessor(BaseProcessor):
                 monitoring_df['BarcodeDate'] = pd.to_datetime(df['Date']).dt.strftime('%m/%d/%Y')
             
             if 'PTP Amount' in df.columns and 'Claim Paid Amount' in df.columns:
-                ptp_dates = pd.to_datetime(df['PTP Date'], errors='coerce')
-                claim_paid_dates = pd.to_datetime(df['Claim Paid Date'], errors='coerce')
-
-                is_payment_vol_surrender = (monitoring_df['Status'] == 'PAYMENT') & (monitoring_df['subStatus'] == 'VOLUNTARY SURRENDER')
-                is_ptp_vol_surrender = (monitoring_df['Status'] == 'PTP') & (monitoring_df['subStatus'] == 'VOLUNTARY SURRENDER')
-
-                monitoring_df['PTP Amount'] = ''
-                monitoring_df['PTP Date'] = ''
-
-                monitoring_df.loc[is_payment_vol_surrender, 'PTP Amount'] = df.loc[is_payment_vol_surrender, 'Claim Paid Amount']
-                monitoring_df.loc[is_payment_vol_surrender, 'PTP Date'] = claim_paid_dates.loc[is_payment_vol_surrender].dt.strftime('%m/%d/%Y')
-
-                monitoring_df.loc[is_ptp_vol_surrender, 'PTP Amount'] = df.loc[is_ptp_vol_surrender, 'PTP Amount']
-                monitoring_df.loc[is_ptp_vol_surrender, 'PTP Date'] = ptp_dates.loc[is_ptp_vol_surrender].dt.strftime('%m/%d/%Y')
+                ptp_amount = df['PTP Amount']
+                ptp_date = pd.to_datetime(df['PTP Date'], errors='coerce')
+                claim_paid_amount = df['Claim Paid Amount']
+                claim_paid_date = pd.to_datetime(df['Claim Paid Date'], errors='coerce')
                 
+                monitoring_df['PTP Amount'] = np.where(
+                    ptp_amount.notna() & (ptp_amount != 0),
+                    ptp_amount,
+                    np.where(
+                        claim_paid_amount.notna() & (claim_paid_amount != 0),
+                        claim_paid_amount,
+                        ''
+                    )
+                )
+                
+                monitoring_df['PTP Date'] = np.where(
+                    ptp_date.notna(),
+                    ptp_date.dt.strftime('%m/%d/%Y'),
+                    np.where(
+                        claim_paid_date.notna(),
+                        claim_paid_date.dt.strftime('%m/%d/%Y'),
+                        ''
+                    )
+                )
+                                
             if 'Account No.' in df.columns:
                 account_numbers = [str(int(acc)) for acc in df['Account No.'].dropna().unique().tolist()]
                 dataset_response = supabase.table('rob_bike_dataset').select('*').in_('account_number', account_numbers).execute()
