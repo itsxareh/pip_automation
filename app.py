@@ -658,6 +658,7 @@ class ROBBikeProcessor(BaseProcessor):
                     valid_dispo = [record['disposition'] for record in disposition.data]
             
                 not_in_valid_dispo = ~df['Status'].isin(valid_dispo)
+                st.write(not_in_valid_dispo)
                 removed_invalid_dispo_count = not_in_valid_dispo.sum()
                 df = df[~not_in_valid_dispo]
                 if removed_invalid_dispo_count:
