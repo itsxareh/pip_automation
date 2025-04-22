@@ -1034,25 +1034,16 @@ class ROBBikeProcessor(BaseProcessor):
                                     for cell in row:
                                         cell.border = thin_border
                                         
-                        def format_excel_with_date_formats(sheet_name, df, format_dict):
-                            output = io.BytesIO()
-                            
-                            with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                                df.to_excel(writer, index=False, sheet_name=sheet_name)
-                                
-                                workbook = writer.book
-                                worksheet = writer.sheets[sheet_name]
-                                
-                                for col_name, date_format in format_dict.items():
-                                    if col_name in df.columns:
-                                        col_idx = df.columns.get_loc(col_name) + 1 
-                                        
-                                        for row_idx in range(2, len(df) + 2):
-                                            cell = worksheet.cell(row=row_idx, column=col_idx)
+                        def apply_date_formats_to_sheet(sheet, df, format_dict):
+                            for col_name, date_format in format_dict.items():
+                                if col_name in df.columns:
+                                    col_idx = df.columns.get_loc(col_name) + 1
+
+                                    for row_idx, value in enumerate(df[col_name], start=sheet.max_row - len(df) + 1):
+                                        cell = sheet.cell(row=row_idx + 1, column=col_idx)
+                                        if pd.notna(value):
+                                            cell.value = pd.to_datetime(value)
                                             cell.number_format = date_format
-                                            
-                            output.seek(0)
-                            return output.getvalue()
                         
                         if sheet5 in template_wb.sheetnames:
                             eod_sheet = template_wb[sheet5]
@@ -1070,8 +1061,10 @@ class ROBBikeProcessor(BaseProcessor):
                             'EndoDate': 'mm/dd/yyyy'
                         }
 
-                        format_excel_with_date_formats(sheet2, ptp_df, ptp_date_formats)
-                        
+                        if sheet2 in template_wb.sheetnames:
+                            ptp_sheet = template_wb[sheet2]
+                            apply_date_formats_to_sheet(ptp_sheet, ptp_df, ptp_date_formats)
+                            
                         format_sheet(sheet1, monitoring_df)
                         format_sheet(sheet2, ptp_df)
                         format_sheet(sheet5, None)
