@@ -1942,36 +1942,29 @@ def main():
                                 trim_spaces=trim_spaces
                             )
                             
-                        if isinstance(result_df, dict):
-                            result_sheet_names = list(result_df.keys())
-                            
-                            result_sheet = st.selectbox(
-                                "Select Sheet",
-                                options=result_sheet_names,
-                                index=0,
-                                key=f"{campaign}_result_sheet"
-                            )
-                            
-                            try:
-                                if result_sheet:
-                                    st.subheader("Processed Preview")
-                                    st.dataframe(result_df[result_sheet], use_container_width=True)
-                                    st.download_button(label="Download File", data=output_binary, file_name=output_filename, 
-                                                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-                                    st.success(f"File processed successfully! Download '{output_filename}'")
-                            except Exception as e:
-                                st.error(f"Error reading sheet: {str(e)}")
+                        result_sheet_names = output_binary.sheet_names
+                        result_sheet = st.selectbox(
+                            "Select Sheet",
+                            options=result_sheet_names,
+                            index=0,
+                            key=f"{campaign}_result_sheet"
+                        )
 
+                        selected_df = result_df.parse(result_sheet)
+                        st.dataframe(selected_df, use_container_width=True)
+                        if isinstance(result_df, dict):
+                            selected_df = result_df[result_sheet]
+
+                            st.subheader("Processed Preview")
+                            st.dataframe(selected_df, use_container_width=True)
                         else:
-                            try:
-                                st.subheader("Processed Preview")
-                                st.dataframe(result_df, use_container_width=True)
-                                st.download_button(label="Download File", data=output_binary, file_name=output_filename, 
-                                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-                                st.success(f"File processed successfully! Download '{output_filename}'")
-                            except Exception as e:
-                                st.error(f"Error displaying data: {str(e)}")
+                            st.subheader("Processed Preview")
+                            st.dataframe(result_df, use_container_width=True)
+                            
+                        st.download_button(label="Download File", data=output_binary, file_name=output_filename, mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                        st.success(f"File processed successfully! Download '{output_filename}'")
                      
+
                 if "renamed_df" in st.session_state:
                     st.session_state.pop("renamed_df", None)
 
