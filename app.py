@@ -650,19 +650,6 @@ class ROBBikeProcessor(BaseProcessor):
                 df = df.sort_values(by='Time', ascending=False)
             
             if 'Status' in df.columns:
-                disposition = supabase.table('rob_bike_disposition').select("disposition").execute()
-            
-                if disposition.data is None:
-                    valid_dispo = []
-                else:
-                    valid_dispo = [record['disposition'] for record in disposition.data]
-            
-                not_in_valid_dispo = ~df['Status'].isin(valid_dispo)
-                removed_invalid_dispo_count = not_in_valid_dispo.sum()
-                df = df[~not_in_valid_dispo]
-                if removed_invalid_dispo_count:
-                  st.write(f"Removed {removed_invalid_dispo_count} rows with non-existing dispositions.")
-            
                 df['Status'] = df['Status'].fillna('')
             
                 dnc_mask = df['Status'].str.contains('DNC', case=False)
@@ -677,6 +664,19 @@ class ROBBikeProcessor(BaseProcessor):
                   st.write(f"Removed {removed_blank_count} rows where status is blank.")
             
                 df = df[~(dnc_mask | blank_mask)]
+                
+                disposition = supabase.table('rob_bike_disposition').select("disposition").execute()
+            
+                if disposition.data is None:
+                    valid_dispo = []
+                else:
+                    valid_dispo = [record['disposition'] for record in disposition.data]
+            
+                not_in_valid_dispo = ~df['Status'].isin(valid_dispo)
+                removed_invalid_dispo_count = not_in_valid_dispo.sum()
+                df = df[~not_in_valid_dispo]
+                if removed_invalid_dispo_count:
+                  st.write(f"Removed {removed_invalid_dispo_count} rows with non-existing dispositions.")
                 
             if 'Account No.' in df.columns and 'Status' in df.columns:
                 df['COMBINED_KEY'] = df['Account No.'].astype(str) + '_' + df['Status'].astype(str)
