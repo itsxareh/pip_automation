@@ -965,7 +965,6 @@ class ROBBikeProcessor(BaseProcessor):
                     (df['Status'].isin(common_statuses)) &
                     (df['subStatus'].str.upper() == substatus_value.upper())
                 ]
-                st.write(temp_df)
                 if not temp_df.empty and row_index <= 14:
                     bottom_rows.append({
                         'Key': f'C{row_index}',
@@ -986,7 +985,9 @@ class ROBBikeProcessor(BaseProcessor):
                         'Value': label
                     })
                     row_index += 1
-            
+                    
+                st.write(bottom_rows)
+                
             for blank_row in range(row_index, 15):
                 bottom_rows.append({'Key': f'C{blank_row}', 'Value': ''})
                 bottom_rows.append({'Key': f'D{blank_row}', 'Value': ''})
