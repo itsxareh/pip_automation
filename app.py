@@ -638,7 +638,6 @@ class ROBBikeProcessor(BaseProcessor):
                     remove_duplicates=False, remove_blanks=False, trim_spaces=False, report_date=None):
         try:
             df = pd.read_excel(io.BytesIO(file_content))
-            
             df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
             
             if 'Time' in df.columns:
@@ -1121,9 +1120,17 @@ class ROBBikeProcessor(BaseProcessor):
         
         except Exception as e:
             st.error(f"Error processing daily remark: {str(e)}")
-            import traceback
             return None, None, None
 
+    def process_new_endorsement(self, file_content, preview_only=False,
+                    remove_duplicates=False, remove_blanks=False, trim_spaces=False, report_date=None):
+        try:
+            df = pd.read_excel(io.BytesIO(file_content))
+            df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
+            
+        except Exception as e:
+            st.error(f"Error processing new endo: {str(e)}")
+            return None, None, None
 class NoProcessor(BaseProcessor):
     pass
 
@@ -1146,10 +1153,11 @@ CAMPAIGN_CONFIG = {
         "processor": BPIProcessor
     },
     "ROB Bike": {
-        "automation_options": ["Data Clean", "Daily Remark Report"],
+        "automation_options": ["Data Clean", "Daily Remark Report", "Endorsement"],
         "automation_map": {
             "Data Clean": "clean_only",
             "Daily Remark Report": "process_daily_remark",
+            "Endorsement": "process_new_endorsement", 
         },
         "processor": ROBBikeProcessor
     }
