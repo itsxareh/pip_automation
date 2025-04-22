@@ -1410,7 +1410,13 @@ def main():
                             for col in df_selected.columns:
                                 if pd.api.types.is_datetime64_any_dtype(df_selected[col]):
                                     df_selected[col] = df_selected[col].dt.strftime('%Y-%m-%d')
+                                    
+                            df_selected['account_number'] = df_selected['account_number'].astype(str).str.strip()
 
+                            for col in ['chcode', 'client_name', 'stores', 'cluster']:
+                                if col in df_selected.columns:
+                                    df_selected[col] = df_selected[col].astype(str).str.strip()
+                                    
                             df_selected = df_selected.astype(object).where(pd.notnull(df_selected), None)
 
                             new_records = df_selected.to_dict(orient="records")
@@ -1425,7 +1431,10 @@ def main():
                                         existing_records.extend(batch_response.data)
                                 except Exception as e:
                                     st.warning(f"Error fetching records: {str(e)}")
-
+                                    
+                            if not existing_df.empty:
+                                existing_df['account_number'] = existing_df['account_number'].astype(str).str.strip()
+                                
                             existing_df = pd.DataFrame(existing_records) if existing_records else pd.DataFrame()
 
                             records_to_insert = []
@@ -1445,7 +1454,9 @@ def main():
 
                             for new_record in new_records:
                                 acc_id = new_record[unique_id_col]
-                                match_df = existing_df[existing_df[unique_id_col].astype(str) == str(acc_id)]
+                                acc_id_str = str(acc_id).strip()
+                                match_df = existing_df[existing_df[unique_id_col].astype(str).str.strip() == acc_id_str]
+                                
                                 if not match_df.empty:
                                     existing_record = match_df.iloc[0].to_dict()
                                     if records_differ(new_record, existing_record):
