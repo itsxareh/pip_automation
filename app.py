@@ -1613,12 +1613,15 @@ def main():
                 st.sidebar.error(f"Error reading file: {str(e)}")
                 st.stop()
         
-        selected_sheet = st.sidebar.selectbox(
-            "Select Sheet", 
-            options=sheet_names,
-            index=0,
-            key=f"{campaign}_sheet_selector"
-        )
+        if len(sheet_names) > 1 :
+            selected_sheet = st.sidebar.selectbox(
+                "Select Sheet", 
+                options=sheet_names,
+                index=0,
+                key=f"{campaign}_sheet_selector"
+            )
+        else:
+            selected_sheet = sheet_names[0]
         
         try:
             if is_encrypted:
