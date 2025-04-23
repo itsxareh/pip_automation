@@ -141,10 +141,11 @@ class BPIProcessor(BaseProcessor):
             
         return created_dirs
         
-    def process_updates_or_uploads(self, file_content, automation_type, preview_only=False,
+    def process_updates_or_uploads(self, file_content, sheet_name, automation_type, preview_only=False,
                                    remove_duplicates=False, remove_blanks=False, trim_spaces=False):
         try:
-            df = pd.read_excel(io.BytesIO(file_content))
+            xls = pd.ExcelFile(file_content)
+            df = pd.read_excel(xls, sheet_name=sheet_name)
             df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
             
             if preview_only:
@@ -253,17 +254,17 @@ class BPIProcessor(BaseProcessor):
             st.error(f"Error processing file: {str(e)}")
             raise
 
-    def process_updates(self, file_content, preview_only=False,
+    def process_updates(self, file_content, sheet_name=None, preview_only=False,
                         remove_duplicates=False, remove_blanks=False, trim_spaces=False):
-        return self.process_updates_or_uploads(file_content, 'updates', preview_only,
+        return self.process_updates_or_uploads(file_content, sheet_name, 'updates', preview_only,
                                                remove_duplicates, remove_blanks, trim_spaces)
         
-    def process_uploads(self, file_content, preview_only=False,
+    def process_uploads(self, file_content, sheet_name=None, preview_only=False,
                         remove_duplicates=False, remove_blanks=False, trim_spaces=False):
-        return self.process_updates_or_uploads(file_content, 'uploads', preview_only,
+        return self.process_updates_or_uploads(file_content, sheet_name, 'uploads', preview_only,
                                                remove_duplicates, remove_blanks, trim_spaces)
     
-    def process_cured_list(self, file_content, preview_only=False,
+    def process_cured_list(self, file_content, sheet_name=None, preview_only=False,
                            remove_duplicates=False, remove_blanks=False, trim_spaces=False):
         with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as temp_input:
             temp_input.write(file_content)
@@ -271,7 +272,8 @@ class BPIProcessor(BaseProcessor):
             
         try:
             
-            df = pd.read_excel(temp_input_path)
+            xls = pd.ExcelFile(temp_input_path)
+            df = pd.read_excel(xls, sheet_name=sheet_name)
             df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
             
             if preview_only:
@@ -634,10 +636,11 @@ class BPIProcessor(BaseProcessor):
                 os.unlink(temp_input_path)
 
 class ROBBikeProcessor(BaseProcessor):
-    def process_daily_remark(self, file_content, preview_only=False,
+    def process_daily_remark(self, file_content, sheet_name=None, preview_only=False,
                     remove_duplicates=False, remove_blanks=False, trim_spaces=False, report_date=None):
         try:
-            df = pd.read_excel(io.BytesIO(file_content))
+            xls = pd.ExcelFile(file_content)
+            df = pd.read_excel(xls, sheet_name=sheet_name)
             df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
             
             if 'Time' in df.columns:
@@ -1122,10 +1125,11 @@ class ROBBikeProcessor(BaseProcessor):
             st.error(f"Error processing daily remark: {str(e)}")
             return None, None, None
 
-    def process_new_endorsement(self, file_content, preview_only=False,
+    def process_new_endorsement(self, file_content, sheet_name=None, preview_only=False,
                     remove_duplicates=False, remove_blanks=False, trim_spaces=False, report_date=None):
         try:
-            df = pd.read_excel(io.BytesIO(file_content))
+            xls = pd.ExcelFile(file_content)
+            df = pd.read_excel(xls, sheet_name=sheet_name)
             df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
             
         except Exception as e:
@@ -1870,6 +1874,7 @@ def main():
                     if automation_type == "Cured List":
                         result = processor.process_cured_list(
                             file_content, 
+                            sheet_name=selected_sheet,
                             preview_only=False,
                             remove_duplicates=remove_duplicates, 
                             remove_blanks=remove_blanks, 
@@ -1892,7 +1897,8 @@ def main():
                     else:
                         if automation_type == "Data Clean":
                             result_df, output_binary, output_filename = getattr(processor, automation_map[automation_type])(
-                                file_content,
+                                file_content, 
+                                sheet_name=selected_sheet,
                                 preview_only=False,
                                 remove_duplicates=remove_duplicates,
                                 remove_blanks=remove_blanks,
@@ -1901,7 +1907,8 @@ def main():
                             )
                         elif automation_type == "Daily Remark Report":
                             result_df, output_binary, output_filename = getattr(processor, automation_map[automation_type])(
-                                file_content, 
+                                file_content,  
+                                sheet_name=selected_sheet,
                                 preview_only=False,
                                 remove_duplicates=remove_duplicates, 
                                 remove_blanks=remove_blanks, 
@@ -1910,7 +1917,8 @@ def main():
                             )
                         else:
                             result_df, output_binary, output_filename = getattr(processor, automation_map[automation_type])(
-                                file_content,
+                                file_content, 
+                                sheet_name=selected_sheet,
                                 preview_only=False,
                                 remove_duplicates=remove_duplicates,
                                 remove_blanks=remove_blanks,
