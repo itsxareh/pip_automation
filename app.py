@@ -271,7 +271,6 @@ class BPIProcessor(BaseProcessor):
             temp_input_path = temp_input.name
             
         try:
-            
             xls = pd.ExcelFile(temp_input_path)
             df = pd.read_excel(xls, sheet_name=sheet_name)
             df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
@@ -1947,12 +1946,15 @@ def main():
             excel_file = pd.ExcelFile(io.BytesIO(st.session_state['output_binary']))
             result_sheet_names = st.session_state['result_sheet_names']
             
-            result_sheet = st.selectbox(
-                "Select Sheet",
-                options=result_sheet_names,
-                index=0,
-                key=f"{campaign}_result_sheet"
-            )
+            if len(result_sheet_names) > 1:
+                result_sheet = st.selectbox(
+                    "Select Sheet",
+                    options=result_sheet_names,
+                    index=0,
+                    key=f"{campaign}_result_sheet"
+                )
+            else: 
+                result_sheet = result_sheet_names[0]
             
             selected_df = pd.read_excel(io.BytesIO(st.session_state['output_binary']), sheet_name=result_sheet)
             
