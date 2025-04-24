@@ -1166,9 +1166,16 @@ def main():
     st.set_page_config(
         page_title="Automation Tool",
         layout="wide")
-    st.title("Automation Tool")
+    st.title("Automation Tool") 
     st.markdown("Transform Files into CMS Format")
-
+    st.markdown("""
+            <style>
+            /* Main page styling */
+            .main {
+                font-size: 12px;
+            }
+    """, unsafe_allow_html=True)
+    st.markdown("<main>", unsafe_allow_html=True)
     campaign = st.sidebar.selectbox("Select Campaign", ["No Campaign","BPI", "ROB Bike"], index=0)
     config = CAMPAIGN_CONFIG[campaign]
     processor = config["processor"]()
@@ -1969,6 +1976,7 @@ def main():
             st.success(f"File processed successfully! Download '{st.session_state['output_filename']}'")
     st.sidebar.markdown("---")
     st.sidebar.markdown("© 2025 Automation Tool")
-
+    st.sidebar.markdown("</main>")
+    
 if __name__ == "__main__":
     main()
