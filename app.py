@@ -1159,19 +1159,40 @@ class ROBBikeProcessor(BaseProcessor):
                 df['Endrosement OB'] = pd.to_numeric(df['Endrosement OB'], errors='coerce')
                 zero_ob_rows = df[df['Endrosement OB'] == 0]
                 if not zero_ob_rows.empty:
-                    st.warning(f"Found {len(zero_ob_rows)} rows with 0 in Endorsement OB")
+                    st.warning(f"Found {len(zero_ob_rows)} rows with 0 in Endrosement OB")
             
             if preview_only:
                 return df, None, None
             
-            current_date = datetime.now().strftime('%Y-%m-%d')
-            output_filename = f"rob_bike-new-({current_date}).xlsx"
+            result_df = df
+            output_filename = f"rob_bike-new-{datetime.now().strftime('%Y-%m-%d')}.xlsx"
+            output_path = os.path.join(os.getcwd(), output_filename) 
             
-            output_buffer = pd.ExcelWriter(output_filename, engine='openpyxl')
-            df.to_excel(output_buffer, index=False)
-            output_buffer.close()
             
-            return df, output_filename, None
+            with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
+                result_df.to_excel(writer, index=False, sheet_name='Sheet1')
+                
+                worksheet = writer.sheets['Sheet1']
+                final_columns = result_df.columns
+                
+                for i, col in enumerate(final_columns):
+                    col_letter = chr(65 + i)
+                    
+                    if col == 'ENDO DATE':
+                        for row in range(2, len(result_df) + 2):
+                            cell = worksheet[f"{col_letter}{row}"]
+                            value = cell.value
+                            if value:
+                                try:
+                                    cell.value = pd.to_datetime(value).strftime("%m/%d/%Y")
+                                    cell.number_format = '@'
+                                except:
+                                    pass
+                                
+            with open(output_path, 'rb') as f:
+                output_binary = f.read()
+            
+            return result_df, output_binary, output_filename
         
         except Exception as e:
             st.error(f"Error processing new endorsement: {str(e)}")
