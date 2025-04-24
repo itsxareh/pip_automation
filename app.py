@@ -1121,15 +1121,58 @@ class ROBBikeProcessor(BaseProcessor):
             return None, None, None
 
     def process_new_endorsement(self, file_content, sheet_name=None, preview_only=False,
-                    remove_duplicates=False, remove_blanks=False, trim_spaces=False, report_date=None):
+                            remove_duplicates=False, remove_blanks=False, trim_spaces=False):
         try:
             xls = pd.ExcelFile(file_content)
             df = pd.read_excel(xls, sheet_name=sheet_name)
             df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
             
+            if 'Endorsement Date' in df.columns:
+                df = df.drop(columns='Endorsement Date')
+                st.write('Removed existing Endorsement Date Column')
+            
+            if 'Account Number' in df.columns:
+                account_numbers_list = [str(int(acc)) for acc in df['Account Number'].dropna().unique().tolist()]
+                
+                account_numbers = supabase.table('rob_bike_dataset').select('account_number').in_('account_number', account_numbers_list).execute()
+                
+                existing_accounts = [str(item['account_number']) for item in account_numbers.data] if hasattr(account_numbers, 'data') and account_numbers.data else []
+                
+                initial_rows = len(df)
+                df = df[~df['Account Number'].astype(str).isin(existing_accounts)]
+                removed_rows = initial_rows - len(df)
+                
+                if removed_rows > 0:
+                    st.write(f"Removed {removed_rows} rows with existing account numbers")
+                
+                if df.empty:
+                    st.warning("No new account numbers found (all account numbers exist in database)")
+                    return None, None, None
+            
+            current_date = datetime.now().strftime('%Y-%m-%d')
+            df.insert(0, 'ENDO DATE', current_date)
+            
+            if 'Endrosement OB' in df.columns:
+                zero_ob_rows = df[df['Endrosement OB'] == 0]
+                if not zero_ob_rows.empty:
+                    st.warning(f"Found {len(zero_ob_rows)} rows with 0 in Endorsement OB")
+            
+            if preview_only:
+                return df, None, None
+            
+            current_date = datetime.now().strftime('%Y-%m-%d')
+            output_filename = f"rob_bike-new-({current_date}).xlsx"
+            
+            output_buffer = pd.ExcelWriter(output_filename, engine='openpyxl')
+            df.to_excel(output_buffer, index=False)
+            output_buffer.close()
+            
+            return df, output_filename, None
+        
         except Exception as e:
             st.error(f"Error processing new endorsement: {str(e)}")
             return None, None, None
+    
 class NoProcessor(BaseProcessor):
     pass
 
