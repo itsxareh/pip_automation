@@ -1176,7 +1176,7 @@ def main():
             }
     """, unsafe_allow_html=True)
     
-    st.markdown("<div class='main'>", unsafe_allow_html=True)
+    st.markdown("<div class='mainaaaaaa'>", unsafe_allow_html=True)
     
     campaign = st.sidebar.selectbox("Select Campaign", ["No Campaign","BPI", "ROB Bike"], index=0)
     config = CAMPAIGN_CONFIG[campaign]
