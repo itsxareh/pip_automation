@@ -1171,12 +1171,12 @@ def main():
     st.markdown("""
             <style>
             /* Main page styling */
-            main {
+            .main {
                 font-size: 12px;
             }
     """, unsafe_allow_html=True)
     
-    st.markdown("<main>", unsafe_allow_html=True)
+    st.markdown("<div classname='main'>", unsafe_allow_html=True)
     
     campaign = st.sidebar.selectbox("Select Campaign", ["No Campaign","BPI", "ROB Bike"], index=0)
     config = CAMPAIGN_CONFIG[campaign]
@@ -1979,7 +1979,7 @@ def main():
     st.sidebar.markdown("---")
     st.sidebar.markdown("© 2025 Automation Tool")
     
-    st.sidebar.markdown("</main>", unsafe_allow_html=True)
+    st.sidebar.markdown("</div>", unsafe_allow_html=True)
     
 if __name__ == "__main__":
     main()
