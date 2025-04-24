@@ -1368,9 +1368,10 @@ def main():
             try:
                 xls = pd.ExcelFile(upload_dataset)
                 df = pd.read_excel(xls)
-                    
-                df_clean = df.replace({np.nan: 0})
-            
+                required_columns = [col for col in df.columns if col in sum(possible_column_variants.values(), [])]
+                df_filtered = df[required_columns]
+                df_clean = df_filtered.replace({np.nan: 0})
+                
                 df_filtered = df_clean.copy()
                 
                 st.subheader("Uploaded Dataset:")
@@ -1396,6 +1397,7 @@ def main():
                     'cluster'
                 ]
                 
+                
                 column_mapping = {}
                 for (key, variants), target in zip(possible_column_variants.items(), target_columns):
                     for variant in variants:
@@ -1405,7 +1407,7 @@ def main():
                         
                 if len(column_mapping) == len(target_columns):
                     df_selected = df_filtered[list(column_mapping.keys())].rename(columns=column_mapping)
-                    
+
                     df_selected = df_selected.rename(columns=column_mapping)
                     
                     button_placeholder = st.empty()
