@@ -1127,7 +1127,7 @@ class ROBBikeProcessor(BaseProcessor):
                 file_content = io.BytesIO(file_content)
             
             xls = pd.ExcelFile(file_content)
-            df = pd.read_excel(xls, sheet_name=sheet_name, dtype={'OB': str, 'Endorsement OB': str, 'Account Number': str})
+            df = pd.read_excel(xls, sheet_name=sheet_name)
             df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
             
             if 'Endorsement Date' in df.columns:
@@ -1201,7 +1201,6 @@ class ROBBikeProcessor(BaseProcessor):
                                 except:
                                     pass
             
-            # Read the file as binary
             with open(output_path, 'rb') as f:
                 output_binary = f.read()
             
