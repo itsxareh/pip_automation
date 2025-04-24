@@ -1177,6 +1177,9 @@ def main():
                 font-size: 12px;
                 margin-bottom: 15px;
             }
+            .st-bm st-ak st-bn st-bo st-bp st-ar st-bq st-br st-bs{
+                font-size: 12px;
+            }
             div[data-testid="stToolbar"] {
                 display: none;
             }
