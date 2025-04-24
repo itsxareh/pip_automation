@@ -675,7 +675,7 @@ class ROBBikeProcessor(BaseProcessor):
             if 'Account No.' in df.columns and 'Status' in df.columns:
                 initial_duplicates = df.duplicated(subset=['Account No.', 'Status']).sum()
                 df['COMBINED_KEY'] = df['Account No.'].astype(str) + '_' + df['Status'].astype(str)
-                remaining_duplicates = df.duplicated(subset=['COMBINED_KEY']).sum()
+                #remaining_duplicates = df.duplicated(subset=['COMBINED_KEY']).sum()
                 df = df.drop_duplicates(subset=['COMBINED_KEY'])
                 df = df.drop(columns=['COMBINED_KEY'])
             
