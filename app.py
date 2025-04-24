@@ -677,6 +677,8 @@ class ROBBikeProcessor(BaseProcessor):
                                 
                 df['COMBINED_KEY'] = df['Account No.'].astype(str) + '_' + df['Status'].astype(str)
                 remaining_duplicates = df.duplicated(subset=['COMBINED_KEY']).sum()
+                st.write(initial_duplicates)
+                st.write(remaining_duplicates)
                 df = df.drop_duplicates(subset=['COMBINED_KEY'])
                 df = df.drop(columns=['COMBINED_KEY'])
             
@@ -938,8 +940,6 @@ class ROBBikeProcessor(BaseProcessor):
             ]
             ptp_count = filtered_ptp.shape[0]
             
-            st.write("Worked: ", total_principal, " (", total_accounts, "), Repo: ", repo_amount, " (", repo_count, "), PTP: ", ptp_amount, " (", ptp_count, ")")
-            
             eod_data = {
                 'Key': ['C2', 'D2', 'C5', 'D5', 'C9', 'D9'],
                 'Value': [total_principal, total_accounts, repo_amount, repo_count, ptp_amount, ptp_count]
@@ -979,8 +979,6 @@ class ROBBikeProcessor(BaseProcessor):
                         'Value': label
                     })
                     row_index += 1
-                    
-            st.write(bottom_rows)
             
             for blank_row in range(row_index, 15):
                 bottom_rows.append({'Key': f'C{blank_row}', 'Value': ''})
