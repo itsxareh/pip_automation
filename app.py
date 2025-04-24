@@ -1157,7 +1157,7 @@ class ROBBikeProcessor(BaseProcessor):
                     st.warning("No new account numbers found (all account numbers exists)")
                     return None, None, None
             
-            current_date = datetime.now().strftime('%Y-%m-%d')
+            current_date = datetime.now().strftime('%Y/%m/%d')
             df.insert(0, 'ENDO DATE', current_date)
             
             if 'Endrosement OB' in df.columns:
