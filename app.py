@@ -1127,19 +1127,25 @@ class ROBBikeProcessor(BaseProcessor):
                 file_content = io.BytesIO(file_content)
             
             xls = pd.ExcelFile(file_content)
-            df = pd.read_excel(xls, sheet_name=sheet_name)
+            df = pd.read_excel(xls, sheet_name=sheet_name, dtype={'OB': str, 'Endorsement OB': str, 'Account Number': str})
             df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
             
             if 'Endorsement Date' in df.columns:
                 df = df.drop(columns='Endorsement Date')
-                st.write('Removed existing Endorsement Date')
+                st.write('Removed existing Endorsement Date Column')
             
             if 'Account Number' in df.columns:
-                account_numbers_list = [str(int(acc)) for acc in df['Account Number'].dropna().unique().tolist()]
+                account_numbers_list = [str(acc) for acc in df['Account Number'].dropna().unique().tolist()]
                 
-                account_numbers = supabase.table('rob_bike_dataset').select('account_number').in_('account_number', account_numbers_list).execute()
+                batch_size = 100 
+                existing_accounts = []
                 
-                existing_accounts = [str(item['account_number']) for item in account_numbers.data] if hasattr(account_numbers, 'data') and account_numbers.data else []
+                for i in range(0, len(account_numbers_list), batch_size):
+                    batch = account_numbers_list[i:i + batch_size]
+                    response = supabase.table('rob_bike_dataset').select('account_number').in_('account_number', batch).execute()
+                    
+                    if hasattr(response, 'data') and response.data:
+                        existing_accounts.extend([str(item['account_number']) for item in response.data])
                 
                 initial_rows = len(df)
                 df = df[~df['Account Number'].astype(str).isin(existing_accounts)]
@@ -1159,15 +1165,16 @@ class ROBBikeProcessor(BaseProcessor):
                 df['Endrosement OB'] = pd.to_numeric(df['Endrosement OB'], errors='coerce')
                 zero_ob_rows = df[df['Endrosement OB'] == 0]
                 if not zero_ob_rows.empty:
-                    st.warning(f"Found {len(zero_ob_rows)} rows with 0 in Endrosement OB")
+                    st.warning(f"Found {len(zero_ob_rows)} rows with 0 in Endorsement OB")
             
             if preview_only:
                 return df, None, None
             
             result_df = df
             output_filename = f"rob_bike-new-{datetime.now().strftime('%Y-%m-%d')}.xlsx"
-            output_path = os.path.join(os.getcwd(), output_filename) 
+            output_path = os.path.join(os.getcwd(), output_filename)  
             
+            # numeric_cols = ['Endrosement OB']  
             
             with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
                 result_df.to_excel(writer, index=False, sheet_name='Sheet1')
@@ -1177,6 +1184,11 @@ class ROBBikeProcessor(BaseProcessor):
                 
                 for i, col in enumerate(final_columns):
                     col_letter = chr(65 + i)
+                    
+                    # if col in numeric_cols:
+                    #     for row in range(2, len(result_df) + 2):
+                    #         cell = worksheet[f"{col_letter}{row}"]
+                    #         cell.number_format = '0.00'
                     
                     if col == 'ENDO DATE':
                         for row in range(2, len(result_df) + 2):
@@ -1188,7 +1200,8 @@ class ROBBikeProcessor(BaseProcessor):
                                     cell.number_format = '@'
                                 except:
                                     pass
-                                
+            
+            # Read the file as binary
             with open(output_path, 'rb') as f:
                 output_binary = f.read()
             
