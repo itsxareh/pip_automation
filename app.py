@@ -1166,18 +1166,22 @@ def main():
     st.set_page_config(
         page_title="Automation Tool",
         layout="wide")
-    st.title("Automation Tool") 
-    st.markdown("Transform Files into CMS Format")
+    
     st.markdown("""
         <style>
-            .mainaa {
-                font-size: 20px;
+            .main {
+                font-size: 12px;
                 color: #2c3e50;
             }
         </style>
     """, unsafe_allow_html=True)
     
-    st.markdown("<div class='mainaa'>Welcome to the Automation Tool!</div>", unsafe_allow_html=True)
+    st.markdown("<div class='main'>", unsafe_allow_html=True)
+    st.title("Automation Tool") 
+    st.markdown("Transform Files into CMS Format")
+
+    
+
     
     campaign = st.sidebar.selectbox("Select Campaign", ["No Campaign","BPI", "ROB Bike"], index=0)
     config = CAMPAIGN_CONFIG[campaign]
