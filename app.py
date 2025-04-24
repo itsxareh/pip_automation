@@ -1179,7 +1179,7 @@ def main():
             }
             div[data-baseweb] {
                 font-size: 12px;
-                height: auto;
+                line-height: 0;
             }
             div[data-testid="stToolbar"] {
                 display: none;
