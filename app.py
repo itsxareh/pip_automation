@@ -1123,6 +1123,9 @@ class ROBBikeProcessor(BaseProcessor):
     def process_new_endorsement(self, file_content, sheet_name=None, preview_only=False,
                             remove_duplicates=False, remove_blanks=False, trim_spaces=False):
         try:
+            if isinstance(file_content, bytes):
+                file_content = io.BytesIO(file_content)
+            
             xls = pd.ExcelFile(file_content)
             df = pd.read_excel(xls, sheet_name=sheet_name)
             df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
@@ -1153,6 +1156,7 @@ class ROBBikeProcessor(BaseProcessor):
             df.insert(0, 'ENDO DATE', current_date)
             
             if 'Endrosement OB' in df.columns:
+                df['Endrosement OB'] = pd.to_numeric(df['Endrosement OB'], errors='coerce')
                 zero_ob_rows = df[df['Endrosement OB'] == 0]
                 if not zero_ob_rows.empty:
                     st.warning(f"Found {len(zero_ob_rows)} rows with 0 in Endorsement OB")
