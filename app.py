@@ -1132,7 +1132,6 @@ class ROBBikeProcessor(BaseProcessor):
             
             if 'Endorsement Date' in df.columns:
                 df = df.drop(columns='Endorsement Date')
-                st.write('Removed existing Endorsement Date Column')
             
             if 'Account Number' in df.columns:
                 account_numbers_list = [str(acc) for acc in df['Account Number'].dropna().unique().tolist()]
@@ -1155,7 +1154,7 @@ class ROBBikeProcessor(BaseProcessor):
                     st.write(f"Removed {removed_rows} rows with existing account numbers")
                 
                 if df.empty:
-                    st.warning("No new account numbers found (all account numbers exist in database)")
+                    st.warning("No new account numbers found (all account numbers exists)")
                     return None, None, None
             
             current_date = datetime.now().strftime('%Y-%m-%d')
