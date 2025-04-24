@@ -1129,7 +1129,7 @@ class ROBBikeProcessor(BaseProcessor):
             
             if 'Endorsement Date' in df.columns:
                 df = df.drop(columns='Endorsement Date')
-                st.write('Removed existing Endorsement Date Column')
+                st.write('Removed existing Endorsement Date')
             
             if 'Account Number' in df.columns:
                 account_numbers_list = [str(int(acc)) for acc in df['Account Number'].dropna().unique().tolist()]
