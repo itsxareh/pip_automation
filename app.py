@@ -674,11 +674,8 @@ class ROBBikeProcessor(BaseProcessor):
                 
             if 'Account No.' in df.columns and 'Status' in df.columns:
                 initial_duplicates = df.duplicated(subset=['Account No.', 'Status']).sum()
-                                
                 df['COMBINED_KEY'] = df['Account No.'].astype(str) + '_' + df['Status'].astype(str)
                 remaining_duplicates = df.duplicated(subset=['COMBINED_KEY']).sum()
-                st.write(initial_duplicates)
-                st.write(remaining_duplicates)
                 df = df.drop_duplicates(subset=['COMBINED_KEY'])
                 df = df.drop(columns=['COMBINED_KEY'])
             
@@ -704,7 +701,7 @@ class ROBBikeProcessor(BaseProcessor):
                     st.warning(f"Found {len(invalid_amount_rows)} row(s) with 'PTP - VOLUNTARY SURRENDER' but 0 or missing 'PTP Amount'.")
                     st.dataframe(invalid_amount_rows, use_container_width=True)
                     
-            st.write(f"Removed: {removed_dnc_count} DNC, {removed_blank_count} blank status, {removed_invalid_dispo_count} invalid disposition, {system_remarks_count} SYSTEM remarks, {initial_duplicates - remaining_duplicates} duplicates.")
+            st.write(f"Removed: {removed_dnc_count} DNC, {removed_blank_count} blank status, {removed_invalid_dispo_count} invalid disposition, {system_remarks_count} SYSTEM remarks, {initial_duplicates} duplicates.")
 
             if preview_only:
                 return df, None, None
