@@ -1148,7 +1148,7 @@ class ROBBikeProcessor(BaseProcessor):
                         existing_accounts.extend([str(item['account_number']) for item in response.data])
                 
                 initial_rows = len(df)
-                df = df[~df['Account Number'].astype(str).isin(existing_accounts)]
+                df = df[~df['Account Number'].astype(str).strip().isin(existing_accounts)]
                 removed_rows = initial_rows - len(df)
                 
                 if removed_rows > 0:
