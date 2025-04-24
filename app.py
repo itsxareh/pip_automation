@@ -1171,7 +1171,7 @@ def main():
     st.markdown("""
             <style>
             /* Main page styling */
-            .main {
+            main {
                 font-size: 12px;
             }
     """, unsafe_allow_html=True)
