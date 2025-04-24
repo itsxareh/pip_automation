@@ -1170,13 +1170,26 @@ def main():
     st.markdown("""
         <style>
             .title {
-                font-size: 30px;
-                color: #1e3799;
+                font-size: 24px;
                 font-weight: bold;
             }
             .sub-title {
-                font-size: 18px;
+                font-size: 12px;
                 margin-bottom: 15px;
+            }
+            div[data-testid="stToolbar"] {
+                display: none;
+            }
+            div[data-testid="stFileUploaderDropzoneInstructions"] {
+                display: none;
+            }
+            section[data-testid="stFileUploaderDropzone"] {
+                padding: 0px;
+                margin: 0px;
+                font-size: 12px;
+            }
+            button[data-testid="stBaseButton-secondary"] {
+                width: 100%;
             }
         </style>
     """, unsafe_allow_html=True)
@@ -1195,21 +1208,7 @@ def main():
 
     preview = st.sidebar.checkbox("Preview file before processing", value=True, key=f"{campaign}_preview")
     st.markdown("""
-            <style>
-            div[data-testid="stToolbar"] {
-                display: none;
-            }
-            div[data-testid="stFileUploaderDropzoneInstructions"] {
-                display: none;
-            }
-            section[data-testid="stFileUploaderDropzone"] {
-                padding: 0px;
-                margin: 0px;
-            }
-            button[data-testid="stBaseButton-secondary"] {
-                width: 100%;
-            }
-            </style>
+
         """, unsafe_allow_html=True)
     uploaded_file = st.sidebar.file_uploader(
         "Upload File", 
