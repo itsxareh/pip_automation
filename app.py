@@ -1169,20 +1169,21 @@ def main():
     
     st.markdown("""
         <style>
-            .main {
-                font-size: 12px;
-                color: #2c3e50;
+            .title {
+                font-size: 30px;
+                color: #1e3799;
+                font-weight: bold;
+            }
+            .sub-title {
+                font-size: 18px;
+                margin-bottom: 15px;
             }
         </style>
     """, unsafe_allow_html=True)
     
-    st.markdown("<div class='main'>", unsafe_allow_html=True)
-    st.title("Automation Tool") 
-    st.markdown("Transform Files into CMS Format")
+    st.markdown("<div class='title'>Automation Tool</div>", unsafe_allow_html=True)
+    st.markdown("<div class='sub-title'>Transform Files into CMS Format</div>", unsafe_allow_html=True)
 
-    
-
-    
     campaign = st.sidebar.selectbox("Select Campaign", ["No Campaign","BPI", "ROB Bike"], index=0)
     config = CAMPAIGN_CONFIG[campaign]
     processor = config["processor"]()
