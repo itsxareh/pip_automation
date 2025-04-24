@@ -1369,6 +1369,17 @@ def main():
                 xls = pd.ExcelFile(upload_dataset)
                 df = pd.read_excel(xls)
                 
+                for col in df.columns:
+                    if df[col].apply(type).nunique() > 1:
+                        df[col] = df[col].astype(str)
+                        
+                df_clean = df.replace({np.nan: 0})
+                
+                df_filtered = df_clean.copy()
+                    
+                st.subheader("Uploaded Dataset:")
+                st.dataframe(df_filtered)
+                
                 possible_column_variants = {
                     'ChCode': ['ChCode'],
                     'Account Number': ['Account Number', 'Account_Number'],
@@ -1388,15 +1399,6 @@ def main():
                     'stores',
                     'cluster'
                 ]
-                
-                required_columns = [col for col in df.columns if col in sum(possible_column_variants.values(), [])]
-                df_filtered = df[required_columns]
-                df_clean = df_filtered.replace({np.nan: 0})
-                
-                df_filtered = df_clean.copy()
-                
-                st.subheader("Uploaded Dataset:")
-                st.dataframe(df_filtered)
                 
                 column_mapping = {}
                 for (key, variants), target in zip(possible_column_variants.items(), target_columns):
