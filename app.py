@@ -144,7 +144,8 @@ class BPIProcessor(BaseProcessor):
     def process_updates_or_uploads(self, file_content, sheet_name, automation_type, preview_only=False,
                                    remove_duplicates=False, remove_blanks=False, trim_spaces=False):
         try:
-            xls = pd.ExcelFile(file_content)
+            byte_stream = io.BytesIO(file_content)
+            xls = pd.ExcelFile(byte_stream)
             df = pd.read_excel(xls, sheet_name=sheet_name)
             df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
             
@@ -638,7 +639,8 @@ class ROBBikeProcessor(BaseProcessor):
     def process_daily_remark(self, file_content, sheet_name=None, preview_only=False,
                     remove_duplicates=False, remove_blanks=False, trim_spaces=False, report_date=None):
         try:
-            xls = pd.ExcelFile(file_content)
+            byte_stream = io.BytesIO(file_content)
+            xls = pd.ExcelFile(byte_stream)
             df = pd.read_excel(xls, sheet_name=sheet_name)
             df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
             
