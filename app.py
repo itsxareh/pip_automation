@@ -1418,18 +1418,19 @@ def main():
                         
                         try:
                             unique_id_col = 'account_number'
-                            unique_ids = df_selected[unique_id_col].unique().tolist()
+                            unique_ids = df_selected[unique_id_col].astype(str).str.strip().unique().tolist()
                             
                             for col in df_selected.columns:
                                 if pd.api.types.is_datetime64_any_dtype(df_selected[col]):
                                     df_selected[col] = df_selected[col].dt.strftime('%Y-%m-%d')
                             
                             df_selected = df_selected.astype(object).where(pd.notnull(df_selected), None)
+                            df_selected[unique_id_col] = df_selected[unique_id_col].astype(str).str.strip() 
                             
                             new_records = df_selected.to_dict(orient="records")
                             
                             existing_records = []
-                            batch_size_for_query = 20 
+                            batch_size_for_query = 20
                             
                             progress_bar = st.progress(0)
                             status_text = status_placeholder.empty()
@@ -1437,12 +1438,11 @@ def main():
                             
                             for i in range(0, len(unique_ids), batch_size_for_query):
                                 batch_ids = unique_ids[i:i+batch_size_for_query]
-                                batch_ids = [id for id in batch_ids if id is not None and str(id).strip() != '']
+                                batch_ids = [id for id in batch_ids if id is not None and id != '']
                                 
                                 if batch_ids:
                                     try:
                                         batch_response = supabase.table(TABLE_NAME).select("*").in_(unique_id_col, batch_ids).execute()
-                                        
                                         if hasattr(batch_response, 'data') and batch_response.data:
                                             existing_records.extend(batch_response.data)
                                     except Exception as e:
@@ -1452,6 +1452,8 @@ def main():
                                 progress_bar.progress(progress_value)
                             
                             existing_df = pd.DataFrame(existing_records) if existing_records else pd.DataFrame()
+                            if not existing_df.empty:
+                                existing_df[unique_id_col] = existing_df[unique_id_col].astype(str).str.strip()
                             
                             records_to_insert = []
                             records_to_update = []
@@ -1463,15 +1465,16 @@ def main():
                             
                             def records_differ(new_record, existing_record):
                                 for key, value in new_record.items():
-                                    if key in existing_record and str(value) != str(existing_record[key]):
+                                    if key in existing_record and str(value).strip() != str(existing_record[key]).strip():
                                         return True
                                 return False
                             
                             for new_record in new_records:
                                 processed_count += 1
+                                account_number = str(new_record[unique_id_col]).strip()
                                 
                                 if not existing_df.empty:
-                                    matching_records = existing_df[existing_df[unique_id_col] == new_record[unique_id_col]]
+                                    matching_records = existing_df[existing_df[unique_id_col] == account_number]
                                     
                                     if not matching_records.empty:
                                         existing_record = matching_records.iloc[0].to_dict()
@@ -1482,7 +1485,7 @@ def main():
                                         records_to_insert.append(new_record)
                                 else:
                                     records_to_insert.append(new_record)
-                                    
+                                
                                 progress_value = min(1.0, processed_count / total_records)
                                 progress_bar.progress(progress_value)
                             
@@ -1501,7 +1504,6 @@ def main():
                                     if batch:
                                         try:
                                             response = supabase.table(TABLE_NAME).insert(batch).execute()
-                                            
                                             if hasattr(response, 'data') and response.data:
                                                 success_count += len(batch)
                                         except Exception as e:
@@ -1517,11 +1519,10 @@ def main():
                                 progress_bar.progress(0)
                                 
                                 for i, record in enumerate(records_to_update):
-                                    record_id = record.pop('id') 
+                                    record_id = record.pop('id')
                                     
                                     try:
                                         response = supabase.table(TABLE_NAME).update(record).eq('id', record_id).execute()
-                                        
                                         if hasattr(response, 'data') and response.data:
                                             update_count += 1
                                     except Exception as e:
@@ -1538,7 +1539,7 @@ def main():
                             else:
                                 st.warning("No records were processed. Either no changes were needed or the operation failed.")
                                 button_placeholder.button("Try Again", key="retry_dataset_button")
-                                    
+                        
                         except Exception as e:
                             st.error(f"Error uploading dataset: {str(e)}")
                             import traceback
