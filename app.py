@@ -948,7 +948,7 @@ class ROBBikeProcessor(BaseProcessor):
 
             priority_substatus = [
                 ("FULLY PAID", "PAY OFF"),
-                ("PARTIAL PAYMENT", "STILL PD BUT WITH ARRANGEMENT"),
+                ("PARTIAL TO UPDATE", "STILL PD BUT WITH ARRANGEMENT"),
                 ("FULL UPDATE", "STILL PD BUT WITH ARRANGEMENT")
             ]
 
@@ -965,7 +965,7 @@ class ROBBikeProcessor(BaseProcessor):
                         'Value': temp_df['Balance'].sum()
                     })
                     
-                    if substatus_value.upper() == "FULLY PAID":
+                    if substatus_value.upper == "PARTIAL TO UPDATE" or substatus_value.upper() == "FULLY PAID":
                         ptp_value = temp_df['Claim Paid Amount'].sum()
                     else:
                         ptp_value = temp_df['PTP Amount'].sum()
