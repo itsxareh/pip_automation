@@ -682,6 +682,9 @@ class ROBBikeProcessor(BaseProcessor):
                 df = df.drop(columns=['COMBINED_KEY'])
             
             if 'Remark By' in df.columns:
+                jerivera_remarks = df['Remark By'].str.contains('JERIVERA', case=False, na=False)
+                system_remarks_count = jerivera_remarks.sum()
+                df = df[~jerivera_remarks]
                 system_remarks = df['Remark By'].str.contains('SYSTEM', case=False, na=False)
                 system_remarks_count = system_remarks.sum()
                 df = df[~system_remarks]
@@ -964,7 +967,7 @@ class ROBBikeProcessor(BaseProcessor):
                         'Value': temp_df['Balance'].sum()
                     })
                     
-                    if substatus_value.upper() == "PARTIAL TO UPDATE" or substatus_value.upper() == "FULLY PAID":
+                    if "PARTIAL" in substatus_value.upper() or "FULLY PAID" in substatus_value.upper():
                         ptp_value = temp_df['Claim Paid Amount'].sum()
                     else:
                         ptp_value = temp_df['PTP Amount'].sum()
