@@ -1224,7 +1224,7 @@ CAMPAIGN_CONFIG = {
         "processor": NoProcessor    
     },
     "BPI": {
-        "automation_options": ["Uploads", "Updates", "Cured List"],
+        "automation_options": ["Updates", "Uploads", "Cured List"],
         "automation_map": {
             "Uploads": "process_uploads",
             "Updates": "process_updates",
