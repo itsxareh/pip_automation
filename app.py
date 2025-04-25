@@ -1224,7 +1224,7 @@ CAMPAIGN_CONFIG = {
         "processor": NoProcessor    
     },
     "BPI": {
-        "automation_options": ["Data Clean", "Uploads", "Updates", "Cured List"],
+        "automation_options": ["Uploads", "Updates", "Cured List"],
         "automation_map": {
             "Uploads": "process_uploads",
             "Updates": "process_updates",
@@ -1233,7 +1233,7 @@ CAMPAIGN_CONFIG = {
         "processor": BPIProcessor
     },
     "ROB Bike": {
-        "automation_options": ["Data Clean", "Daily Remark Report", "Endorsement"],
+        "automation_options": ["Daily Remark Report", "Endorsement"],
         "automation_map": {
             "Daily Remark Report": "process_daily_remark",
             "Endorsement": "process_new_endorsement", 
