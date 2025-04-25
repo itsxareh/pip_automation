@@ -959,18 +959,18 @@ class ROBBikeProcessor(BaseProcessor):
             for substatus_value, label in priority_substatus:
                 temp_df = df[
                     (df['Status'].isin(payment_statuses)) &
-                    (df['subStatus'].str.upper() == substatus_value.upper())
+                    (df['subStatus'].str.upper().str.contains(substatus_value.upper()))
                 ]
                 if not temp_df.empty and row_index <= 14:
                     bottom_rows.append({
                         'Key': f'C{row_index}',
                         'Value': temp_df['Balance'].sum()
                     })
-                    
-                    # if "PARTIAL" in substatus_value.upper() or "FULLY PAID" in substatus_value.upper():
-                    #     ptp_value = temp_df['Claim Paid Amount'].sum()
-                    # else:
-                    ptp_value = temp_df['PTP Amount'].sum()
+
+                    if "PARTIAL" in substatus_value.upper() or "FULLY PAID" in substatus_value.upper():
+                        ptp_value = temp_df['Claim Paid Amount'].sum()
+                    else:
+                        ptp_value = temp_df['PTP Amount'].sum()
 
                     bottom_rows.append({
                         'Key': f'D{row_index}',
