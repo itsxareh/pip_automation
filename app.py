@@ -950,7 +950,7 @@ class ROBBikeProcessor(BaseProcessor):
 
             priority_substatus = [
                 ("FULLY PAID", "PAY OFF"),
-                ("PARTIAL TO UPDATE", "STILL PD BUT WITH ARRANGEMENT"),
+                ("PARTIAL", "STILL PD BUT WITH ARRANGEMENT"),
                 ("FULL UPDATE", "STILL PD BUT WITH ARRANGEMENT")
             ]
 
