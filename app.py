@@ -1226,7 +1226,6 @@ CAMPAIGN_CONFIG = {
     "BPI": {
         "automation_options": ["Data Clean", "Uploads", "Updates", "Cured List"],
         "automation_map": {
-            "Data Clean": "clean_only",
             "Uploads": "process_uploads",
             "Updates": "process_updates",
             "Cured List": "process_cured_list"
@@ -1236,7 +1235,6 @@ CAMPAIGN_CONFIG = {
     "ROB Bike": {
         "automation_options": ["Data Clean", "Daily Remark Report", "Endorsement"],
         "automation_map": {
-            "Data Clean": "clean_only",
             "Daily Remark Report": "process_daily_remark",
             "Endorsement": "process_new_endorsement", 
         },
