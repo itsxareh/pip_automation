@@ -967,10 +967,10 @@ class ROBBikeProcessor(BaseProcessor):
                         'Value': temp_df['Balance'].sum()
                     })
                     
-                    if "PARTIAL" in substatus_value.upper() or "FULLY PAID" in substatus_value.upper():
-                        ptp_value = temp_df['Claim Paid Amount'].sum()
-                    else:
-                        ptp_value = temp_df['PTP Amount'].sum()
+                    # if "PARTIAL" in substatus_value.upper() or "FULLY PAID" in substatus_value.upper():
+                    #     ptp_value = temp_df['Claim Paid Amount'].sum()
+                    # else:
+                    ptp_value = monitoring_df['PTP Amount'].sum()
 
                     bottom_rows.append({
                         'Key': f'D{row_index}',
