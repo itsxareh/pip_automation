@@ -79,7 +79,7 @@ class BaseProcessor:
         cleaned_df = cleaned_df.replace(r'^\s*$', pd.NA, regex=True)
         return cleaned_df
         
-    def clean_only(self, file_content, preview_only=False, sheet_name=None, 
+    def clean_only(self, file_content, sheet_name, preview_only=False, 
                remove_duplicates=False, remove_blanks=False, trim_spaces=False, file_name=None):
         try:
             byte_stream = io.BytesIO(file_content)
