@@ -1342,7 +1342,7 @@ def main():
                         key="field_result_sheet_select"
                     )
                 else:
-                    selected_sheet = sheet_names[0]
+                    selected_sheet = sheet_options[0]
                     
                 if selected_sheet:
                     df = pd.read_excel(xls, sheet_name=selected_sheet)
@@ -1350,7 +1350,7 @@ def main():
                 
                 
                 if 'chcode' in df_clean.columns and 'status' in df_clean.columns and 'SUB STATUS' in df_clean.columns and 'DATE' in df_clean.columns and 'TIME' in df_clean.columns:
-                    df_filtered = df_clean[(df_clean['status'] != 'CANCEL') & (df_clean['bank'] == 'ROB MOTOR LOAN')].copy()
+                    df_filtered = df_clean[(df_clean['status'] != 'CANCEL') & (df_clean['bank'] == 'ROB MOTOR LOAN')]
                     df_extracted = df_filtered[['chcode', 'status', 'SUB STATUS', 'DATE', 'TIME']].copy()
                     
                     df_extracted = df_extracted.rename(columns={
