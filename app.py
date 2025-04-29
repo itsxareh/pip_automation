@@ -148,6 +148,18 @@ class BPIProcessor(BaseProcessor):
             byte_stream = io.BytesIO(file_content)
             xls = pd.ExcelFile(byte_stream)
             df = pd.read_excel(xls, sheet_name=sheet_name)
+            
+            required_columns = [
+                'LAN', 'NAME', 'CTL4', 'PAST DUE', 'PAYOFF AMOUNT', 
+                'PRINCIPAL', 'LPC', 'ADA SHORTAGE', 'UNIT', 'DPD',
+                'EMAIL', 'CONTACT NUMBER 1', 'CONTACT NUMBER 2', 'ENDO DATE'
+            ]
+            
+            if all(col in df.columns for col in required_columns):
+                pass
+            else:
+                st.error("Required columns not found in the uploaded file.")
+                
             df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
             
             if preview_only:
