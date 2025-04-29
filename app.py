@@ -40,15 +40,18 @@ class BaseProcessor:
         if not mobile_num:
             return ""
 
-        mobile_num = ''.join(filter(str.isdigit, str(mobile_num)))
-
+        mobile_num = str(mobile_num).strip().replace('-', '').replace(' ', '')
+        
         if mobile_num.startswith('639') and len(mobile_num) == 12:
-            return '0' + mobile_num[2:]
+            return '0' + mobile_num[2:] 
+
         if mobile_num.startswith('09') and len(mobile_num) == 11:
             return mobile_num
+
         if mobile_num.startswith('9') and len(mobile_num) == 10:
             return '0' + mobile_num
-        if len(mobile_num) == 10:
+
+        if len(mobile_num) == 10 and mobile_num.isdigit():
             return '0' + mobile_num
 
         return mobile_num
