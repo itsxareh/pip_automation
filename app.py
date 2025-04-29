@@ -8,12 +8,13 @@ from openpyxl import load_workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.styles import Border, Side
 import warnings
-from datetime import datetime, date, time
+from datetime import datetime, date, time, timedelta
 import io
 import tempfile
 import shutil
 import re 
-import msoffcrypto 
+import msoffcrypto
+ 
 from supabase import create_client
 from dotenv import load_dotenv
 load_dotenv()
@@ -1306,7 +1307,8 @@ def main():
     )
     
     if campaign == "ROB Bike" and automation_type == "Daily Remark Report":
-        report_date = st.sidebar.date_input('Date Report', format="MM/DD/YYYY") 
+        yesterday = datetime.now() - timedelta(days=1)
+        report_date = st.sidebar.date_input('Date Report', value=yesterday, format="MM/DD/YYYY") 
         
         with st.sidebar.expander("Upload Other File", expanded=False):
             upload_field_result = st.file_uploader(
