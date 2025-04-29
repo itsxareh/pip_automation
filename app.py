@@ -1332,10 +1332,18 @@ def main():
             
             try:
                 xls = pd.ExcelFile(upload_field_result)
-                sheet_name = next((s for s in xls.sheet_names if s.lower() == 'sheet1'), None)
-
-                if sheet_name:
-                    df = pd.read_excel(xls, sheet_name=sheet_name)
+        
+                sheet_options = xls.sheet_names
+                if len(sheet_options) > 1: 
+                    selected_sheet = st.selectbox(
+                        "Select a sheet from the Excel file:",
+                        options=sheet_options,
+                        index=0,
+                        key="field_result_sheet_select"
+                    )
+                
+                if selected_sheet:
+                    df = pd.read_excel(xls, sheet_name=selected_sheet)
                     df_clean = df.replace({np.nan: 0})
                 else:
                     st.error("Sheet named 'RESULT' not found in the uploaded file.")
@@ -1460,11 +1468,19 @@ def main():
             TABLE_NAME = 'rob_bike_dataset'
             try:
                 xls = pd.ExcelFile(upload_dataset)
-                df = pd.read_excel(xls)
-                    
-                df_clean = df.replace({np.nan: 0})
-            
-                df_filtered = df_clean.copy()
+                
+                sheet_options = xls.sheet_names
+                if len(sheet_options) > 1:
+                    selected_sheet = st.selectbox(
+                        "Select a sheet from the Excel file:",
+                        options=sheet_options,
+                        index=0,
+                        key="dataset_sheet_select"
+                    )
+                if selected_sheet:     
+                    df = pd.read_excel(xls, sheet_name=selected_sheet)
+                    df_clean = df.replace({np.nan: 0})
+                    df_filtered = df_clean.copy()
                 
                 st.subheader("Uploaded Dataset:")
                 st.dataframe(df_filtered)
@@ -1649,9 +1665,18 @@ def main():
             TABLE_NAME = 'rob_bike_disposition'
             try:
                 xls = pd.ExcelFile(upload_disposition)
-                df = pd.read_excel(xls)
-                df_clean = df.replace({np.nan: ''})
-                df_filtered = df_clean.copy()
+                
+                sheet_options = xls.sheet_names
+                if len(sheet_options > 1):
+                    selected_sheet = st.selectbox(
+                        "Select a sheet from the Excel file:",
+                        options=sheet_options,
+                        key="disposition_sheet_select"
+                    )
+                if selected_sheet:
+                    df = pd.read_excel(xls, sheet_name=selected_sheet)
+                    df_clean = df.replace({np.nan: ''})
+                    df_filtered = df_clean.copy()
 
                 st.subheader("Uploaded Disposition:")
                 st.dataframe(df_filtered)
