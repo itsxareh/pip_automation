@@ -1326,7 +1326,7 @@ def main():
             upload_repo = st.file_uploader(
                 "Repo",
                 type=["xlsx", "xls"],
-                key=f"{campaign}_disposition"
+                key=f"{campaign}_repo"
             )
             
         if upload_field_result:
