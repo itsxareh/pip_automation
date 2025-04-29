@@ -40,18 +40,15 @@ class BaseProcessor:
         if not mobile_num:
             return ""
 
-        mobile_num = str(mobile_num).strip().replace('-', '').replace(' ', '')
-        
-        if mobile_num.startswith('639') and len(mobile_num) == 12:
-            return '0' + mobile_num[2:] 
+        mobile_num = ''.join(filter(str.isdigit, str(mobile_num)))
 
+        if mobile_num.startswith('639') and len(mobile_num) == 12:
+            return '0' + mobile_num[2:]
         if mobile_num.startswith('09') and len(mobile_num) == 11:
             return mobile_num
-
         if mobile_num.startswith('9') and len(mobile_num) == 10:
             return '0' + mobile_num
-
-        if len(mobile_num) == 10 and mobile_num.isdigit():
+        if len(mobile_num) == 10:
             return '0' + mobile_num
 
         return mobile_num
@@ -495,7 +492,9 @@ class BPIProcessor(BaseProcessor):
                 
                 phone_no = ""
                 if "PAYMENT" not in action_status:
-                    phone_no = dest_ws.cell(row=row, column=12).value
+                    raw_value = dest_ws.cell(row=row, column=12).value
+                    if raw_value:
+                        phone_no = str(raw_value).strip().split('.')[0]
                 
                 if "PTP NEW" in action_status:
                     phone_value = source_phone1 if source_phone1 else source_phone2
