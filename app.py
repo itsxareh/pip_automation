@@ -351,10 +351,9 @@ class BPIProcessor(BaseProcessor):
                 phone1 = str(phone1).strip() if phone1 else ""
                 phone2 = str(phone2).strip() if phone2 else ""
                 if phone1:
-                    phone1 = re.sub(r'\D', '', phone1)
-                    st.write(phone1)
+                    phone1 = self.process_mobile_number(phone1)
                 if phone2:
-                    phone2 = re.sub(r'\D', '', phone2)
+                    phone2 = self.process_mobile_number(phone2)
                 if barcode:
                     barcode_lookup[barcode] = {
                         'date': ws.cell(row=row, column=3).value,
