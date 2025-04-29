@@ -1349,7 +1349,7 @@ def main():
                     df_clean = df.replace({np.nan: 0})
                 
                 
-                if 'chcode' in df_filtered.columns and 'status' in df_filtered.columns and 'SUB STATUS' in df_filtered.columns and 'DATE' in df_filtered.columns and 'TIME' in df_filtered.columns:
+                if 'chcode' in df_clean.columns and 'status' in df_clean.columns and 'SUB STATUS' in df_clean.columns and 'DATE' in df_clean.columns and 'TIME' in df_clean.columns:
                     df_filtered = df_clean[(df_clean['status'] != 'CANCEL') & (df_clean['bank'] == 'ROB MOTOR LOAN')].copy()
                     df_extracted = df_filtered[['chcode', 'status', 'SUB STATUS', 'DATE', 'TIME']].copy()
                     
