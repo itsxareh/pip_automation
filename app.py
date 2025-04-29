@@ -346,13 +346,21 @@ class BPIProcessor(BaseProcessor):
             barcode_lookup = {}
             for row in range(2, last_row + 1):
                 barcode = ws.cell(row=row, column=1).value
+                phone1 = ws.cell(row=row, column=42).value
+                phone2 = ws.cell(row=row, column=43).value
+                phone1 = str(phone1).strip() if phone1 else ""
+                phone2 = str(phone2).strip() if phone2 else ""
+                if phone1:
+                    phone1 = re.sub(r'\D', '', phone1)
+                if phone2:
+                    phone2 = re.sub(r'\D', '', phone2)
                 if barcode:
                     barcode_lookup[barcode] = {
-                        'date': ws.cell(row=row, column=3).value, 
-                        'amount': ws.cell(row=row, column=4).value, 
-                        'collector': ws.cell(row=row, column=2).value,  
-                        'phone1': ws.cell(row=row, column=42).value, 
-                        'phone2': ws.cell(row=row, column=43).value, 
+                        'date': ws.cell(row=row, column=3).value,
+                        'amount': ws.cell(row=row, column=4).value,
+                        'collector': ws.cell(row=row, column=2).value,
+                        'phone1': phone1,
+                        'phone2': phone2,
                     }
             
             nego_rows = []
