@@ -156,6 +156,7 @@ class BPIProcessor(BaseProcessor):
             ]
             
             if all(col in df.columns for col in required_columns):
+                st.success("All required columns are present!")
                 df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
                 
                 if preview_only:
