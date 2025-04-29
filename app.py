@@ -1323,7 +1323,7 @@ def main():
             
             try:
                 xls = pd.ExcelFile(upload_field_result)
-                sheet_name = next((s for s in xls.sheet_names if s.lower() == 'result'), None)
+                sheet_name = next((s for s in xls.sheet_names if s.lower() == 'sheet1'), None)
 
                 if sheet_name:
                     df = pd.read_excel(xls, sheet_name=sheet_name)
