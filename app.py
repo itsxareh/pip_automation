@@ -37,24 +37,19 @@ class BaseProcessor:
             pass
           
     def process_mobile_number(self, mobile_num):
-        if not mobile_num:
-            return ""
-
-        mobile_num = str(mobile_num).strip().replace('-', '').replace(' ', '')
-        
-        if mobile_num.startswith('639') and len(mobile_num) == 12:
-            return '0' + mobile_num[2:] 
-
-        if mobile_num.startswith('09') and len(mobile_num) == 11:
-            return mobile_num
-
-        if mobile_num.startswith('9') and len(mobile_num) == 10:
-            return '0' + mobile_num
-
-        if len(mobile_num) == 10 and mobile_num.isdigit():
-            return '0' + mobile_num
-
-        return mobile_num
+         """Process mobile number to standardized format"""
+         if not mobile_num:
+             return ""
+ 
+         mobile_num = str(mobile_num).strip().replace('-', '')
+ 
+         if mobile_num.startswith('639') and len(mobile_num) == 12:
+             return '0' + mobile_num[2:]
+ 
+         if mobile_num.startswith('9') and len(mobile_num) == 10:
+             return '0' + mobile_num 
+ 
+         return mobile_num if mobile_num.startswith('09') else str(mobile_num)
 
     def format_date(self, date_value):
         if pd.isna(date_value) or date_value is None:
@@ -88,32 +83,26 @@ class BaseProcessor:
     def clean_only(self, file_content, sheet_name, preview_only=False, 
                    remove_duplicates=False, remove_blanks=False, trim_spaces=False, file_name=None):
         try:
-            # Reset stream to ensure it’s readable
             byte_stream = io.BytesIO(file_content)
             byte_stream.seek(0)
             xls = pd.ExcelFile(byte_stream)
             available_sheets = xls.sheet_names
             st.write(f"clean_only - Available sheets: {available_sheets}, Requested sheet: {sheet_name}")
 
-            # Validate sheet name
             if sheet_name not in available_sheets:
                 raise ValueError(f"Worksheet named '{sheet_name}' not found in file. Available sheets: {available_sheets}")
 
-            # Read the specified sheet
             df = pd.read_excel(byte_stream, sheet_name=sheet_name)
-            byte_stream.seek(0)  # Reset for potential reuse
+            byte_stream.seek(0)
 
-            # Sanitize headers
             sanitized_headers = [re.sub(r'[^A-Za-z0-9_]', '_', str(col)) for col in df.columns]
             df.columns = sanitized_headers
 
-            # Clean data
             cleaned_df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
 
             if preview_only:
                 return cleaned_df
 
-            # Set output filename
             if file_name:
                 base_name = os.path.splitext(os.path.basename(file_name))[0]
                 output_filename = f"{base_name}.xlsx"
@@ -122,7 +111,6 @@ class BaseProcessor:
 
             output_path = os.path.join(self.temp_dir, output_filename)
 
-            # Write to Excel with adjusted column widths
             with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
                 cleaned_df.to_excel(writer, index=False, sheet_name='Sheet1')
                 worksheet = writer.sheets['Sheet1']
