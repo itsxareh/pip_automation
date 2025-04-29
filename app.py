@@ -956,35 +956,40 @@ class ROBBikeProcessor(BaseProcessor):
 
             bottom_rows = []
             row_index = 12
+
             for substatus_value, label in priority_substatus:
                 temp_df = df[
                     (df['Status'].isin(payment_statuses)) &
                     (df['subStatus'].str.upper().str.contains(substatus_value.upper()))
                 ]
-                if not temp_df.empty and row_index <= 14:
+                
+                for _, row in temp_df.iterrows():
                     bottom_rows.append({
                         'Key': f'C{row_index}',
-                        'Value': temp_df['Balance'].sum()
+                        'Value': row['Balance']
                     })
-
+                    
                     if "PARTIAL" in substatus_value.upper() or "FULLY PAID" in substatus_value.upper():
-                        ptp_value = temp_df['Claim Paid Amount'].sum()
+                        ptp_value = row['Claim Paid Amount']
                     else:
-                        ptp_value = temp_df['PTP Amount'].sum()
-
+                        ptp_value = row['PTP Amount']
+                        
                     bottom_rows.append({
                         'Key': f'D{row_index}',
                         'Value': ptp_value
                     })
+                    
                     bottom_rows.append({
                         'Key': f'E{row_index}',
                         'Value': label
                     })
+                    
                     row_index += 1
-            
-            for blank_row in range(row_index, 15):
+
+            min_rows = 2
+            end_row = max(row_index, 12 + min_rows)
+            for blank_row in range(row_index, end_row):
                 bottom_rows.append({'Key': f'C{blank_row}', 'Value': ''})
-                bottom_rows.append({'Key': f'D{blank_row}', 'Value': ''})
                 bottom_rows.append({'Key': f'E{blank_row}', 'Value': ''})
                 
             eod_df = pd.concat([eod_df, pd.DataFrame(bottom_rows)], ignore_index=True)
@@ -1318,6 +1323,12 @@ def main():
                 type=["xlsx", "xls"],
                 key=f"{campaign}_disposition"
             )
+            upload_repo = st.file_uploader(
+                "Repo",
+                type=["xlsx", "xls"],
+                key=f"{campaign}_disposition"
+            )
+            
         if upload_field_result:
             TABLE_NAME = 'rob_bike_field_result'
             
@@ -1655,7 +1666,6 @@ def main():
                     try:
                         if 'CMS Disposition' in df_filtered.columns:
                             unique_dispositions = df_filtered['CMS Disposition'].drop_duplicates().tolist()
-                            unique_df = pd.DataFrame({'disposition': unique_dispositions})
 
                             existing_response = supabase.table(TABLE_NAME).select("disposition").execute()
                             if existing_response.data is None:
@@ -1685,6 +1695,34 @@ def main():
             except Exception as e:
                 st.error(f"An error occurred: {str(e)}")
 
+        if upload_repo:
+            TABLE_NAME = 'rob_bike_repo'
+            try:
+                xls = pd.ExcelFile(upload_disposition)
+                df = pd.read_excel(xls)
+                df_clean = df.replace({np.nan: ''})
+                df_filtered = df_clean.copy()
+                
+                st.subheader("Uploaded Repo:")
+                st.dataframe(df_filtered)
+                
+                button_placeholder = st.empty()
+                upload_button = button_placeholder.button("Upload to Database", key="upload_repo_button")
+                
+                if upload_button:
+                    button_placeholder.button("Processing...", disabled=True, key="processing_repo_button")
+                    try:
+                        if 'ACCTNO' in df_filtered.columns:
+                            unique_repo = df_filtered['ACCTNO'].drop_duplicates().tolist()
+                            
+                            
+                        else:
+                            st.error("Required columns was not found in the uploaded file.")
+                    except Exception as e:
+                        st.error(f"Error uploading repo: {str(e)}")
+                    
+            except Exception as e:
+                st.error(f"An error occured: {str(e)}")
     df = None
     sheet_names = []
 
