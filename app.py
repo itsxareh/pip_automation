@@ -1341,7 +1341,9 @@ def main():
                         index=0,
                         key="field_result_sheet_select"
                     )
-                
+                else:
+                    selected_sheet = sheet_names[0]
+                    
                 if selected_sheet:
                     df = pd.read_excel(xls, sheet_name=selected_sheet)
                     df_clean = df.replace({np.nan: 0})
@@ -1477,6 +1479,9 @@ def main():
                         index=0,
                         key="dataset_sheet_select"
                     )
+                else:
+                    selected_sheet = sheet_names[0]
+                    
                 if selected_sheet:     
                     df = pd.read_excel(xls, sheet_name=selected_sheet)
                     df_clean = df.replace({np.nan: 0})
@@ -1671,8 +1676,12 @@ def main():
                     selected_sheet = st.selectbox(
                         "Select a sheet from the Excel file:",
                         options=sheet_options,
+                        index=0,
                         key="disposition_sheet_select"
                     )
+                else:
+                    selected_sheet = sheet_names[0]    
+                    
                 if selected_sheet:
                     df = pd.read_excel(xls, sheet_name=selected_sheet)
                     df_clean = df.replace({np.nan: ''})
