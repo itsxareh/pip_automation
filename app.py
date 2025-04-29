@@ -2045,119 +2045,117 @@ def main():
                 df.to_excel(buffer, index=False, engine='openpyxl')
                 file_content = buffer.getvalue()
                 st.subheader("Modified Data Preview")
-                st.dataframe(df.head(10), use_container_width=True)
+                st.dataframe(df, use_container_width=True)
 
         except Exception as e:
             st.error(f"Error loading or manipulating file: {str(e)}")
 
-        if "renamed_df" in st.session_state:
-            df = st.session_state["renamed_df"]
+        def df_to_excel_binary(df):
             buffer = io.BytesIO()
             df.to_excel(buffer, index=False, engine='openpyxl')
             buffer.seek(0)
-            file_content = buffer.getvalue()
+            return buffer.getvalue()
 
-        if process_button and selected_sheet:
-            try:
+        modification_flags = (
+            enable_add_column or enable_column_removal or enable_column_renaming or
+            enable_row_filtering or enable_add_row or enable_row_removal or enable_edit_values
+        )
+
+        try:
+            df = st.session_state.get("renamed_df", df) if "renamed_df" in st.session_state else df
+            file_content = df_to_excel_binary(df) if modification_flags or "renamed_df" in st.session_state else None
+
+            if modification_flags:
+                st.subheader("Modified Data Preview")
+                st.dataframe(df, use_container_width=True)
+
+            if process_button and selected_sheet:
                 with st.spinner("Processing file..."):
-                    if automation_type == "Cured List":
-                        result = processor.process_cured_list(
-                            file_content, 
-                            sheet_name=selected_sheet,
-                            preview_only=False,
-                            remove_duplicates=remove_duplicates, 
-                            remove_blanks=remove_blanks, 
-                            trim_spaces=trim_spaces
-                        )
-                        tabs = st.tabs(["Remarks", "Reshuffle", "Payments"])
-                        with tabs[0]:
-                            st.subheader("Remarks Data")
-                            st.dataframe(result['remarks_df'], use_container_width=True)
-                            st.download_button(label="Download Remarks File", data=result['remarks_binary'], file_name=result['remarks_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-                        with tabs[1]:
-                            st.subheader("Reshuffle Data")
-                            st.dataframe(result['others_df'], use_container_width=True)
-                            st.download_button(label="Download Reshuffle File", data=result['others_binary'], file_name=result['others_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-                        with tabs[2]:
-                            st.subheader("Payments Data")
-                            st.dataframe(result['payments_df'], use_container_width=True)
-                            st.download_button(label="Download Payments File", data=result['payments_binary'], file_name=result['payments_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-                        st.success("Cured List processed successfully!")
-                    else:
-                        if automation_type == "Data Clean":
-                            result_df, output_binary, output_filename = getattr(processor, automation_map[automation_type])(
-                                file_content, 
-                                sheet_name=selected_sheet,
-                                preview_only=False,
-                                remove_duplicates=remove_duplicates,
-                                remove_blanks=remove_blanks,
-                                trim_spaces=trim_spaces,
-                                file_name=uploaded_file.name
-                            )
-                        elif automation_type == "Daily Remark Report":
-                            result_df, output_binary, output_filename = getattr(processor, automation_map[automation_type])(
-                                file_content,  
-                                sheet_name=selected_sheet,
-                                preview_only=False,
-                                remove_duplicates=remove_duplicates, 
-                                remove_blanks=remove_blanks, 
-                                trim_spaces=trim_spaces,
-                                report_date = report_date
-                            )
-                        else:
-                            result_df, output_binary, output_filename = getattr(processor, automation_map[automation_type])(
-                                file_content, 
+                    try:
+                        if automation_type == "Cured List":
+                            result = processor.process_cured_list(
+                                file_content or df_to_excel_binary(df),
                                 sheet_name=selected_sheet,
                                 preview_only=False,
                                 remove_duplicates=remove_duplicates,
                                 remove_blanks=remove_blanks,
                                 trim_spaces=trim_spaces
                             )
-                            
-                        if output_binary:
-                            st.session_state['output_binary'] = output_binary
-                            st.session_state['output_filename'] = output_filename
-                            
-                            excel_file = pd.ExcelFile(io.BytesIO(output_binary))
-                            result_sheet_names = excel_file.sheet_names
-                            st.session_state['result_sheet_names'] = result_sheet_names
-                        
+                            tabs = st.tabs(["Remarks", "Reshuffle", "Payments"])
+                            for tab, data_key, label, binary_key, filename_key in [
+                                (tabs[0], 'remarks_df', "Remarks Data", 'remarks_binary', 'remarks_filename'),
+                                (tabs[1], 'others_df', "Reshuffle Data", 'others_binary', 'others_filename'),
+                                (tabs[2], 'payments_df', "Payments Data", 'payments_binary', 'payments_filename')
+                            ]:
+                                with tab:
+                                    st.subheader(label)
+                                    st.dataframe(result[data_key], use_container_width=True)
+                                    st.download_button(
+                                        label=f"Download {label.split()[0]} File",
+                                        data=result[binary_key],
+                                        file_name=result[filename_key],
+                                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                                    )
+                            st.success("Cured List processed successfully!")
                         else:
-                            st.error("No output file was generated")
-                        
+                            processor_func = getattr(processor, automation_map[automation_type])
+                            kwargs = {
+                                "file_content": file_content or df_to_excel_binary(df),
+                                "sheet_name": selected_sheet,
+                                "preview_only": False,
+                                "remove_duplicates": remove_duplicates,
+                                "remove_blanks": remove_blanks,
+                                "trim_spaces": trim_spaces
+                            }
+                            if automation_type == "Data Clean":
+                                kwargs["file_name"] = uploaded_file.name
+                            elif automation_type == "Daily Remark Report":
+                                kwargs["report_date"] = report_date
 
-                if "renamed_df" in st.session_state:
-                    st.session_state.pop("renamed_df", None)
+                            result_df, output_binary, output_filename = processor_func(**kwargs)
 
-            except Exception as e:
-                st.error(f"Error processing file: {str(e)}")
+                            if output_binary:
+                                st.session_state['output_binary'] = output_binary
+                                st.session_state['output_filename'] = output_filename
 
-        if 'output_binary' in st.session_state and 'result_sheet_names' in st.session_state:
-            excel_file = pd.ExcelFile(io.BytesIO(st.session_state['output_binary']))
-            result_sheet_names = st.session_state['result_sheet_names']
-            
-            if len(result_sheet_names) > 1:
-                result_sheet = st.selectbox(
-                    "Select Sheet",
-                    options=result_sheet_names,
-                    index=0,
-                    key=f"{campaign}_result_sheet"
+                                excel_file = pd.ExcelFile(io.BytesIO(output_binary))
+                                st.session_state['result_sheet_names'] = excel_file.sheet_names
+                            else:
+                                st.error("No output file was generated")
+
+                        if "renamed_df" in st.session_state:
+                            st.session_state.pop("renamed_df", None)
+
+                    except Exception as e:
+                        st.error(f"Error processing file: {str(e)}")
+
+            if 'output_binary' in st.session_state and 'result_sheet_names' in st.session_state:
+                excel_file = pd.ExcelFile(io.BytesIO(st.session_state['output_binary']))
+                result_sheet_names = st.session_state['result_sheet_names']
+
+                result_sheet = (
+                    st.selectbox(
+                        "Select Sheet",
+                        options=result_sheet_names,
+                        index=0,
+                        key=f"{campaign}_result_sheet"
+                    ) if len(result_sheet_names) > 1 else result_sheet_names[0]
                 )
-            else: 
-                result_sheet = result_sheet_names[0]
+
+                selected_df = pd.read_excel(io.BytesIO(st.session_state['output_binary']), sheet_name=result_sheet)
+                st.subheader("Processed Preview")
+                st.dataframe(selected_df, use_container_width=True)
+
+                st.download_button(
+                    label="Download File",
+                    data=st.session_state['output_binary'],
+                    file_name=st.session_state['output_filename'],
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+                st.success(f"File processed successfully! Download '{st.session_state['output_filename']}'")
             
-            selected_df = pd.read_excel(io.BytesIO(st.session_state['output_binary']), sheet_name=result_sheet)
-            
-            st.subheader("Processed Preview")
-            st.dataframe(selected_df, use_container_width=True)
-            
-            st.download_button(
-                label="Download File", 
-                data=st.session_state['output_binary'], 
-                file_name=st.session_state['output_filename'], 
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
-            st.success(f"File processed successfully! Download '{st.session_state['output_filename']}'")
+        except Exception as e:
+            st.error(f"Error loading or manipulating file: {str(e)}")    
     
 if __name__ == "__main__":
     main()
