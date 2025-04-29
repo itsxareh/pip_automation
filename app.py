@@ -1347,12 +1347,10 @@ def main():
                 if selected_sheet:
                     df = pd.read_excel(xls, sheet_name=selected_sheet)
                     df_clean = df.replace({np.nan: 0})
-                else:
-                    st.error("Sheet named 'RESULT' not found in the uploaded file.")
                 
-                df_filtered = df_clean[(df_clean['status'] != 'CANCEL') & (df_clean['bank'] == 'ROB MOTOR LOAN')].copy()
                 
                 if 'chcode' in df_filtered.columns and 'status' in df_filtered.columns and 'SUB STATUS' in df_filtered.columns and 'DATE' in df_filtered.columns and 'TIME' in df_filtered.columns:
+                    df_filtered = df_clean[(df_clean['status'] != 'CANCEL') & (df_clean['bank'] == 'ROB MOTOR LOAN')].copy()
                     df_extracted = df_filtered[['chcode', 'status', 'SUB STATUS', 'DATE', 'TIME']].copy()
                     
                     df_extracted = df_extracted.rename(columns={
