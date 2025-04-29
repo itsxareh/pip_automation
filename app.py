@@ -1693,51 +1693,197 @@ def main():
             except Exception as e:
                 st.error(f"An error occurred: {str(e)}")
 
+        
         if repo_button:
             TABLE_NAME = 'rob_bike_repo'
+            st.subheader("Repository Data Upload")
+            
             try:
-                pasted_data = st.text_area("Paste here:",
-                                        height=200,
-                                        help="Copy data from Excel and paste it here. Make sure to include headers.",
-                                        key="repo_text_area")
+                columns = [
+                    "ACCTNO", "ACCT_NAME", "DEALER", "STORE", "ENDORSEMENT_OB", 
+                    "ENDORSEMENT_DATE", "ENDORSEMENT_DPD", "STATUS", "APPRAISED_VALUE", 
+                    "REPO_DATE", "AREA_WHERE_UNIT_RECOVERED", "WAREHOUSE_PB_BRANCH", "SURRENDERED"
+                ]
+                
+                pasted_data = st.text_area(
+                    "Paste repository data here:",
+                    height=300,
+                    help="Copy data from Excel and paste it here. The system will attempt to parse the space-delimited format.",
+                    key="repo_text_area"
+                )
                 
                 col1, col2 = st.columns(2)
-                process_button = col1.button("Process", key="repo_process")
+                process_button = col1.button("Process Data", key="repo_process")
                 
                 if process_button and pasted_data:
+                    # Custom parsing for space-delimited text where some fields contain spaces
                     try:
-                        data_io = io.StringIO(pasted_data)
+                        # Split by lines
+                        lines = pasted_data.strip().split('\n')
                         
-                        df = pd.read_csv(data_io, sep='\t', engine='python')
+                        # Check if first line might be a header
+                        first_line = lines[0]
+                        has_header = all(col.upper() in first_line.upper() for col in ["ACCTNO", "NAME", "DEALER"])
                         
-                        if len(df.columns) == 1 and df.iloc[0, 0].count(',') > 0:
-                            data_io = io.StringIO(pasted_data)
-                            df = pd.read_csv(data_io, sep=',', engine='python')
+                        # Skip header line if it exists
+                        data_lines = lines[1:] if has_header else lines
                         
+                        # Initialize list to hold parsed records
+                        records = []
+                        
+                        for line in data_lines:
+                            # Skip empty lines
+                            if not line.strip():
+                                continue
+                                
+                            # Custom parsing logic based on the pattern in your data
+                            # This is the complex part and may need adjustments based on the exact format
+                            
+                            # Split the line into parts, keeping track of original positions
+                            parts = line.split()
+                            
+                            if len(parts) < 5:  # Minimum number of expected fields
+                                st.warning(f"Skipping line with insufficient data: {line}")
+                                continue
+                            
+                            # Extract account number (assuming it's the first field and has a consistent format)
+                            acct_no = parts[0]
+                            
+                            # Find key markers that help identify field boundaries
+                            # This requires some pattern recognition based on your data format
+                            
+                            # Example for identifying name field (ends before "PB -" or similar dealer marker)
+                            name_end_idx = -1
+                            dealer_start_idx = -1
+                            for i, part in enumerate(parts[1:], 1):
+                                if part == "PB" and i+1 < len(parts) and parts[i+1].startswith("-"):
+                                    name_end_idx = i-1
+                                    dealer_start_idx = i
+                                    break
+                            
+                            if name_end_idx == -1:
+                                # Fallback if pattern not found
+                                name_end_idx = 3  # Assume name is 3 parts
+                            
+                            # Extract name parts and join
+                            name_parts = parts[1:name_end_idx+1]
+                            acct_name = " ".join(name_parts)
+                            
+                            # Continue with similar pattern recognition for other fields
+                            # This is a simplified example - you'll need to adjust based on your exact data format
+                            
+                            # Find numeric values (like endorsement amount) by checking for numbers with commas/decimals
+                            amount_idx = -1
+                            for i, part in enumerate(parts):
+                                if any(c.isdigit() for c in part) and (',' in part or '.' in part):
+                                    amount_idx = i
+                                    break
+                            
+                            # Extract dealer/store location
+                            dealer_parts = []
+                            if dealer_start_idx != -1 and amount_idx > dealer_start_idx:
+                                dealer_parts = parts[dealer_start_idx:amount_idx]
+                            dealer = " ".join(dealer_parts) if dealer_parts else "Unknown"
+                            
+                            # For date fields, look for date patterns
+                            date_indices = []
+                            for i, part in enumerate(parts):
+                                if '/' in part and len(part) >= 8:
+                                    date_indices.append(i)
+                            
+                            # Assuming first date is endorsement date and second is repo date
+                            endorsement_date = parts[date_indices[0]] if len(date_indices) > 0 else ""
+                            repo_date = parts[date_indices[1]] if len(date_indices) > 1 else ""
+                            
+                            # Extract numeric endorsement amount
+                            endorsement_ob = parts[amount_idx] if amount_idx != -1 else ""
+                            
+                            # Find DPD (days past due) - typically a number after the date
+                            dpd = ""
+                            if len(date_indices) > 0 and date_indices[0] + 1 < len(parts):
+                                potential_dpd = parts[date_indices[0] + 1]
+                                if potential_dpd.isdigit():
+                                    dpd = potential_dpd
+                            
+                            # Find status (typically "REPO")
+                            status = ""
+                            for part in parts:
+                                if part == "REPO":
+                                    status = "REPO"
+                                    break
+                            
+                            # Extract recovery location (after repo date)
+                            recovery_location = ""
+                            if len(date_indices) > 1 and date_indices[1] + 1 < len(parts):
+                                # Everything between repo date and the warehouse
+                                recovery_end = -1
+                                for i in range(date_indices[1] + 1, len(parts)):
+                                    if "PB -" in " ".join(parts[i:i+2]):
+                                        recovery_end = i
+                                        break
+                                
+                                if recovery_end != -1:
+                                    recovery_location = " ".join(parts[date_indices[1] + 1:recovery_end])
+                            
+                            # Extract warehouse/branch (typically starts with "PB -" and is at the end)
+                            warehouse = ""
+                            for i in range(len(parts)-3, 0, -1):  # Search from near the end
+                                if i < len(parts) and parts[i] == "PB" and i+1 < len(parts) and parts[i+1].startswith("-"):
+                                    warehouse = " ".join(parts[i:])
+                                    break
+                            
+                            # Create record with extracted fields
+                            record = {
+                                "ACCTNO": acct_no,
+                                "ACCT_NAME": acct_name,
+                                "DEALER": dealer,
+                                "ENDORSEMENT_OB": endorsement_ob,
+                                "ENDORSEMENT_DATE": endorsement_date,
+                                "ENDORSEMENT_DPD": dpd,
+                                "STATUS": status,
+                                "REPO_DATE": repo_date,
+                                "AREA_WHERE_UNIT_RECOVERED": recovery_location,
+                                "WAREHOUSE_PB_BRANCH": warehouse
+                            }
+                            
+                            records.append(record)
+                        
+                        # Convert to DataFrame
+                        df = pd.DataFrame(records)
+                        
+                        # Store in session state
                         st.session_state.processed_df = df
                         
-                        st.subheader("Preview")
-                        st.dataframe(df.head(10))
+                        st.subheader("Data Preview")
+                        st.dataframe(df)
                         
-                        st.text(f"Data shape: {df.shape[0]} rows, {df.shape[1]} columns")
-                        
+                        st.text(f"Processed {len(df)} records")
                         st.session_state.show_save = True
                         
                     except Exception as e:
                         st.error(f"Error processing data: {str(e)}")
+                        st.error("The data format may not match what we expect. Please check your pasted data.")
                 
                 if 'show_save' in st.session_state and st.session_state.show_save:
                     save_button = col2.button("Upload to Database", key="repo_save")
                     
-                    if save_button and 'processed_df' in st.session_state: 
+                    if save_button and 'processed_df' in st.session_state:
                         try:
+                            # Convert DataFrame to dict records
                             records = st.session_state.processed_df.to_dict(orient='records')
+                            
+                            # Upload to Supabase
                             result = supabase.table(TABLE_NAME).insert(records).execute()
                             
                             if hasattr(result, 'error') and result.error:
                                 st.error(f"Database error: {result.error}")
                             else:
                                 st.success(f"Successfully uploaded {len(records)} records to database!")
+                                
+                                # Reset the form
+                                st.session_state.pop('processed_df', None)
+                                st.session_state.pop('show_save', None)
+                                st.experimental_rerun()
                                 
                         except Exception as e:
                             st.error(f"Error saving to database: {str(e)}")
