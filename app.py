@@ -352,6 +352,7 @@ class BPIProcessor(BaseProcessor):
                 phone2 = str(phone2).strip() if phone2 else ""
                 if phone1:
                     phone1 = re.sub(r'\D', '', phone1)
+                    st.write(phone1)
                 if phone2:
                     phone2 = re.sub(r'\D', '', phone2)
                 if barcode:
