@@ -37,28 +37,28 @@ class BaseProcessor:
             pass
           
     def process_mobile_number(self, mobile_num):
-            if pd.isna(mobile_num) or mobile_num is None or str(mobile_num).strip() == "":
-                return ""
-
-            mobile_num = str(mobile_num).strip()
-            mobile_num = re.sub(r'\D', '', mobile_num)
-
-            if mobile_num.startswith('639') and len(mobile_num) == 12:
-                result = '09' + mobile_num[3:]
-                return result
-
-            if mobile_num.startswith('9') and len(mobile_num) == 10:
-                result = '0' + mobile_num
-                return result
-
-            if mobile_num.startswith('09') and len(mobile_num) == 11:
-                return mobile_num
-
-            if mobile_num.startswith('+639') and len(mobile_num) == 13:
-                result = '09' + mobile_num[4:]
-                return result
-
+        if pd.isna(mobile_num) or mobile_num is None or str(mobile_num).strip() == "":
             return ""
+
+        mobile_num = str(mobile_num).strip()
+        mobile_num = re.sub(r'\D', '', mobile_num)
+
+        if mobile_num.startswith('639') and len(mobile_num) == 12:
+            result = '09' + mobile_num[3:]
+            return result
+
+        if mobile_num.startswith('9') and len(mobile_num) == 10:
+            result = '0' + mobile_num
+            return result
+
+        if mobile_num.startswith('09') and len(mobile_num) == 11:
+            return mobile_num
+
+        if mobile_num.startswith('+639') and len(mobile_num) == 13:
+            result = '09' + mobile_num[4:]
+            return result
+
+        return ""
 
     def format_date(self, date_value):
         if pd.isna(date_value) or date_value is None:
@@ -499,6 +499,7 @@ class BPIProcessor(BaseProcessor):
                 if "PTP NEW" in action_status:
                     phone_value = source_phone1 if source_phone1 else source_phone2
                     processed_phone = self.process_mobile_number(phone_value)
+                    st.write(processed_phone)
                     remark_text = f"1_{processed_phone} - PTP NEW" if processed_phone else "PTP NEW - NO PHONE"
                 elif "PTP FF" in action_status:
                     phone_value = source_phone1 if source_phone1 else source_phone2
