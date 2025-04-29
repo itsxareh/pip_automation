@@ -2072,6 +2072,18 @@ def main():
             if process_button and selected_sheet:
                 with st.spinner("Processing file..."):
                     try:
+                        input_file = io.BytesIO(file_content or df_to_excel_binary(df))
+                        excel_file = pd.ExcelFile(input_file)
+                        available_sheets = excel_file.sheet_names
+                        st.write(f"Available sheets in input file: {available_sheets}")
+
+                        if selected_sheet not in available_sheets:
+                            st.error(
+                                f"Selected sheet '{selected_sheet}' not found in the file. "
+                                f"Available sheets: {', '.join(available_sheets)}"
+                            )
+                            raise ValueError(f"Worksheet named '{selected_sheet}' not found")
+                        
                         if automation_type == "Cured List":
                             result = processor.process_cured_list(
                                 file_content or df_to_excel_binary(df),
@@ -2155,7 +2167,7 @@ def main():
                 st.success(f"File processed successfully! Download '{st.session_state['output_filename']}'")
             
         except Exception as e:
-            st.error(f"Error loading or manipulating file: {str(e)}")    
+            st.error(f"Error loading or manipulating file: {str(e)}")       
     
 if __name__ == "__main__":
     main()
