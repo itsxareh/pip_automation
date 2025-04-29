@@ -1480,7 +1480,7 @@ def main():
                         key="dataset_sheet_select"
                     )
                 else:
-                    selected_sheet = sheet_names[0]
+                    selected_sheet = sheet_options[0]
                     
                 if selected_sheet:     
                     df = pd.read_excel(xls, sheet_name=selected_sheet)
@@ -1680,7 +1680,7 @@ def main():
                         key="disposition_sheet_select"
                     )
                 else:
-                    selected_sheet = sheet_names[0]    
+                    selected_sheet = sheet_options[0]    
                     
                 if selected_sheet:
                     df = pd.read_excel(xls, sheet_name=selected_sheet)
