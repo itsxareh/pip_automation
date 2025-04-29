@@ -293,8 +293,9 @@ class BPIProcessor(BaseProcessor):
     
     def process_cured_list(self, file_content, sheet_name=None, preview_only=False,
                            remove_duplicates=False, remove_blanks=False, trim_spaces=False):
-        temp_dir = tempfile.gettempdir()
-        temp_input_path = os.path.join(temp_dir, f"temp_{os.urandom(8).hex()}.xlsx")
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as temp_input:
+            temp_input.write(file_content)
+            temp_input_path = temp_input.name
             
         try:
             xls = pd.ExcelFile(temp_input_path)
@@ -642,7 +643,7 @@ class BPIProcessor(BaseProcessor):
                 remarks_binary = f.read()
             with open(others_path, 'rb') as f:
                 others_binary = f.read()
-            with open(payments_path, 'rb') as f:    
+            with open(payments_path, 'rb') as f:
                 payments_binary = f.read()
                 
             os.unlink(temp_input_path)
@@ -661,7 +662,6 @@ class BPIProcessor(BaseProcessor):
         finally:
             if os.path.exists(temp_input_path):
                 os.unlink(temp_input_path)
-                
                 
 class ROBBikeProcessor(BaseProcessor):
     def process_daily_remark(self, file_content, sheet_name=None, preview_only=False,
