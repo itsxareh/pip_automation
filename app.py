@@ -506,10 +506,10 @@ class BPIProcessor(BaseProcessor):
                 
                 if "PTP NEW" in action_status:
                     phone_value = source_phone1 if source_phone1 else source_phone2
-                    remark_text = f"1_{self.process_mobile_number(phone_value)} - PTP NEW"
+                    remark_text = f"1_{phone_value} - PTP NEW"
                 elif "PTP FF" in action_status:
                     phone_value = source_phone1 if source_phone1 else source_phone2
-                    remark_text = f"{self.process_mobile_number(phone_value)} - FPTP"
+                    remark_text = f"{phone_value} - FPTP"
                 elif "PAYMENT" in action_status:
                     remark_text = "CURED - CONFIRM VIA SELECTIVE LIST"
                 else:
