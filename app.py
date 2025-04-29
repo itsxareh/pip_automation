@@ -80,32 +80,45 @@ class BaseProcessor:
         return cleaned_df
         
     def clean_only(self, file_content, sheet_name, preview_only=False, 
-               remove_duplicates=False, remove_blanks=False, trim_spaces=False, file_name=None):
+                   remove_duplicates=False, remove_blanks=False, trim_spaces=False, file_name=None):
         try:
+            # Reset stream to ensure it’s readable
             byte_stream = io.BytesIO(file_content)
+            byte_stream.seek(0)
             xls = pd.ExcelFile(byte_stream)
-            df = pd.read_excel(xls, sheet_name=sheet_name)
-            #df = pd.read_excel(io.BytesIO(file_content))
+            available_sheets = xls.sheet_names
+            st.write(f"clean_only - Available sheets: {available_sheets}, Requested sheet: {sheet_name}")
 
+            # Validate sheet name
+            if sheet_name not in available_sheets:
+                raise ValueError(f"Worksheet named '{sheet_name}' not found in file. Available sheets: {available_sheets}")
+
+            # Read the specified sheet
+            df = pd.read_excel(byte_stream, sheet_name=sheet_name)
+            byte_stream.seek(0)  # Reset for potential reuse
+
+            # Sanitize headers
             sanitized_headers = [re.sub(r'[^A-Za-z0-9_]', '_', str(col)) for col in df.columns]
             df.columns = sanitized_headers
 
+            # Clean data
             cleaned_df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
 
             if preview_only:
                 return cleaned_df
 
+            # Set output filename
             if file_name:
                 base_name = os.path.splitext(os.path.basename(file_name))[0]
                 output_filename = f"{base_name}.xlsx"
             else:
-                output_filename = f"CLEANED_DATA.xlsx"
+                output_filename = "CLEANED_DATA.xlsx"
 
             output_path = os.path.join(self.temp_dir, output_filename)
 
+            # Write to Excel with adjusted column widths
             with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
                 cleaned_df.to_excel(writer, index=False, sheet_name='Sheet1')
-
                 worksheet = writer.sheets['Sheet1']
                 for i, col in enumerate(cleaned_df.columns):
                     try:
@@ -123,6 +136,7 @@ class BaseProcessor:
 
         except Exception as e:
             st.error(f"Error cleaning file: {str(e)}")
+            logger.error(f"clean_only error: {str(e)}", exc_info=True)
             raise
 class BPIProcessor(BaseProcessor):
     
