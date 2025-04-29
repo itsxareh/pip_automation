@@ -58,7 +58,7 @@ class BaseProcessor:
             result = '09' + mobile_num[4:]
             return result
 
-        return ""
+        return mobile_num
 
     def format_date(self, date_value):
         if pd.isna(date_value) or date_value is None:
@@ -293,9 +293,8 @@ class BPIProcessor(BaseProcessor):
     
     def process_cured_list(self, file_content, sheet_name=None, preview_only=False,
                            remove_duplicates=False, remove_blanks=False, trim_spaces=False):
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as temp_input:
-            temp_input.write(file_content)
-            temp_input_path = temp_input.name
+        temp_dir = tempfile.gettempdir()
+        temp_input_path = os.path.join(temp_dir, f"temp_{os.urandom(8).hex()}.xlsx")
             
         try:
             xls = pd.ExcelFile(temp_input_path)
@@ -498,13 +497,10 @@ class BPIProcessor(BaseProcessor):
                 
                 if "PTP NEW" in action_status:
                     phone_value = source_phone1 if source_phone1 else source_phone2
-                    processed_phone = self.process_mobile_number(phone_value)
-                    st.write(processed_phone)
-                    remark_text = f"1_{processed_phone} - PTP NEW" if processed_phone else "PTP NEW - NO PHONE"
+                    remark_text = f"1_{self.process_mobile_number(phone_value)} - PTP NEW"
                 elif "PTP FF" in action_status:
                     phone_value = source_phone1 if source_phone1 else source_phone2
-                    processed_phone = self.process_mobile_number(phone_value)
-                    remark_text = f"{processed_phone} - FPTP" if processed_phone else "FPTP - NO PHONE"
+                    remark_text = f"{self.process_mobile_number(phone_value)} - FPTP"
                 elif "PAYMENT" in action_status:
                     remark_text = "CURED - CONFIRM VIA SELECTIVE LIST"
                 else:
@@ -646,7 +642,7 @@ class BPIProcessor(BaseProcessor):
                 remarks_binary = f.read()
             with open(others_path, 'rb') as f:
                 others_binary = f.read()
-            with open(payments_path, 'rb') as f:
+            with open(payments_path, 'rb') as f:    
                 payments_binary = f.read()
                 
             os.unlink(temp_input_path)
@@ -665,6 +661,7 @@ class BPIProcessor(BaseProcessor):
         finally:
             if os.path.exists(temp_input_path):
                 os.unlink(temp_input_path)
+                
                 
 class ROBBikeProcessor(BaseProcessor):
     def process_daily_remark(self, file_content, sheet_name=None, preview_only=False,
