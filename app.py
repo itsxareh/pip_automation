@@ -2060,6 +2060,7 @@ def main():
         if process_button and selected_sheet:
             try:
                 with st.spinner("Processing file..."):
+                    st.write(f"Processing - Available sheets: {sheet_names}")
                     if automation_type == "Cured List":
                         result = processor.process_cured_list(
                             file_content, 
