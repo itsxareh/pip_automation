@@ -37,19 +37,35 @@ class BaseProcessor:
             pass
           
     def process_mobile_number(self, mobile_num):
-         """Process mobile number to standardized format"""
-         if not mobile_num:
-             return ""
- 
-         mobile_num = str(mobile_num).strip().replace('-', '')
- 
-         if mobile_num.startswith('639') and len(mobile_num) == 12:
-             return '0' + mobile_num[2:]
- 
-         if mobile_num.startswith('9') and len(mobile_num) == 10:
-             return '0' + mobile_num 
- 
-         return mobile_num if mobile_num.startswith('09') else str(mobile_num)
+            if pd.isna(mobile_num) or mobile_num is None or str(mobile_num).strip() == "":
+                st.write(f"process_mobile_number: Input is empty or None, returning ''")
+                return ""
+
+            mobile_num = str(mobile_num).strip()
+            mobile_num = re.sub(r'\D', '', mobile_num)
+            st.write(f"process_mobile_number: Cleaned input: {mobile_num}")
+
+            if mobile_num.startswith('639') and len(mobile_num) == 12:
+                result = '09' + mobile_num[3:]
+                st.write(f"process_mobile_number: Converted {mobile_num} to {result}")
+                return result
+
+            if mobile_num.startswith('9') and len(mobile_num) == 10:
+                result = '0' + mobile_num
+                st.write(f"process_mobile_number: Converted {mobile_num} to {result}")
+                return result
+
+            if mobile_num.startswith('09') and len(mobile_num) == 11:
+                st.write(f"process_mobile_number: Valid number {mobile_num}, returning unchanged")
+                return mobile_num
+
+            if mobile_num.startswith('+639') and len(mobile_num) == 13:
+                result = '09' + mobile_num[4:]
+                st.write(f"process_mobile_number: Converted {mobile_num} to {result}")
+                return result
+
+            st.write(f"process_mobile_number: Invalid number {mobile_num}, returning ''")
+            return ""
 
     def format_date(self, date_value):
         if pd.isna(date_value) or date_value is None:
@@ -489,10 +505,12 @@ class BPIProcessor(BaseProcessor):
                 
                 if "PTP NEW" in action_status:
                     phone_value = source_phone1 if source_phone1 else source_phone2
-                    remark_text = f"1_{self.process_mobile_number(phone_value)} - PTP NEW"
+                    processed_phone = self.process_mobile_number(phone_value)
+                    remark_text = f"1_{processed_phone} - PTP NEW" if processed_phone else "PTP NEW - NO PHONE"
                 elif "PTP FF" in action_status:
                     phone_value = source_phone1 if source_phone1 else source_phone2
-                    remark_text = f"{self.process_mobile_number(phone_value)} - FPTP"
+                    processed_phone = self.process_mobile_number(phone_value)
+                    remark_text = f"{processed_phone} - FPTP" if processed_phone else "FPTP - NO PHONE"
                 elif "PAYMENT" in action_status:
                     remark_text = "CURED - CONFIRM VIA SELECTIVE LIST"
                 else:
@@ -653,7 +671,7 @@ class BPIProcessor(BaseProcessor):
         finally:
             if os.path.exists(temp_input_path):
                 os.unlink(temp_input_path)
-
+                
 class ROBBikeProcessor(BaseProcessor):
     def process_daily_remark(self, file_content, sheet_name=None, preview_only=False,
                     remove_duplicates=False, remove_blanks=False, trim_spaces=False, report_date=None):
