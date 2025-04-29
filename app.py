@@ -1307,6 +1307,8 @@ def main():
     
     if campaign == "ROB Bike" and automation_type == "Daily Remark Report":
         report_date = st.sidebar.date_input('Date Report', format="MM/DD/YYYY") 
+        repo_button = st.button("REPO", key=f"{campaign}_repo")
+        
         with st.sidebar.expander("Upload Other File", expanded=False):
             upload_field_result = st.file_uploader(
                 "Field Result",
@@ -1323,11 +1325,7 @@ def main():
                 type=["xlsx", "xls"],
                 key=f"{campaign}_disposition"
             )
-            upload_repo = st.file_uploader(
-                "Repo",
-                type=["xlsx", "xls"],
-                key=f"{campaign}_repo"
-            )
+            
             
         if upload_field_result:
             TABLE_NAME = 'rob_bike_field_result'
@@ -1695,34 +1693,58 @@ def main():
             except Exception as e:
                 st.error(f"An error occurred: {str(e)}")
 
-        if upload_repo:
+        if repo_button:
             TABLE_NAME = 'rob_bike_repo'
             try:
-                xls = pd.ExcelFile(upload_disposition)
-                df = pd.read_excel(xls)
-                df_clean = df.replace({np.nan: ''})
-                df_filtered = df_clean.copy()
+                pasted_data = st.text_area("Paste here:",
+                                        height=200,
+                                        help="Copy data from Excel and paste it here. Make sure to include headers.",
+                                        key="repo_text_area")
                 
-                st.subheader("Uploaded Repo:")
-                st.dataframe(df_filtered)
+                col1, col2 = st.columns(2)
+                process_button = col1.button("Process", key="repo_process")
                 
-                button_placeholder = st.empty()
-                upload_button = button_placeholder.button("Upload to Database", key="upload_repo_button")
-                
-                if upload_button:
-                    button_placeholder.button("Processing...", disabled=True, key="processing_repo_button")
+                if process_button and pasted_data:
                     try:
-                        if 'ACCTNO' in df_filtered.columns:
-                            unique_repo = df_filtered['ACCTNO'].drop_duplicates().tolist()
-                            
-                            
-                        else:
-                            st.error("Required columns was not found in the uploaded file.")
+                        data_io = io.StringIO(pasted_data)
+                        
+                        df = pd.read_csv(data_io, sep='\t', engine='python')
+                        
+                        if len(df.columns) == 1 and df.iloc[0, 0].count(',') > 0:
+                            data_io = io.StringIO(pasted_data)
+                            df = pd.read_csv(data_io, sep=',', engine='python')
+                        
+                        st.session_state.processed_df = df
+                        
+                        st.subheader("Preview")
+                        st.dataframe(df.head(10))
+                        
+                        st.text(f"Data shape: {df.shape[0]} rows, {df.shape[1]} columns")
+                        
+                        st.session_state.show_save = True
+                        
                     except Exception as e:
-                        st.error(f"Error uploading repo: {str(e)}")
+                        st.error(f"Error processing data: {str(e)}")
+                
+                if 'show_save' in st.session_state and st.session_state.show_save:
+                    save_button = col2.button("Upload to Database", key="repo_save")
                     
+                    if save_button and 'processed_df' in st.session_state: 
+                        try:
+                            records = st.session_state.processed_df.to_dict(orient='records')
+                            result = supabase.table(TABLE_NAME).insert(records).execute()
+                            
+                            if hasattr(result, 'error') and result.error:
+                                st.error(f"Database error: {result.error}")
+                            else:
+                                st.success(f"Successfully uploaded {len(records)} records to database!")
+                                
+                        except Exception as e:
+                            st.error(f"Error saving to database: {str(e)}")
+                            
             except Exception as e:
-                st.error(f"An error occured: {str(e)}")
+                st.error(f"An error occurred: {str(e)}")
+
     df = None
     sheet_names = []
 
