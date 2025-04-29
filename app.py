@@ -39,16 +39,22 @@ class BaseProcessor:
     def process_mobile_number(self, mobile_num):
         if not mobile_num:
             return ""
-        
-        mobile_num = str(mobile_num).strip().replace('-', '')
+
+        mobile_num = str(mobile_num).strip().replace('-', '').replace(' ', '')
         
         if mobile_num.startswith('639') and len(mobile_num) == 12:
-            return '0' + mobile_num[2:]
-        
+            return '0' + mobile_num[2:] 
+
+        if mobile_num.startswith('09') and len(mobile_num) == 11:
+            return mobile_num
+
         if mobile_num.startswith('9') and len(mobile_num) == 10:
-            return '0' + mobile_num 
-        
-        return mobile_num if mobile_num.startswith('09') else str(mobile_num)
+            return '0' + mobile_num
+
+        if len(mobile_num) == 10 and mobile_num.isdigit():
+            return '0' + mobile_num
+
+        return mobile_num
 
     def format_date(self, date_value):
         if pd.isna(date_value) or date_value is None:
@@ -136,7 +142,6 @@ class BaseProcessor:
 
         except Exception as e:
             st.error(f"Error cleaning file: {str(e)}")
-            logger.error(f"clean_only error: {str(e)}", exc_info=True)
             raise
 class BPIProcessor(BaseProcessor):
     
