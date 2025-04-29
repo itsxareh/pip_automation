@@ -1672,7 +1672,7 @@ def main():
                 xls = pd.ExcelFile(upload_disposition)
                 
                 sheet_options = xls.sheet_names
-                if len(sheet_options > 1):
+                if len(sheet_options) > 1:
                     selected_sheet = st.selectbox(
                         "Select a sheet from the Excel file:",
                         options=sheet_options,
