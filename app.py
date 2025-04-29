@@ -156,113 +156,111 @@ class BPIProcessor(BaseProcessor):
             ]
             
             if all(col in df.columns for col in required_columns):
-                pass
+                df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
+                
+                if preview_only:
+                    return df
+                    
+                current_date = datetime.now().strftime('%m%d%Y')
+                
+                if automation_type == 'updates':
+                    output_filename = f"BPI AUTO CURING FOR UPDATES {current_date}.xlsx"
+                    input_filename = f"FOR UPDATE {current_date}.xlsx"
+                    dirs = self.setup_directories('updates')
+                    folder_key = 'BPI_FOR_UPDATES'
+                    input_folder_key = 'FOR_UPDATES'
+                else: 
+                    output_filename = f"BPI AUTO CURING FOR UPLOADS {current_date}.xlsx"
+                    input_filename = f"FOR UPLOAD (NEW ENDO) {current_date}.xlsx"
+                    dirs = self.setup_directories('uploads')
+                    folder_key = 'BPI_FOR_UPLOADS'
+                    input_folder_key = 'FOR_UPLOADS'
+                
+                input_path = os.path.join(dirs[input_folder_key], input_filename)
+                with open(input_path, 'wb') as f:
+                    f.write(file_content)
+                    
+                column_map = {
+                    'EMAIL': 'EMAIL_ALS',
+                    'CONTACT NUMBER 1': 'MOBILE_NO_ALS',
+                    'CONTACT NUMBER 2': 'MOBILE_ALFES',
+                    'ENDO DATE': 'DATE REFERRED'
+                }
+                
+                result_df = pd.DataFrame()
+                
+                for col in ['LAN', 'NAME', 'CTL4', 'PAST DUE', 'PAYOFF AMOUNT', 'PRINCIPAL', 'LPC', 
+                            'ADA SHORTAGE', 'UNIT', 'DPD']:
+                    if col in df.columns:
+                        result_df[col] = df[col].fillna("")
+                
+                result_df.insert(1, 'CH CODE', result_df['LAN'])
+                
+                for orig_col, new_col in column_map.items():
+                    if orig_col in df.columns:
+                        if orig_col == 'CONTACT NUMBER 1' or orig_col == 'CONTACT NUMBER 2':
+                            result_df[new_col] = df[orig_col].apply(lambda x: "" if pd.isna(x) else self.process_mobile_number(x))
+                        elif orig_col == 'ENDO DATE':
+                            result_df[new_col] = df[orig_col].apply(lambda x: self.format_date(x) if pd.notnull(x) else "")
+                        else:
+                            result_df[new_col] = df[orig_col].fillna("")
+                    else:
+                        result_df[new_col] = ""
+                
+                result_df['LANDLINE_NO_ALFES'] = ""
+                
+                numeric_cols = ['PAST DUE', 'PAYOFF AMOUNT', 'PRINCIPAL', 'LPC', 'ADA SHORTAGE']
+                for col in numeric_cols:
+                    if col in result_df.columns:
+                        result_df[col] = pd.to_numeric(result_df[col], errors='coerce').fillna(0).round(2)
+                        
+                final_columns = [
+                    'LAN', 'CH CODE', 'NAME', 'CTL4', 'PAST DUE', 'PAYOFF AMOUNT', 'PRINCIPAL', 'LPC',
+                    'ADA SHORTAGE', 'EMAIL_ALS', 'MOBILE_NO_ALS', 'MOBILE_ALFES', 'LANDLINE_NO_ALFES', 
+                    'DATE REFERRED', 'UNIT', 'DPD'
+                ]
+                
+                for col in final_columns:
+                    if col not in result_df.columns:
+                        result_df[col] = ""
+                        
+                result_df = result_df[final_columns]
+                
+                output_path = os.path.join(dirs[folder_key], output_filename)
+                with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
+                    result_df.to_excel(writer, index=False, sheet_name='Sheet1')
+                    
+                    worksheet = writer.sheets['Sheet1']
+                    for i, col in enumerate(final_columns):
+                        max_length = max(
+                            result_df[col].astype(str).map(len).max(),
+                            len(col)
+                        ) + 2
+                        col_letter = chr(65 + i) 
+                        worksheet.column_dimensions[col_letter].width = max_length
+                        
+                        if col in numeric_cols:
+                            for row in range(2, len(result_df) + 2):
+                                cell = worksheet[f"{col_letter}{row}"]
+                                cell.number_format = '0.00'
+                        
+                        if col == 'DATE REFERRED':
+                            for row in range(2, len(result_df) + 2):
+                                cell = worksheet[f"{col_letter}{row}"]
+                                value = cell.value
+                                if value:
+                                    try: 
+                                        cell.value = pd.to_datetime(value).strftime("%m/%d/%Y")
+                                        cell.number_format = '@'
+                                    except:
+                                        pass
+                
+                with open(output_path, 'rb') as f:
+                    output_binary = f.read()
+                    
+                return result_df, output_binary, output_filename
             else:
                 st.error("Required columns not found in the uploaded file.")
-                
-            df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
-            
-            if preview_only:
-                return df
-                
-            current_date = datetime.now().strftime('%m%d%Y')
-            
-            if automation_type == 'updates':
-                output_filename = f"BPI AUTO CURING FOR UPDATES {current_date}.xlsx"
-                input_filename = f"FOR UPDATE {current_date}.xlsx"
-                dirs = self.setup_directories('updates')
-                folder_key = 'BPI_FOR_UPDATES'
-                input_folder_key = 'FOR_UPDATES'
-            else: 
-                output_filename = f"BPI AUTO CURING FOR UPLOADS {current_date}.xlsx"
-                input_filename = f"FOR UPLOAD (NEW ENDO) {current_date}.xlsx"
-                dirs = self.setup_directories('uploads')
-                folder_key = 'BPI_FOR_UPLOADS'
-                input_folder_key = 'FOR_UPLOADS'
-            
-            input_path = os.path.join(dirs[input_folder_key], input_filename)
-            with open(input_path, 'wb') as f:
-                f.write(file_content)
-                
-            column_map = {
-                'EMAIL': 'EMAIL_ALS',
-                'CONTACT NUMBER 1': 'MOBILE_NO_ALS',
-                'CONTACT NUMBER 2': 'MOBILE_ALFES',
-                'ENDO DATE': 'DATE REFERRED'
-            }
-            
-            result_df = pd.DataFrame()
-            
-            for col in ['LAN', 'NAME', 'CTL4', 'PAST DUE', 'PAYOFF AMOUNT', 'PRINCIPAL', 'LPC', 
-                        'ADA SHORTAGE', 'UNIT', 'DPD']:
-                if col in df.columns:
-                    result_df[col] = df[col].fillna("")
-            
-            result_df.insert(1, 'CH CODE', result_df['LAN'])
-            
-            for orig_col, new_col in column_map.items():
-                if orig_col in df.columns:
-                    if orig_col == 'CONTACT NUMBER 1' or orig_col == 'CONTACT NUMBER 2':
-                        result_df[new_col] = df[orig_col].apply(lambda x: "" if pd.isna(x) else self.process_mobile_number(x))
-                    elif orig_col == 'ENDO DATE':
-                        result_df[new_col] = df[orig_col].apply(lambda x: self.format_date(x) if pd.notnull(x) else "")
-                    else:
-                        result_df[new_col] = df[orig_col].fillna("")
-                else:
-                    result_df[new_col] = ""
-            
-            result_df['LANDLINE_NO_ALFES'] = ""
-            
-            numeric_cols = ['PAST DUE', 'PAYOFF AMOUNT', 'PRINCIPAL', 'LPC', 'ADA SHORTAGE']
-            for col in numeric_cols:
-                if col in result_df.columns:
-                    result_df[col] = pd.to_numeric(result_df[col], errors='coerce').fillna(0).round(2)
-                    
-            final_columns = [
-                'LAN', 'CH CODE', 'NAME', 'CTL4', 'PAST DUE', 'PAYOFF AMOUNT', 'PRINCIPAL', 'LPC',
-                'ADA SHORTAGE', 'EMAIL_ALS', 'MOBILE_NO_ALS', 'MOBILE_ALFES', 'LANDLINE_NO_ALFES', 
-                'DATE REFERRED', 'UNIT', 'DPD'
-            ]
-            
-            for col in final_columns:
-                if col not in result_df.columns:
-                    result_df[col] = ""
-                    
-            result_df = result_df[final_columns]
-            
-            output_path = os.path.join(dirs[folder_key], output_filename)
-            with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
-                result_df.to_excel(writer, index=False, sheet_name='Sheet1')
-                
-                worksheet = writer.sheets['Sheet1']
-                for i, col in enumerate(final_columns):
-                    max_length = max(
-                        result_df[col].astype(str).map(len).max(),
-                        len(col)
-                    ) + 2
-                    col_letter = chr(65 + i) 
-                    worksheet.column_dimensions[col_letter].width = max_length
-                    
-                    if col in numeric_cols:
-                        for row in range(2, len(result_df) + 2):
-                            cell = worksheet[f"{col_letter}{row}"]
-                            cell.number_format = '0.00'
-                    
-                    if col == 'DATE REFERRED':
-                        for row in range(2, len(result_df) + 2):
-                            cell = worksheet[f"{col_letter}{row}"]
-                            value = cell.value
-                            if value:
-                                try: 
-                                    cell.value = pd.to_datetime(value).strftime("%m/%d/%Y")
-                                    cell.number_format = '@'
-                                except:
-                                    pass
-            
-            with open(output_path, 'rb') as f:
-                output_binary = f.read()
-                
-            return result_df, output_binary, output_filename
             
         except Exception as e:
             st.error(f"Error processing file: {str(e)}")
