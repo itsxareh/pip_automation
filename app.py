@@ -716,7 +716,12 @@ class ROBBikeProcessor(BaseProcessor):
                 #remaining_duplicates = df.duplicated(subset=['COMBINED_KEY']).sum()
                 df = df.drop_duplicates(subset=['COMBINED_KEY'])
                 df = df.drop(columns=['COMBINED_KEY'])
-            
+             
+            if 'Remark' in df.columns:
+                system_auto_update_remarks = df['Remark'].str.contains('System Auto Update Remarks For PD', case=False, na=False)
+                system_auto_update_remarks_count = system_auto_update_remarks.sum()
+                df = df[~system_auto_update_remarks]
+             
             if 'Remark By' in df.columns:
                 jerivera_remarks = df['Remark By'].str.contains('JERIVERA', case=False, na=False)
                 system_remarks_count = jerivera_remarks.sum()
@@ -742,7 +747,7 @@ class ROBBikeProcessor(BaseProcessor):
                     st.warning(f"Found {len(invalid_amount_rows)} row(s) with 'PTP - VOLUNTARY SURRENDER' but 0 or missing 'PTP Amount'.")
                     st.dataframe(invalid_amount_rows, use_container_width=True)
                     
-            st.write(f"Removed: {removed_dnc_count} DNC, {removed_blank_count} blank status, {removed_invalid_dispo_count} invalid disposition, {system_remarks_count} SYSTEM remarks, {initial_duplicates} duplicates.")
+            st.write(f"Removed: {removed_dnc_count} DNC, {removed_blank_count} blank status, {removed_invalid_dispo_count} invalid disposition, {system_auto_update_remarks_count} system auto update remarks, {system_remarks_count} system remarks, {initial_duplicates} duplicates.")
 
             if preview_only:
                 return df, None, None
