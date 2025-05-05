@@ -864,13 +864,12 @@ class ROBBikeProcessor(BaseProcessor):
                                         status = latest_row.get('status', '')
                                         substatus = latest_row.get('substatus', '')
                                         
-                                        if status == 0 or substatus == 0 or status == '' or substatus == '':
-                                            status = ''
-                                            substatus = ''
+                                        if status in ('0', '') or substatus in ('0', ''):
+                                             status, substatus = '', ''
                                         
                                         latest_status_map[chcode] = {
-                                            'Field_Status': status,
-                                            'Field_Substatus': substatus,
+                                            'Field_Status': status if status not in ('0', '') else '',
+                                            'Field_Substatus': substatus if substatus not in ('0', '') else '',
                                         }
                                     
                                     for account_no, data in account_data_map.items():
