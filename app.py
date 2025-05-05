@@ -1018,9 +1018,8 @@ class ROBBikeProcessor(BaseProcessor):
                         'Value': row['Balance']
                     })
                     
-                    if "PARTIAL" in substatus_value.upper() or "FULL" in substatus_value.upper():
-                        ptp_value = row['Claim Paid Amount']
-                    else:
+                    ptp_value = row['Claim Paid Amount']
+                    if ptp_value == 0 or ptp_value == '':
                         ptp_value = row['PTP Amount']
                         
                     bottom_rows.append({
