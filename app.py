@@ -861,9 +861,16 @@ class ROBBikeProcessor(BaseProcessor):
                                     for chcode, group in field_results_df.groupby('chcode'):
                                         latest_row = group.sort_values('inserted_date', ascending=False).iloc[0]
                                         
+                                        status = latest_row.get('status', '')
+                                        substatus = latest_row.get('substatus', '')
+                                        
+                                        if status == 0 or substatus == 0 or status == '' or substatus == '':
+                                            status = ''
+                                            substatus = ''
+                                        
                                         latest_status_map[chcode] = {
-                                            'Field_Status': latest_row.get('status', ''),
-                                            'Field_Substatus': latest_row.get('substatus', ''),
+                                            'Field_Status': status,
+                                            'Field_Substatus': substatus,
                                         }
                                     
                                     for account_no, data in account_data_map.items():
@@ -878,6 +885,7 @@ class ROBBikeProcessor(BaseProcessor):
                                                 'Field_Status': '',
                                                 'Field_Substatus': '',
                                             })
+                                         
                         except Exception as e:
                             st.error(f"Error fetching field results: {str(e)}")
                     
@@ -992,7 +1000,7 @@ class ROBBikeProcessor(BaseProcessor):
             priority_substatus = [
                 ("FULLY PAID", "PAY OFF"),
                 ("PARTIAL", "STILL PD BUT WITH ARRANGEMENT"),
-                ("FULL UPDATE", "STILL PD BUT WITH ARRANGEMENT")
+                ("FULL UPDATE", "CURRENT")
             ]
 
             bottom_rows = []
@@ -1010,7 +1018,7 @@ class ROBBikeProcessor(BaseProcessor):
                         'Value': row['Balance']
                     })
                     
-                    if "PARTIAL" in substatus_value.upper() or "FULLY PAID" in substatus_value.upper():
+                    if "PARTIAL" in substatus_value.upper() or "FULL" in substatus_value.upper():
                         ptp_value = row['Claim Paid Amount']
                     else:
                         ptp_value = row['PTP Amount']
