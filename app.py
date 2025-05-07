@@ -1285,6 +1285,10 @@ class BDOAutoProcessor(BaseProcessor):
                 st.error(f"Template file not found: {daily_report_template}")
                 return None, None, None
                 
+            if not os.path.exists(daily_report_template):
+                st.error(f"Template file not found: {daily_report_template}")
+                return None, None, None
+                
             if not os.path.exists(daily_productivity_template):
                 st.error(f"Template file not found: {daily_productivity_template}")
                 return None, None, None
@@ -1514,6 +1518,8 @@ class BDOAutoProcessor(BaseProcessor):
                 
                 output_files = {}
                 productivity_files = {}
+                b5_prod_df = None
+                b6_prod_df = None
                 
                 template_wb = load_workbook(daily_report_template)
                 
@@ -1549,6 +1555,13 @@ class BDOAutoProcessor(BaseProcessor):
                     ptp_rows_b5 = bucket5_df[bucket5_df["STATUS4"] == "PTP"]
                     ptp_count_b5 = len(ptp_rows_b5)
                     ptp_balance_sum_b5 = ptp_rows_b5["BALANCE"].sum() if ptp_count_b5 > 0 else 0
+                    
+                    # Create productivity DataFrame for B5
+                    b5_prod_df = pd.DataFrame({
+                        "Date": [current_date_formatted],
+                        "PTP Count": [ptp_count_b5],
+                        "Balance Sum": [ptp_balance_sum_b5]
+                    })
                     
                     # Update F8 and G8
                     ws5_prod['F8'] = ptp_count_b5
@@ -1594,6 +1607,13 @@ class BDOAutoProcessor(BaseProcessor):
                     ptp_count_b6 = len(ptp_rows_b6)
                     ptp_balance_sum_b6 = ptp_rows_b6["BALANCE"].sum() if ptp_count_b6 > 0 else 0
                     
+                    # Create productivity DataFrame for B6
+                    b6_prod_df = pd.DataFrame({
+                        "Date": [current_date_formatted],
+                        "PTP Count": [ptp_count_b6],
+                        "Balance Sum": [ptp_balance_sum_b6]
+                    })
+                    
                     # Update F8 and G8
                     ws6_prod['F8'] = ptp_count_b6
                     ws6_prod['G8'] = ptp_balance_sum_b6
@@ -1622,6 +1642,8 @@ class BDOAutoProcessor(BaseProcessor):
                 return {
                     "b5_df": bucket5_df,
                     "b6_df": bucket6_df,
+                    "b5_prod_df": b5_prod_df,
+                    "b6_prod_df": b6_prod_df,
                     "b5_binary": b5_binary.getvalue() if not bucket5_df.empty else None,
                     "b6_binary": b6_binary.getvalue() if not bucket6_df.empty else None,
                     "b5_filename": b5_filename,
@@ -1650,6 +1672,7 @@ class BDOAutoProcessor(BaseProcessor):
             st.error(traceback.format_exc())
             logging.error(f"Processing error: {str(e)}\n{traceback.format_exc()}")
             return None, None, None
+            
         
     def process_daily_productivity_report(self, file_content, sheet_name=None, preview_only=False,
                     remove_duplicates=False, remove_blanks=False, trim_spaces=False, report_date=None):
