@@ -1341,7 +1341,7 @@ class BDOAutoProcessor(BaseProcessor):
                 return None, None, None
                 
             byte_stream = io.BytesIO(file_content)
-            xls = pd.ExcelFile(byte_stream6)
+            xls = pd.ExcelFile(byte_stream)
             df_main = pd.read_excel(xls, sheet_name=sheet_name)
             
             df_main = self.clean_data(df_main, remove_duplicates, remove_blanks, trim_spaces)
