@@ -1276,7 +1276,21 @@ class BDOAutoProcessor(BaseProcessor):
             DIR = os.getcwd()
             
             TEMPLATE_DIR = os.path.join(DIR, "templates", "bdo_auto")
-            template = os.path.join(TEMPLATE_DIR, "AGENCY DAILY REPORT TEMPLATE.xlsx") 
+            template = os.path.join(TEMPLATE_DIR, "AGENCY DAILY REPORT TEMPLATE.xlsx")
+            
+            # Validate template exists before proceeding
+            if not os.path.exists(template):
+                st.error(f"Template file not found: {template}")
+                return None, None, None
+                
+            # Check if template is a valid Excel file
+            try:
+                # Test if file can be opened as Excel
+                test_wb = load_workbook(template)
+                test_wb.close()
+            except zipfile.BadZipFile:
+                st.error(f"Template file is not a valid Excel file: {template}")
+                return None, None, None
             
             BASE_DIR = os.path.join(DIR, "database", "bdo_auto")
             
@@ -1465,10 +1479,17 @@ class BDOAutoProcessor(BaseProcessor):
                 
                 output_files = {}
                 
+                # Create the output files directly without using the template
                 if not bucket5_df.empty:
-                    wb5 = load_workbook(template)
+                    wb5 = openpyxl.Workbook()
                     ws5 = wb5.active
                     
+                    # Add headers
+                    headers = bucket5_df.columns.tolist()
+                    for col_idx, header in enumerate(headers, 1):
+                        ws5.cell(row=1, column=col_idx, value=header)
+                    
+                    # Add data
                     for r_idx, row in enumerate(bucket5_df.values, 2):
                         for c_idx, value in enumerate(row, 1):
                             ws5.cell(row=r_idx, column=c_idx, value=value)
@@ -1479,9 +1500,15 @@ class BDOAutoProcessor(BaseProcessor):
                     output_files["B5"] = output_b5.getvalue()
                     
                 if not bucket6_df.empty:
-                    wb6 = load_workbook(template)
+                    wb6 = openpyxl.Workbook()
                     ws6 = wb6.active
                     
+                    # Add headers
+                    headers = bucket6_df.columns.tolist()
+                    for col_idx, header in enumerate(headers, 1):
+                        ws6.cell(row=1, column=col_idx, value=header)
+                    
+                    # Add data
                     for r_idx, row in enumerate(bucket6_df.values, 2):
                         for c_idx, value in enumerate(row, 1):
                             ws6.cell(row=r_idx, column=c_idx, value=value)
@@ -1520,31 +1547,6 @@ class BDOAutoProcessor(BaseProcessor):
             st.error(traceback.format_exc())
             logging.error(f"Processing error: {str(e)}\n{traceback.format_exc()}")
             return None, None, None
-
-    def process_daily_productivity_report(self, file_content, sheet_name=None, preview_only=False,
-                    remove_duplicates=False, remove_blanks=False, trim_spaces=False, report_date=None):
-        try:
-            byte_stream = io.BytesIO(file_content)
-            xls = pd.ExcelFile(byte_stream)
-            df = pd.read_excel(xls, sheet_name=sheet_name)
-            df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
-            
-        except Exception as e:
-            st.error(f"Error processing daily remark: {str(e)}")
-            return None, None, None
-
-    def process_daily_vs_report(self, file_content, sheet_name=None, preview_only=False,
-                    remove_duplicates=False, remove_blanks=False, trim_spaces=False, report_date=None):
-        try:
-            byte_stream = io.BytesIO(file_content)
-            xls = pd.ExcelFile(byte_stream)
-            df = pd.read_excel(xls, sheet_name=sheet_name)
-            df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
-            
-        except Exception as e:
-            st.error(f"Error processing daily remark: {str(e)}")
-            return None, None, None
-
     def process_daily_productivity_report(self, file_content, sheet_name=None, preview_only=False,
                     remove_duplicates=False, remove_blanks=False, trim_spaces=False, report_date=None):
         try:
