@@ -1429,9 +1429,9 @@ class BDOAutoProcessor(BaseProcessor):
                 output = io.BytesIO()
                 with pd.ExcelWriter(output, engine='openpyxl') as writer:
                     filtered_df.to_excel(writer, index=False, sheet_name="Sheet1")
+                # Save the content
+                output.seek(0)
                 output_files[bucket_name] = output.getvalue()
-            
-            return processed_dfs, len(df_main), output_files
             
         except Exception as e:
             st.error(f"Error processing agency daily report: {str(e)}")
