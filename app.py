@@ -1564,9 +1564,9 @@ class BDOAutoProcessor(BaseProcessor):
                         "PTP Count": [ptp_count_b5],
                         "Balance Sum": [ptp_balance_sum_b5]
                     })
-                    
+                    clean_balance = str(ptp_balance_sum_b5).replace(',', '').replace(' ', '')
                     ws5_prod['F8'] = ptp_count_b5
-                    ws5_prod['G8'] = float(str(ptp_balance_sum_b5).replace(',', ''))
+                    ws5_prod['G8'] = float(clean_balance)
                     ws5_prod['G8'].number_format = "0.00"
                     
                     autofit_worksheet_columns(ws5_prod)
@@ -1614,9 +1614,9 @@ class BDOAutoProcessor(BaseProcessor):
                         "PTP Count": [ptp_count_b6],
                         "Balance Sum": [ptp_balance_sum_b6]
                     })
-                    
+                    clean_balance = str(ptp_balance_sum_b6).replace(',', '').replace(' ', '')
                     ws6_prod['F8'] = ptp_count_b6
-                    ws6_prod['G8'] = float(str(ptp_balance_sum_b6).replace(',', ''))
+                    ws6_prod['G8'] = float(clean_balance)
                     ws6_prod['G8'].number_format = "0.00"
                     
                     autofit_worksheet_columns(ws6_prod)
@@ -1674,31 +1674,6 @@ class BDOAutoProcessor(BaseProcessor):
             logging.error(f"Processing error: {str(e)}\n{traceback.format_exc()}")
             return None, None, None
             
-        
-    def process_daily_productivity_report(self, file_content, sheet_name=None, preview_only=False,
-                    remove_duplicates=False, remove_blanks=False, trim_spaces=False, report_date=None):
-        try:
-            byte_stream = io.BytesIO(file_content)
-            xls = pd.ExcelFile(byte_stream)
-            df = pd.read_excel(xls, sheet_name=sheet_name)
-            df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
-            
-        except Exception as e:
-            st.error(f"Error processing daily remark: {str(e)}")
-            return None, None, None
-
-    def process_daily_vs_report(self, file_content, sheet_name=None, preview_only=False,
-                    remove_duplicates=False, remove_blanks=False, trim_spaces=False, report_date=None):
-        try:
-            byte_stream = io.BytesIO(file_content)
-            xls = pd.ExcelFile(byte_stream)
-            df = pd.read_excel(xls, sheet_name=sheet_name)
-            df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
-            
-        except Exception as e:
-            st.error(f"Error processing daily remark: {str(e)}")
-            return None, None, None
-
 class NoProcessor(BaseProcessor):
     pass
 
