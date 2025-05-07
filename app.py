@@ -1421,6 +1421,7 @@ class BDOAutoProcessor(BaseProcessor):
             processed_dfs = {}
             for bucket_name, bucket_df in bucket_dfs.items():
                 filtered_df = pd.DataFrame({
+                    "Card Number": bucket_df["Card No."],
                     "PN": bucket_df["Account No."],
                     "NAME": bucket_df["Debtor"],
                     "BALANCE": bucket_df["Balance"],
@@ -1457,12 +1458,11 @@ class BDOAutoProcessor(BaseProcessor):
                 
                 filtered_df["PN"] = filtered_df["PN"].astype(str)
                 
-                if bucket_name == "Bucket 5&6":
-                    filtered_df.loc[filtered_df["STATUS4"] == "PTP", "RFD5"] = "BUSY"
-                    filtered_df.loc[filtered_df["STATUS4"] == "CALL NO PTP", "RFD5"] = "NISV"
+                filtered_df.loc[filtered_df["Card Number"].astype(str).str.startswith(("05", "06")), "RFD5"] = \
+                    filtered_df.loc[filtered_df["Card Number"].astype(str).str.startswith(("05", "06")), "PN"]
                 
                 processed_dfs[bucket_name] = filtered_df
-
+            
             if preview_only:
                 preview_data = {}
                 for bucket_name, filtered_df in processed_dfs.items():
@@ -1470,18 +1470,10 @@ class BDOAutoProcessor(BaseProcessor):
                 return preview_data, len(df_main), None
 
             bucket_5_6_df = processed_dfs.get("Bucket 5&6", pd.DataFrame())
-
+            
             if not bucket_5_6_df.empty:
-                bucket_5_6_input = bucket_dfs.get("Bucket 5&6", pd.DataFrame())
-                if not bucket_5_6_input.empty:
-                    bucket5_mask = bucket_5_6_input["Card No."].astype(str).str.startswith("05")
-                    bucket6_mask = bucket_5_6_input["Card No."].astype(str).str.startswith("06")
-                    bucket_5_6_df = bucket_5_6_df.loc[bucket_5_6_input.index]
-                    bucket5_df = bucket_5_6_df[bucket5_mask].copy()
-                    bucket6_df = bucket_5_6_df[bucket6_mask].copy()
-                else:
-                    bucket5_df = pd.DataFrame()
-                    bucket6_df = pd.DataFrame()
+                bucket5_df = bucket_5_6_df[bucket_5_6_df["Card Number"].astype(str).str.startswith("05")].copy()
+                bucket6_df = bucket_5_6_df[bucket_5_6_df["Card Number"].astype(str).str.startswith("06")].copy()
                 
                 current_date = datetime.now().strftime("%B %-d").upper() if not report_date else report_date
 
@@ -1509,7 +1501,7 @@ class BDOAutoProcessor(BaseProcessor):
                     output_b5.seek(0)
                     b5_binary = output_b5
                     output_files["B5"] = b5_binary.getvalue()
-                
+                    
                 if not bucket6_df.empty:
                     wb6 = load_workbook(template)
                     ws6 = wb6.active
