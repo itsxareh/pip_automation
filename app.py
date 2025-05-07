@@ -1273,7 +1273,7 @@ class BDOAutoProcessor(BaseProcessor):
                     remove_duplicates=False, remove_blanks=False, trim_spaces=False, report_date=None):
         try:
             DIR = os.getcwd()
-            BASE_DIR = os.path.join(DIR, "templates", "bdo_auto")
+            BASE_DIR = os.path.join(DIR, "database", "bdo_auto")
             bucket_paths = {
                 "Bucket 1": os.path.join(BASE_DIR, "BUCKET1_AGENT.xlsx"),
                 "Bucket 2": os.path.join(BASE_DIR, "BUCKET2_AGENT.xlsx"),
