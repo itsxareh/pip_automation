@@ -1045,7 +1045,7 @@ class ROBBikeProcessor(BaseProcessor):
                 
             eod_df = pd.concat([eod_df, pd.DataFrame(bottom_rows)], ignore_index=True)
             
-            template_path = os.path.join(os.path.dirname(__file__), output_template)
+            template_path = os.path.join(os.path.dirname(__file__), "templates", "rob_bike", output_template)
             
             output_buffer = io.BytesIO()
             
@@ -1273,14 +1273,15 @@ class BDOAutoProcessor(BaseProcessor):
                     remove_duplicates=False, remove_blanks=False, trim_spaces=False, report_date=None):
         try:
             DIR = os.getcwd()
+            BASE_DIR = os.path.join(DIR, "templates", "bdo_auto")
             bucket_paths = {
-                "Bucket 1": os.path.join(DIR, "BUCKET1_AGENT.xlsx"),
-                "Bucket 2": os.path.join(DIR, "BUCKET2_AGENT.xlsx"),
-                "Bucket 5&6": os.path.join(DIR, "BUCKET5&6_AGENT.xlsx")
+                "Bucket 1": os.path.join(BASE_DIR, "BUCKET1_AGENT.xlsx"),
+                "Bucket 2": os.path.join(BASE_DIR, "BUCKET2_AGENT.xlsx"),
+                "Bucket 5&6": os.path.join(BASE_DIR, "BUCKET5&6_AGENT.xlsx")
             }
             
-            bank_status_path = os.path.join(DIR, "BANK_STATUS.xlsx")
-            rfd_list = os.path.join(DIR, "RFD_LISTS.xlsx")
+            bank_status_path = os.path.join(BASE_DIR, "BANK_STATUS.xlsx")
+            rfd_list = os.path.join(BASE_DIR, "RFD_LISTS.xlsx")
             
             expected_columns = [
                 "S.No", "Date", "Time", "Debtor", "Account No.", "Card No.", "Service No.", "DPD", 
