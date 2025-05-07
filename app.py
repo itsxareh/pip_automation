@@ -1342,7 +1342,7 @@ class BDOAutoProcessor(BaseProcessor):
                 
             byte_stream = io.BytesIO(file_content)
             xls = pd.ExcelFile(byte_stream)
-            df_main = pd.read_excel(xls, sheet_name=sheet_name)
+            df_main = pd.read_excel(xls, sheet_name=sheet_name, dtype={"Account No.": str})
             
             df_main = self.clean_data(df_main, remove_duplicates, remove_blanks, trim_spaces)
             
