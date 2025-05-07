@@ -1463,7 +1463,7 @@ class BDOAutoProcessor(BaseProcessor):
                     "Card Number": bucket_df["Card No."],
                     "PN": bucket_df["Account No."].astype(str).str.replace(r'\.0$', '', regex=True),
                     "NAME": bucket_df["Debtor"],
-                    "BALANCE": bucket_df["Balance"],
+                    "BALANCE": pd.to_numeric(bucket_df["Balance"], errors='coerce'),
                     "HANDLING OFFICER2": bucket_df["HANDLING OFFICER2"].str.upper(),
                     "AGENCY3": "SP MADRID",
                     "STATUS4": bucket_df["BANK STATUS"],
@@ -1567,7 +1567,7 @@ class BDOAutoProcessor(BaseProcessor):
                     
                     ws5_prod['F8'] = ptp_count_b5
                     ws5_prod['G8'] = ptp_balance_sum_b5
-                    ws5_prod['G8'].number_format = "0.00"
+                    ws5_prod['G8'].number_format = "#,##0.00"
                     
                     autofit_worksheet_columns(ws5_prod)
                     
@@ -1617,7 +1617,7 @@ class BDOAutoProcessor(BaseProcessor):
                     
                     ws6_prod['F8'] = ptp_count_b6
                     ws6_prod['G8'] = ptp_balance_sum_b6
-                    ws6_prod['G8'].number_format = "0.00"
+                    ws6_prod['G8'].number_format = "#,##0.00"
                     
                     autofit_worksheet_columns(ws6_prod)
                     
