@@ -1285,10 +1285,6 @@ class BDOAutoProcessor(BaseProcessor):
                 st.error(f"Template file not found: {daily_report_template}")
                 return None, None, None
                 
-            if not os.path.exists(daily_report_template):
-                st.error(f"Template file not found: {daily_report_template}")
-                return None, None, None
-                
             if not os.path.exists(daily_productivity_template):
                 st.error(f"Template file not found: {daily_productivity_template}")
                 return None, None, None
@@ -1453,7 +1449,14 @@ class BDOAutoProcessor(BaseProcessor):
                             pass
                     adjusted_width = max_length + 2
                     ws.column_dimensions[col_letter].width = adjusted_width
-                    
+            
+            def get_merged_cell_top_left(ws, cell_ref):
+                """Find the top-left cell of a merged range containing the given cell_ref."""
+                for merged_range in ws.merged_cells.ranges:
+                    if cell_ref in merged_range:
+                        return merged_range.min_row, merged_range.min_col
+                return None, None  # Not in a merged range
+            
             processed_dfs = {}
             for bucket_name, bucket_df in bucket_dfs.items():
                 filtered_df = pd.DataFrame({
@@ -1548,8 +1551,12 @@ class BDOAutoProcessor(BaseProcessor):
                     wb5_prod = load_workbook(daily_productivity_template)
                     ws5_prod = wb5_prod.active
                     
-                    # Update C2 with current date
-                    ws5_prod['C2'] = current_date_formatted
+                    # Update C2 with current date, handling merged cells
+                    row, col = get_merged_cell_top_left(ws5_prod, 'C2')
+                    if row and col:
+                        ws5_prod.cell(row=row, column=col, value=current_date_formatted)
+                    else:
+                        ws5_prod['C2'] = current_date_formatted
                     
                     # Filter PTP rows and calculate metrics
                     ptp_rows_b5 = bucket5_df[bucket5_df["STATUS4"] == "PTP"]
@@ -1599,8 +1606,12 @@ class BDOAutoProcessor(BaseProcessor):
                     wb6_prod = load_workbook(daily_productivity_template)
                     ws6_prod = wb6_prod.active
                     
-                    # Update C2 with current date
-                    ws6_prod['C2'] = current_date_formatted
+                    # Update C2 with current date, handling merged cells
+                    row, col = get_merged_cell_top_left(ws6_prod, 'C2')
+                    if row and col:
+                        ws6_prod.cell(row=row, column=col, value=current_date_formatted)
+                    else:
+                        ws6_prod['C2'] = current_date_formatted
                     
                     # Filter PTP rows and calculate metrics
                     ptp_rows_b6 = bucket6_df[bucket6_df["STATUS4"] == "PTP"]
@@ -2585,11 +2596,11 @@ def main():
                             st.download_button(label="Download Agency Daily Report B6 File", data=result['b6_binary'], file_name=result['b6_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
                         with tabs[2]:
                             st.subheader("B5 Prod")
-                            st.dataframe(result['b5_prod'], use_container_width=True)
+                            st.dataframe(result['b5_prod_df'], use_container_width=True)
                             st.download_button(label="Download Daily Productivity B5 Report File", data=result['b5_prod_binary'], file_name=result['b5_prod_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
                         with tabs[3]:
                             st.subheader("B6 Prod")
-                            st.dataframe(result['b6_prod'], use_container_width=True)
+                            st.dataframe(result['b6_prod_df'], use_container_width=True)
                             st.download_button(label="Download Daily Productivity B6 Report File", data=result['b6_prod_binary'], file_name=result['b6_prod_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
                         with tabs[4]:
                             st.subheader("B5B6 VS")
