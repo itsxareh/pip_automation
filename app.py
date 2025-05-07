@@ -1553,6 +1553,13 @@ class BDOAutoProcessor(BaseProcessor):
                 }
                             
             return None, None, None
+            
+        except Exception as e:
+            st.error(f"Error processing agency daily report: {str(e)}")
+            import traceback
+            st.error(traceback.format_exc())
+            logging.error(f"Processing error: {str(e)}\n{traceback.format_exc()}")
+            return None, None, None
         
     def process_daily_productivity_report(self, file_content, sheet_name=None, preview_only=False,
                     remove_duplicates=False, remove_blanks=False, trim_spaces=False, report_date=None):
