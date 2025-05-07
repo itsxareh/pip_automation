@@ -1441,7 +1441,10 @@ class BDOAutoProcessor(BaseProcessor):
                     "RFD5": bucket_df["Remark"].apply(extract_and_validate_rfd)
                 })
                 
-                filtered_df.reset_index(drop=True, inplace=True)
+                if bucket_name == "Bucket 5&6":
+                        filtered_df = filtered_df 
+                    else:
+                        filtered_df.reset_index(drop=True, inplace=True)
                 for i in range(1, len(filtered_df)):
                     if filtered_df.loc[i, "HANDLING OFFICER2"] == "SYSTEM":
                         filtered_df.loc[i, "HANDLING OFFICER2"] = filtered_df.loc[i-1, "HANDLING OFFICER2"]
@@ -1476,9 +1479,12 @@ class BDOAutoProcessor(BaseProcessor):
                 if not bucket_5_6_input.empty:
                     bucket5_mask = bucket_5_6_input["Card No."].astype(str).str.startswith("05")
                     bucket6_mask = bucket_5_6_input["Card No."].astype(str).str.startswith("06")
-                    bucket_5_6_df = bucket_5_6_df.loc[bucket_5_6_input.index]
-                    bucket5_df = bucket_5_6_df[bucket5_mask].copy()
-                    bucket6_df = bucket_5_6_df[bucket6_mask].copy()
+                    
+                    bucket5_input = bucket_5_6_input[bucket5_mask].copy()
+                    bucket6_input = bucket_5_6_input[bucket6_mask].copy()
+                    
+                    bucket5_df = bucket_5_6_df[bucket_5_6_df["PN"].isin(bucket5_input["Account No."])].copy()
+                    bucket6_df = bucket_5_6_df[bucket_5_6_df["PN"].isin(bucket6_input["Account No."])].copy()
                 else:
                     bucket5_df = pd.DataFrame()
                     bucket6_df = pd.DataFrame()
@@ -1561,7 +1567,6 @@ class BDOAutoProcessor(BaseProcessor):
             st.error(f"Error processing agency daily report: {str(e)}")
             import traceback
             st.error(traceback.format_exc())
-            logging.error(f"Processing error: {str(e)}\n{traceback.format_exc()}")
             return None, None, None
         
     def process_daily_productivity_report(self, file_content, sheet_name=None, preview_only=False,
