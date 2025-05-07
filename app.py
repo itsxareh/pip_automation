@@ -1283,11 +1283,22 @@ class BDOAutoProcessor(BaseProcessor):
                 st.error(f"Template file not found: {template}")
                 return None, None, None
                 
-            try:
-                test_wb = load_workbook(template)
-                test_wb.close()
-            except zipfile.BadZipFile:
-                st.error(f"Template file is not a valid Excel file: {template}")
+            if os.path.exists(template):
+                try:
+                    with open(template, 'rb') as template_file:
+                        template_copy = io.BytesIO(template_file.read())
+
+                    try:
+                        test_wb = load_workbook(template_copy)
+                        test_wb.close()
+                    except zipfile.BadZipFile:
+                        st.error(f"Template file is not a valid Excel file: {template}")
+                        return None, None, None
+                except Exception as e:
+                    st.error(f"Error reading the template file: {str(e)}")
+                    return None, None, None
+            else:
+                st.error(f"Template file not found: {template}")
                 return None, None, None
             
             BASE_DIR = os.path.join(DIR, "database", "bdo_auto")
@@ -1545,6 +1556,7 @@ class BDOAutoProcessor(BaseProcessor):
             st.error(traceback.format_exc())
             logging.error(f"Processing error: {str(e)}\n{traceback.format_exc()}")
             return None, None, None
+        
     def process_daily_productivity_report(self, file_content, sheet_name=None, preview_only=False,
                     remove_duplicates=False, remove_blanks=False, trim_spaces=False, report_date=None):
         try:
