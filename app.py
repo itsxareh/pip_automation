@@ -1427,7 +1427,7 @@ class BDOAutoProcessor(BaseProcessor):
             output_files = {}
             for bucket_name, filtered_df in processed_dfs.items():
                 output = io.BytesIO()
-                with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                with pd.ExcelWriter(output, engine='openpyxl') as writer:
                     filtered_df.to_excel(writer, index=False, sheet_name="Sheet1")
                 output_files[bucket_name] = output.getvalue()
             
