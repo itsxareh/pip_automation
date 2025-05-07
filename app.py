@@ -1423,15 +1423,23 @@ class BDOAutoProcessor(BaseProcessor):
                 for bucket_name, filtered_df in processed_dfs.items():
                     preview_data[bucket_name] = filtered_df.head(10)
                 return preview_data, len(df_main), None
-            
+
             output_files = {}
             for bucket_name, filtered_df in processed_dfs.items():
                 output = io.BytesIO()
                 with pd.ExcelWriter(output, engine='openpyxl') as writer:
                     filtered_df.to_excel(writer, index=False, sheet_name="Sheet1")
-                # Save the content
                 output.seek(0)
                 output_files[bucket_name] = output.getvalue()
+
+            combined_output = io.BytesIO()
+            with pd.ExcelWriter(combined_output, engine='openpyxl') as writer:
+                for bucket_name, filtered_df in processed_dfs.items():
+                    filtered_df.to_excel(writer, index=False, sheet_name=bucket_name)
+            combined_output.seek(0)
+            filename = f"Daily_Agency_Report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+
+            return df_main, combined_output.getvalue(), filename
             
         except Exception as e:
             st.error(f"Error processing agency daily report: {str(e)}")
