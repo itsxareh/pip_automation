@@ -1463,7 +1463,7 @@ class BDOAutoProcessor(BaseProcessor):
                     "Card Number": bucket_df["Card No."],
                     "PN": bucket_df["Account No."].astype(str).str.replace(r'\.0$', '', regex=True),
                     "NAME": bucket_df["Debtor"],
-                    "BALANCE": pd.to_numeric(bucket_df["Balance"], errors='coerce'),
+                    "BALANCE": bucket_df["Balance"],
                     "HANDLING OFFICER2": bucket_df["HANDLING OFFICER2"].str.upper(),
                     "AGENCY3": "SP MADRID",
                     "STATUS4": bucket_df["BANK STATUS"],
