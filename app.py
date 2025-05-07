@@ -1440,7 +1440,7 @@ class BDOAutoProcessor(BaseProcessor):
                     ),
                     "RFD5": bucket_df["Remark"].apply(extract_and_validate_rfd)
                 })
-            
+                
                 filtered_df.reset_index(drop=True, inplace=True)
                 for i in range(1, len(filtered_df)):
                     if filtered_df.loc[i, "HANDLING OFFICER2"] == "SYSTEM":
@@ -1462,7 +1462,7 @@ class BDOAutoProcessor(BaseProcessor):
                     filtered_df.loc[filtered_df["STATUS4"] == "CALL NO PTP", "RFD5"] = "NISV"
                 
                 processed_dfs[bucket_name] = filtered_df
-                
+
             if preview_only:
                 preview_data = {}
                 for bucket_name, filtered_df in processed_dfs.items():
@@ -1470,7 +1470,7 @@ class BDOAutoProcessor(BaseProcessor):
                 return preview_data, len(df_main), None
 
             bucket_5_6_df = processed_dfs.get("Bucket 5&6", pd.DataFrame())
-            
+
             if not bucket_5_6_df.empty:
                 bucket_5_6_input = bucket_dfs.get("Bucket 5&6", pd.DataFrame())
                 if not bucket_5_6_input.empty:
@@ -1509,7 +1509,7 @@ class BDOAutoProcessor(BaseProcessor):
                     output_b5.seek(0)
                     b5_binary = output_b5
                     output_files["B5"] = b5_binary.getvalue()
-                    
+                
                 if not bucket6_df.empty:
                     wb6 = load_workbook(template)
                     ws6 = wb6.active
