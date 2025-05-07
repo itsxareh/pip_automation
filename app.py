@@ -1421,7 +1421,6 @@ class BDOAutoProcessor(BaseProcessor):
             processed_dfs = {}
             for bucket_name, bucket_df in bucket_dfs.items():
                 filtered_df = pd.DataFrame({
-                    "Card Number": bucket_df["Card No."],
                     "PN": bucket_df["Account No."],
                     "NAME": bucket_df["Debtor"],
                     "BALANCE": bucket_df["Balance"],
@@ -1458,8 +1457,9 @@ class BDOAutoProcessor(BaseProcessor):
                 
                 filtered_df["PN"] = filtered_df["PN"].astype(str)
                 
-                filtered_df.loc[filtered_df["Card Number"].astype(str).str.startswith(("05", "06")), "RFD5"] = \
-                    filtered_df.loc[filtered_df["Card Number"].astype(str).str.startswith(("05", "06")), "PN"]
+                if bucket_name == "Bucket 5&6":
+                    filtered_df.loc[filtered_df["STATUS4"] == "PTP", "RFD5"] = "BUSY"
+                    filtered_df.loc[filtered_df["STATUS4"] == "CALL NO PTP", "RFD5"] = "NISV"
                 
                 processed_dfs[bucket_name] = filtered_df
             
@@ -1482,19 +1482,16 @@ class BDOAutoProcessor(BaseProcessor):
                 
                 output_files = {}
                 
-                # Load the template for B5 and B6 reports
                 template_wb = load_workbook(template)
                 
                 if not bucket5_df.empty:
                     wb5 = load_workbook(template)
                     ws5 = wb5.active
                     
-                    # Add headers from DataFrame to match template structure
                     headers = bucket5_df.columns.tolist()
                     for col_idx, header in enumerate(headers, 1):
                         ws5.cell(row=1, column=col_idx, value=header)
                     
-                    # Add data
                     for r_idx, row in enumerate(bucket5_df.values, 2):
                         for c_idx, value in enumerate(row, 1):
                             ws5.cell(row=r_idx, column=c_idx, value=value)
@@ -1509,12 +1506,10 @@ class BDOAutoProcessor(BaseProcessor):
                     wb6 = load_workbook(template)
                     ws6 = wb6.active
                     
-                    # Add headers from DataFrame to match template structure
                     headers = bucket6_df.columns.tolist()
                     for col_idx, header in enumerate(headers, 1):
                         ws6.cell(row=1, column=col_idx, value=header)
                     
-                    # Add data
                     for r_idx, row in enumerate(bucket6_df.values, 2):
                         for c_idx, value in enumerate(row, 1):
                             ws6.cell(row=r_idx, column=c_idx, value=value)
