@@ -1283,21 +1283,17 @@ class BDOAutoProcessor(BaseProcessor):
                 st.error(f"Template file not found: {template}")
                 return None, None, None
                 
-            if os.path.exists(template):
+            try:
+                with open(template, 'rb') as template_file:
+                    template_copy = io.BytesIO(template_file.read())
                 try:
-                    with open(template, 'rb') as template_file:
-                        template_copy = io.BytesIO(template_file.read())
-                    try:
-                        test_wb = load_workbook(template_copy)
-                        test_wb.close()
-                    except zipfile.BadZipFile:
-                        st.error(f"Template file is not a valid Excel file: {template}")
-                        return None, None, None
-                except Exception as e:
-                    st.error(f"Error opening template file: {str(e)}")
+                    test_wb = load_workbook(template_copy)
+                    test_wb.close()
+                except zipfile.BadZipFile:
+                    st.error(f"Template file is not a valid Excel file: {template}")
                     return None, None, None
-            else:
-                st.error(f"Template file not found: {template}")
+            except Exception as e:
+                st.error(f"Error opening template file: {str(e)}")
                 return None, None, None
             
             BASE_DIR = os.path.join(DIR, "database", "bdo_auto")
@@ -1451,7 +1447,6 @@ class BDOAutoProcessor(BaseProcessor):
                     if filtered_df.loc[i, "HANDLING OFFICER2"] == "SYSTEM":
                         filtered_df.loc[i, "HANDLING OFFICER2"] = filtered_df.loc[i-1, "HANDLING OFFICER2"]
                 
-
                 filtered_df.loc[filtered_df["RFD5"].isna() & (filtered_df["STATUS4"] == "PTP"), "RFD5"] = "BUSY"
                 filtered_df.loc[filtered_df["RFD5"].isna() & (filtered_df["STATUS4"] == "CALL NO PTP"), "RFD5"] = "NISV"
                 filtered_df.loc[filtered_df["RFD5"].isna() & (filtered_df["STATUS4"] == "UNCON"), "RFD5"] = "NABZ"
@@ -1487,12 +1482,14 @@ class BDOAutoProcessor(BaseProcessor):
                 
                 output_files = {}
                 
-                # Create the output files directly without using the template
+                # Load the template for B5 and B6 reports
+                template_wb = load_workbook(template)
+                
                 if not bucket5_df.empty:
-                    wb5 = openpyxl.Workbook()
+                    wb5 = load_workbook(template)
                     ws5 = wb5.active
                     
-                    # Add headers
+                    # Add headers from DataFrame to match template structure
                     headers = bucket5_df.columns.tolist()
                     for col_idx, header in enumerate(headers, 1):
                         ws5.cell(row=1, column=col_idx, value=header)
@@ -1509,10 +1506,10 @@ class BDOAutoProcessor(BaseProcessor):
                     output_files["B5"] = b5_binary.getvalue()
                     
                 if not bucket6_df.empty:
-                    wb6 = openpyxl.Workbook()
+                    wb6 = load_workbook(template)
                     ws6 = wb6.active
                     
-                    # Add headers
+                    # Add headers from DataFrame to match template structure
                     headers = bucket6_df.columns.tolist()
                     for col_idx, header in enumerate(headers, 1):
                         ws6.cell(row=1, column=col_idx, value=header)
@@ -1555,13 +1552,6 @@ class BDOAutoProcessor(BaseProcessor):
                     }
                 }
                             
-            return None, None, None
-            
-        except Exception as e:
-            st.error(f"Error processing agency daily report: {str(e)}")
-            import traceback
-            st.error(traceback.format_exc())
-            logging.error(f"Processing error: {str(e)}\n{traceback.format_exc()}")
             return None, None, None
         
     def process_daily_productivity_report(self, file_content, sheet_name=None, preview_only=False,
@@ -2466,6 +2456,7 @@ def main():
                         )
                         st.write("Result keys:", result.keys())
                         tabs = st.tabs(["B5", "B6"])
+                        
                         with tabs[0]:
                             st.subheader("BPO AUTO B5")
                             st.dataframe(result['b5_df'], use_container_width=True)
