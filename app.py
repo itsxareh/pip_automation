@@ -14,6 +14,7 @@ import tempfile
 import shutil
 import re 
 import msoffcrypto
+import zipfile
  
 from supabase import create_client
 from dotenv import load_dotenv
@@ -1278,14 +1279,11 @@ class BDOAutoProcessor(BaseProcessor):
             TEMPLATE_DIR = os.path.join(DIR, "templates", "bdo_auto")
             template = os.path.join(TEMPLATE_DIR, "AGENCY DAILY REPORT TEMPLATE.xlsx")
             
-            # Validate template exists before proceeding
             if not os.path.exists(template):
                 st.error(f"Template file not found: {template}")
                 return None, None, None
                 
-            # Check if template is a valid Excel file
             try:
-                # Test if file can be opened as Excel
                 test_wb = load_workbook(template)
                 test_wb.close()
             except zipfile.BadZipFile:
