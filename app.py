@@ -1434,8 +1434,8 @@ class BDOAutoProcessor(BaseProcessor):
             processed_dfs = {}
             for bucket_name, bucket_df in bucket_dfs.items():
                 filtered_df = pd.DataFrame({
-                    "Card Number": bucket_df["Card No."],  # Retain temporarily for bucket splitting
-                    "PN": bucket_df["Account No."],
+                    "Card Number": bucket_df["Card No."],
+                    "PN": bucket_df["Account No."].astype(str).str.replace(r'\.0$', '', regex=True),
                     "NAME": bucket_df["Debtor"],
                     "BALANCE": bucket_df["Balance"],
                     "HANDLING OFFICER2": bucket_df["HANDLING OFFICER2"].str.upper(),
