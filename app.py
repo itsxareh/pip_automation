@@ -1564,9 +1564,9 @@ class BDOAutoProcessor(BaseProcessor):
                         "PTP Count": [ptp_count_b5],
                         "Balance Sum": [ptp_balance_sum_b5]
                     })
-                    clean_balance = str(ptp_balance_sum_b5).replace(',', '').replace(' ', '')
+                    
                     ws5_prod['F8'] = ptp_count_b5
-                    ws5_prod['G8'] = float(clean_balance)
+                    ws5_prod['G8'] = float(ptp_balance_sum_b5)
                     ws5_prod['G8'].number_format = "0.00"
                     
                     autofit_worksheet_columns(ws5_prod)
@@ -1614,9 +1614,9 @@ class BDOAutoProcessor(BaseProcessor):
                         "PTP Count": [ptp_count_b6],
                         "Balance Sum": [ptp_balance_sum_b6]
                     })
-                    clean_balance = str(ptp_balance_sum_b6).replace(',', '').replace(' ', '')
+                    
                     ws6_prod['F8'] = ptp_count_b6
-                    ws6_prod['G8'] = float(clean_balance)
+                    ws6_prod['G8'] = float(ptp_balance_sum_b6)
                     ws6_prod['G8'].number_format = "0.00"
                     
                     autofit_worksheet_columns(ws6_prod)
