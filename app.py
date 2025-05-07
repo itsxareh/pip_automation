@@ -2456,6 +2456,7 @@ def main():
                             remove_blanks=remove_blanks, 
                             trim_spaces=trim_spaces
                         )
+                        st.write("Result keys:", result.keys())
                         tabs = st.tabs(["B5", "B6"])
                         with tabs[0]:
                             st.subheader("BPO AUTO B5")
