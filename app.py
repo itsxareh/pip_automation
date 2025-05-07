@@ -1287,7 +1287,6 @@ class BDOAutoProcessor(BaseProcessor):
                 try:
                     with open(template, 'rb') as template_file:
                         template_copy = io.BytesIO(template_file.read())
-
                     try:
                         test_wb = load_workbook(template_copy)
                         test_wb.close()
@@ -1295,7 +1294,7 @@ class BDOAutoProcessor(BaseProcessor):
                         st.error(f"Template file is not a valid Excel file: {template}")
                         return None, None, None
                 except Exception as e:
-                    st.error(f"Error reading the template file: {str(e)}")
+                    st.error(f"Error opening template file: {str(e)}")
                     return None, None, None
             else:
                 st.error(f"Template file not found: {template}")
