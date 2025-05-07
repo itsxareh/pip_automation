@@ -1341,7 +1341,7 @@ class BDOAutoProcessor(BaseProcessor):
                 return None, None, None
                 
             byte_stream = io.BytesIO(file_content)
-            xls = pd.ExcelFile(byte_stream)
+            xls = pd.ExcelFile(byte_stream6)
             df_main = pd.read_excel(xls, sheet_name=sheet_name)
             
             df_main = self.clean_data(df_main, remove_duplicates, remove_blanks, trim_spaces)
@@ -1434,6 +1434,7 @@ class BDOAutoProcessor(BaseProcessor):
             processed_dfs = {}
             for bucket_name, bucket_df in bucket_dfs.items():
                 filtered_df = pd.DataFrame({
+                    "Card Number": bucket_df["Card No."],  # Retain temporarily for bucket splitting
                     "PN": bucket_df["Account No."],
                     "NAME": bucket_df["Debtor"],
                     "BALANCE": bucket_df["Balance"],
@@ -1465,7 +1466,7 @@ class BDOAutoProcessor(BaseProcessor):
                 
                 filtered_df = filtered_df[~(filtered_df["STATUS4"].isna() | (filtered_df["STATUS4"] == "EXCLUDE"))]
                 
-                filtered_df.loc[filtered_df["STATUS4"] != "PTP", "PTP DATE"] = np.nan
+                filtered_df.loc filtered_df["STATUS4"] != "PTP", "PTP DATE"] = np.nan
                 filtered_df.loc[filtered_df["STATUS4"] != "PTP", "PTP AMOUNT"] = np.nan
                 
                 filtered_df["PN"] = filtered_df["PN"].astype(str)
@@ -1475,7 +1476,9 @@ class BDOAutoProcessor(BaseProcessor):
             if preview_only:
                 preview_data = {}
                 for bucket_name, filtered_df in processed_dfs.items():
-                    preview_data[bucket_name] = filtered_df.head(10)
+                    # Remove Card Number for preview
+                    preview_df = filtered_df.drop(columns=["Card Number"])
+                    preview_data[bucket_name] = preview_df.head(10)
                 return preview_data, len(df_main), None
 
             bucket_5_6_df = processed_dfs.get("Bucket 5&6", pd.DataFrame())
@@ -1483,6 +1486,10 @@ class BDOAutoProcessor(BaseProcessor):
             if not bucket_5_6_df.empty:
                 bucket5_df = bucket_5_6_df[bucket_5_6_df["Card Number"].astype(str).str.startswith("05")].copy()
                 bucket6_df = bucket_5_6_df[bucket_5_6_df["Card Number"].astype(str).str.startswith("06")].copy()
+                
+                # Remove Card Number from final output DataFrames
+                bucket5_df = bucket5_df.drop(columns=["Card Number"])
+                bucket6_df = bucket6_df.drop(columns=["Card Number"])
                 
                 current_date = datetime.now().strftime("%B %-d").upper() if not report_date else report_date
 
@@ -1536,7 +1543,9 @@ class BDOAutoProcessor(BaseProcessor):
                 combined_output = io.BytesIO()
                 with pd.ExcelWriter(combined_output, engine='openpyxl') as writer:
                     for bucket_name, filtered_df in processed_dfs.items():
-                        filtered_df.to_excel(writer, index=False, sheet_name=bucket_name)
+                        # Remove Card Number for combined output
+                        output_df = filtered_df.drop(columns=["Card Number"])
+                        output_df.to_excel(writer, index=False, sheet_name=bucket_name)
                 combined_output.seek(0)
                 
                 temp_filename = f"temp_daily_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
