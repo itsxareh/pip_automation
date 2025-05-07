@@ -1466,7 +1466,7 @@ class BDOAutoProcessor(BaseProcessor):
                 
                 filtered_df = filtered_df[~(filtered_df["STATUS4"].isna() | (filtered_df["STATUS4"] == "EXCLUDE"))]
                 
-                filtered_df.loc filtered_df["STATUS4"] != "PTP", "PTP DATE"] = np.nan
+                filtered_df.loc[filtered_df["STATUS4"] != "PTP", "PTP DATE"] = np.nan
                 filtered_df.loc[filtered_df["STATUS4"] != "PTP", "PTP AMOUNT"] = np.nan
                 
                 filtered_df["PN"] = filtered_df["PN"].astype(str)
