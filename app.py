@@ -1419,50 +1419,50 @@ class BDOAutoProcessor(BaseProcessor):
                 return rfd if rfd in rfd_valid_codes else np.nan
             
             processed_dfs = {}
-        for bucket_name, bucket_df in bucket_dfs.items():
-            filtered_df = pd.DataFrame({
-                "PN": bucket_df["Account No."],
-                "NAME": bucket_df["Debtor"],
-                "BALANCE": bucket_df["Balance"],
-                "HANDLING OFFICER2": bucket_df["HANDLING OFFICER2"].str.upper(),
-                "AGENCY3": "SP MADRID",
-                "STATUS4": bucket_df["BANK STATUS"],
-                "DATE OF CALL": bucket_df["Date"].dt.strftime("%m/%d/%Y"),
-                "PTP DATE": np.where(
-                    bucket_df["PTP Date"].isna(),
-                    np.where(bucket_df["Claim Paid Date"].isna(), np.nan, bucket_df["Claim Paid Date"].dt.strftime("%m/%d/%Y")),
-                    bucket_df["PTP Date"].dt.strftime("%m/%d/%Y")
-                ),
-                "PTP AMOUNT": np.where(
-                    bucket_df["PTP Amount"].isna() | (bucket_df["PTP Amount"] == 0),
-                    np.where(bucket_df["Claim Paid Amount"].isna() | (bucket_df["Claim Paid Amount"] == 0), np.nan, bucket_df["Claim Paid Amount"]),
-                    bucket_df["PTP Amount"]
-                ),
-                "RFD5": bucket_df["Remark"].apply(extract_and_validate_rfd)
-            })
+            for bucket_name, bucket_df in bucket_dfs.items():
+                filtered_df = pd.DataFrame({
+                    "PN": bucket_df["Account No."],
+                    "NAME": bucket_df["Debtor"],
+                    "BALANCE": bucket_df["Balance"],
+                    "HANDLING OFFICER2": bucket_df["HANDLING OFFICER2"].str.upper(),
+                    "AGENCY3": "SP MADRID",
+                    "STATUS4": bucket_df["BANK STATUS"],
+                    "DATE OF CALL": bucket_df["Date"].dt.strftime("%m/%d/%Y"),
+                    "PTP DATE": np.where(
+                        bucket_df["PTP Date"].isna(),
+                        np.where(bucket_df["Claim Paid Date"].isna(), np.nan, bucket_df["Claim Paid Date"].dt.strftime("%m/%d/%Y")),
+                        bucket_df["PTP Date"].dt.strftime("%m/%d/%Y")
+                    ),
+                    "PTP AMOUNT": np.where(
+                        bucket_df["PTP Amount"].isna() | (bucket_df["PTP Amount"] == 0),
+                        np.where(bucket_df["Claim Paid Amount"].isna() | (bucket_df["Claim Paid Amount"] == 0), np.nan, bucket_df["Claim Paid Amount"]),
+                        bucket_df["PTP Amount"]
+                    ),
+                    "RFD5": bucket_df["Remark"].apply(extract_and_validate_rfd)
+                })
             
-            filtered_df.reset_index(drop=True, inplace=True)
-            for i in range(1, len(filtered_df)):
-                if filtered_df.loc[i, "HANDLING OFFICER2"] == "SYSTEM":
-                    filtered_df.loc[i, "HANDLING OFFICER2"] = filtered_df.loc[i-1, "HANDLING OFFICER2"]
-            
-            filtered_df.loc[filtered_df["RFD5"].isna() & (filtered_df["STATUS4"] == "PTP"), "RFD5"] = "BUSY"
-            filtered_df.loc[filtered_df["RFD5"].isna() & (filtered_df["STATUS4"] == "CALL NO PTP"), "RFD5"] = "NISV"
-            filtered_df.loc[filtered_df["RFD5"].isna() & (filtered_df["STATUS4"] == "UNCON"), "RFD5"] = "NABZ"
-            
-            filtered_df = filtered_df[~(filtered_df["STATUS4"].isna() | (filtered_df["STATUS4"] == "EXCLUDE"))]
-            
-            filtered_df.loc[filtered_df["STATUS4"] != "PTP", "PTP DATE"] = np.nan
-            filtered_df.loc[filtered_df["STATUS4"] != "PTP", "PTP AMOUNT"] = np.nan
-            
-            filtered_df["PN"] = filtered_df["PN"].astype(str)
-            
-            if bucket_name == "Bucket 5&6":
-                filtered_df.loc[filtered_df["STATUS4"] == "PTP", "RFD5"] = "BUSY"
-                filtered_df.loc[filtered_df["STATUS4"] == "CALL NO PTP", "RFD5"] = "NISV"
-            
-            processed_dfs[bucket_name] = filtered_df
-            
+                filtered_df.reset_index(drop=True, inplace=True)
+                for i in range(1, len(filtered_df)):
+                    if filtered_df.loc[i, "HANDLING OFFICER2"] == "SYSTEM":
+                        filtered_df.loc[i, "HANDLING OFFICER2"] = filtered_df.loc[i-1, "HANDLING OFFICER2"]
+                
+                filtered_df.loc[filtered_df["RFD5"].isna() & (filtered_df["STATUS4"] == "PTP"), "RFD5"] = "BUSY"
+                filtered_df.loc[filtered_df["RFD5"].isna() & (filtered_df["STATUS4"] == "CALL NO PTP"), "RFD5"] = "NISV"
+                filtered_df.loc[filtered_df["RFD5"].isna() & (filtered_df["STATUS4"] == "UNCON"), "RFD5"] = "NABZ"
+                
+                filtered_df = filtered_df[~(filtered_df["STATUS4"].isna() | (filtered_df["STATUS4"] == "EXCLUDE"))]
+                
+                filtered_df.loc[filtered_df["STATUS4"] != "PTP", "PTP DATE"] = np.nan
+                filtered_df.loc[filtered_df["STATUS4"] != "PTP", "PTP AMOUNT"] = np.nan
+                
+                filtered_df["PN"] = filtered_df["PN"].astype(str)
+                
+                if bucket_name == "Bucket 5&6":
+                    filtered_df.loc[filtered_df["STATUS4"] == "PTP", "RFD5"] = "BUSY"
+                    filtered_df.loc[filtered_df["STATUS4"] == "CALL NO PTP", "RFD5"] = "NISV"
+                
+                processed_dfs[bucket_name] = filtered_df
+                
             if preview_only:
                 preview_data = {}
                 for bucket_name, filtered_df in processed_dfs.items():
