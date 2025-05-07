@@ -1281,7 +1281,7 @@ class BDOAutoProcessor(BaseProcessor):
             daily_productivity_template = os.path.join(TEMPLATE_DIR, "DAILY PRODUCTIVITY TEMPLATE.xlsx")
             vs_report_template = os.path.join(TEMPLATE_DIR, "SPMADRID VS REPORT TEMPLATE.xlsx")
             
-                        if not os.path.exists(daily_report_template):
+            if not os.path.exists(daily_report_template):
                 st.error(f"Template file not found: {daily_report_template}")
                 return None, None, None
                 
