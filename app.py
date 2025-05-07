@@ -2536,7 +2536,7 @@ def main():
             buffer.seek(0)
             file_content = buffer.getvalue()
 
-                if process_button and selected_sheet:
+        if process_button and selected_sheet:
             try:
                 with st.spinner("Processing file..."):
                     if automation_type == "Cured List":
