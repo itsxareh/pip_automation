@@ -1557,7 +1557,7 @@ class BDOAutoProcessor(BaseProcessor):
                     
                     ptp_rows_b5 = bucket5_df[bucket5_df["STATUS4"] == "PTP"]
                     ptp_count_b5 = len(ptp_rows_b5)
-                    ptp_balance_sum_b5 = float(ptp_rows_b5["BALANCE"].sum()) if ptp_count_b5 > 0 else 0.0
+                    ptp_balance_sum_b5 = ptp_rows_b5["BALANCE"].sum() if ptp_count_b5 > 0 else 0.0
                     
                     b5_prod_df = pd.DataFrame({
                         "Date": [current_date_formatted],
@@ -1607,7 +1607,7 @@ class BDOAutoProcessor(BaseProcessor):
                     
                     ptp_rows_b6 = bucket6_df[bucket6_df["STATUS4"] == "PTP"]
                     ptp_count_b6 = len(ptp_rows_b6)
-                    ptp_balance_sum_b6 = float(ptp_rows_b6["BALANCE"].sum()) if ptp_count_b6 > 0 else 0.0
+                    ptp_balance_sum_b6 = ptp_rows_b6["BALANCE"].sum() if ptp_count_b6 > 0 else 0.0
                     
                     b6_prod_df = pd.DataFrame({
                         "Date": [current_date_formatted],
