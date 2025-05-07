@@ -893,10 +893,10 @@ class ROBBikeProcessor(BaseProcessor):
                     monitoring_df['EndoDate'] = pd.to_datetime(monitoring_df['EndoDate']).dt.strftime('%m/%d/%Y')
                     
                     monitoring_df['Stores'] = monitoring_df['Account Number'].map(
-                        lambda acc_no: account_data_map.get(acc_no, {}).get('Stores' in ['0', 0], else account_data_map.get(acc_no, {}).get('Stores', '')))
+                        lambda acc_no: account_data_map.get(acc_no, {}).get('Stores' in ['0', 0] else account_data_map.get(acc_no, {}).get('Stores', '')))
                     
                     monitoring_df['Cluster'] = monitoring_df['Account Number'].map(
-                        lambda acc_no: account_data_map.get(acc_no, {}).get('Cluster' in ['0', 0], else account_data_map.get(acc_no, {}).get('Cluster', '')))
+                        lambda acc_no: account_data_map.get(acc_no, {}).get('Cluster' in ['0', 0] else account_data_map.get(acc_no, {}).get('Cluster', '')))
                     
                     monitoring_df['Field Status'] = monitoring_df['Account Number'].map(
                         lambda acc_no: account_data_map.get(acc_no, {}).get('Field_Status', ''))
