@@ -1443,8 +1443,9 @@ class BDOAutoProcessor(BaseProcessor):
                 
                 if bucket_name == "Bucket 5&6":
                         filtered_df = filtered_df 
-                    else:
-                        filtered_df.reset_index(drop=True, inplace=True)
+                else:
+                    filtered_df.reset_index(drop=True, inplace=True)
+                    
                 for i in range(1, len(filtered_df)):
                     if filtered_df.loc[i, "HANDLING OFFICER2"] == "SYSTEM":
                         filtered_df.loc[i, "HANDLING OFFICER2"] = filtered_df.loc[i-1, "HANDLING OFFICER2"]
