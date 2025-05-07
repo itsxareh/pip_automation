@@ -1277,23 +1277,42 @@ class BDOAutoProcessor(BaseProcessor):
             DIR = os.getcwd()
             
             TEMPLATE_DIR = os.path.join(DIR, "templates", "bdo_auto")
-            template = os.path.join(TEMPLATE_DIR, "AGENCY DAILY REPORT TEMPLATE.xlsx")
+            daily_report_template = os.path.join(TEMPLATE_DIR, "AGENCY DAILY REPORT TEMPLATE.xlsx")
+            daily_productivity_template = os.path.join(TEMPLATE_DIR, "DAILY PRODUCTIVITY TEMPLATE.xlsx")
+            vs_report_template = os.path.join(TEMPLATE_DIR, "SPMADRID VS REPORT TEMPLATE.xlsx")
             
-            if not os.path.exists(template):
-                st.error(f"Template file not found: {template}")
+                        if not os.path.exists(daily_report_template):
+                st.error(f"Template file not found: {daily_report_template}")
+                return None, None, None
+                
+            if not os.path.exists(daily_productivity_template):
+                st.error(f"Template file not found: {daily_productivity_template}")
                 return None, None, None
                 
             try:
-                with open(template, 'rb') as template_file:
+                with open(daily_report_template, 'rb') as template_file:
                     template_copy = io.BytesIO(template_file.read())
                 try:
                     test_wb = load_workbook(template_copy)
                     test_wb.close()
                 except zipfile.BadZipFile:
-                    st.error(f"Template file is not a valid Excel file: {template}")
+                    st.error(f"Template file is not a valid Excel file: {daily_report_template}")
                     return None, None, None
             except Exception as e:
-                st.error(f"Error opening template file: {str(e)}")
+                st.error(f"Error opening daily report template file: {str(e)}")
+                return None, None, None
+                
+            try:
+                with open(daily_productivity_template, 'rb') as template_file:
+                    template_copy = io.BytesIO(template_file.read())
+                try:
+                    test_wb = load_workbook(template_copy)
+                    test_wb.close()
+                except zipfile.BadZipFile:
+                    st.error(f"Template file is not a valid Excel file: {daily_productivity_template}")
+                    return None, None, None
+            except Exception as e:
+                st.error(f"Error opening daily productivity template file: {str(e)}")
                 return None, None, None
             
             BASE_DIR = os.path.join(DIR, "database", "bdo_auto")
@@ -1469,14 +1488,11 @@ class BDOAutoProcessor(BaseProcessor):
                 filtered_df.loc[filtered_df["STATUS4"] != "PTP", "PTP DATE"] = np.nan
                 filtered_df.loc[filtered_df["STATUS4"] != "PTP", "PTP AMOUNT"] = np.nan
                 
-                filtered_df["PN"] = filtered_df["PN"].astype(str)
-                
                 processed_dfs[bucket_name] = filtered_df
             
             if preview_only:
                 preview_data = {}
                 for bucket_name, filtered_df in processed_dfs.items():
-                    # Remove Card Number for preview
                     preview_df = filtered_df.drop(columns=["Card Number"])
                     preview_data[bucket_name] = preview_df.head(10)
                 return preview_data, len(df_main), None
@@ -1487,21 +1503,23 @@ class BDOAutoProcessor(BaseProcessor):
                 bucket5_df = bucket_5_6_df[bucket_5_6_df["Card Number"].astype(str).str.startswith("05")].copy()
                 bucket6_df = bucket_5_6_df[bucket_5_6_df["Card Number"].astype(str).str.startswith("06")].copy()
                 
-                # Remove Card Number from final output DataFrames
                 bucket5_df = bucket5_df.drop(columns=["Card Number"])
                 bucket6_df = bucket6_df.drop(columns=["Card Number"])
                 
                 current_date = datetime.now().strftime("%B %-d").upper() if not report_date else report_date
+                current_date_formatted = datetime.now().strftime("%m/%d/%Y") if not report_date else datetime.strptime(report_date, "%B %d").strftime("%m/%d/%Y")
 
                 if current_date.endswith(" 0"):
                     current_date = current_date[:-2] + current_date[-1:]
                 
                 output_files = {}
+                productivity_files = {}
                 
-                template_wb = load_workbook(template)
+                template_wb = load_workbook(daily_report_template)
                 
                 if not bucket5_df.empty:
-                    wb5 = load_workbook(template)
+                    # Process Agency Daily Report for B5
+                    wb5 = load_workbook(daily_report_template)
                     ws5 = wb5.active
                     
                     headers = bucket5_df.columns.tolist()
@@ -1520,8 +1538,32 @@ class BDOAutoProcessor(BaseProcessor):
                     b5_binary = output_b5
                     output_files["B5"] = b5_binary.getvalue()
                     
+                    # Process Daily Productivity Template for B5
+                    wb5_prod = load_workbook(daily_productivity_template)
+                    ws5_prod = wb5_prod.active
+                    
+                    # Update C2 with current date
+                    ws5_prod['C2'] = current_date_formatted
+                    
+                    # Filter PTP rows and calculate metrics
+                    ptp_rows_b5 = bucket5_df[bucket5_df["STATUS4"] == "PTP"]
+                    ptp_count_b5 = len(ptp_rows_b5)
+                    ptp_balance_sum_b5 = ptp_rows_b5["BALANCE"].sum() if ptp_count_b5 > 0 else 0
+                    
+                    # Update F8 and G8
+                    ws5_prod['F8'] = ptp_count_b5
+                    ws5_prod['G8'] = ptp_balance_sum_b5
+                    
+                    autofit_worksheet_columns(ws5_prod)
+                    
+                    output_b5_prod = io.BytesIO()
+                    wb5_prod.save(output_b5_prod)
+                    output_b5_prod.seek(0)
+                    productivity_files["B5"] = output_b5_prod.getvalue()
+                    
                 if not bucket6_df.empty:
-                    wb6 = load_workbook(template)
+                    # Process Agency Daily Report for B6
+                    wb6 = load_workbook(daily_report_template)
                     ws6 = wb6.active
                     
                     headers = bucket6_df.columns.tolist()
@@ -1539,11 +1581,33 @@ class BDOAutoProcessor(BaseProcessor):
                     output_b6.seek(0)
                     b6_binary = output_b6
                     output_files["B6"] = b6_binary.getvalue()
+                    
+                    # Process Daily Productivity Template for B6
+                    wb6_prod = load_workbook(daily_productivity_template)
+                    ws6_prod = wb6_prod.active
+                    
+                    # Update C2 with current date
+                    ws6_prod['C2'] = current_date_formatted
+                    
+                    # Filter PTP rows and calculate metrics
+                    ptp_rows_b6 = bucket6_df[bucket6_df["STATUS4"] == "PTP"]
+                    ptp_count_b6 = len(ptp_rows_b6)
+                    ptp_balance_sum_b6 = ptp_rows_b6["BALANCE"].sum() if ptp_count_b6 > 0 else 0
+                    
+                    # Update F8 and G8
+                    ws6_prod['F8'] = ptp_count_b6
+                    ws6_prod['G8'] = ptp_balance_sum_b6
+                    
+                    autofit_worksheet_columns(ws6_prod)
+                    
+                    output_b6_prod = io.BytesIO()
+                    wb6_prod.save(output_b6_prod)
+                    output_b6_prod.seek(0)
+                    productivity_files["B6"] = output_b6_prod.getvalue()
                 
                 combined_output = io.BytesIO()
                 with pd.ExcelWriter(combined_output, engine='openpyxl') as writer:
                     for bucket_name, filtered_df in processed_dfs.items():
-                        # Remove Card Number for combined output
                         output_df = filtered_df.drop(columns=["Card Number"])
                         output_df.to_excel(writer, index=False, sheet_name=bucket_name)
                 combined_output.seek(0)
@@ -1552,6 +1616,8 @@ class BDOAutoProcessor(BaseProcessor):
                 
                 b5_filename = f"AGENCY DAILY REPORT B5 AS OF {current_date}.xlsx"
                 b6_filename = f"AGENCY DAILY REPORT B6 AS OF {current_date}.xlsx"
+                b5_prod_filename = f"DAILY PRODUCTIVITY B5 AS OF {current_date}.xlsx"
+                b6_prod_filename = f"DAILY PRODUCTIVITY B6 AS OF {current_date}.xlsx"
                 
                 return {
                     "b5_df": bucket5_df,
@@ -1560,12 +1626,19 @@ class BDOAutoProcessor(BaseProcessor):
                     "b6_binary": b6_binary.getvalue() if not bucket6_df.empty else None,
                     "b5_filename": b5_filename,
                     "b6_filename": b6_filename,
+                    "b5_prod_binary": productivity_files.get("B5"),
+                    "b6_prod_binary": productivity_files.get("B6"),
+                    "b5_prod_filename": b5_prod_filename,
+                    "b6_prod_filename": b6_prod_filename,
                     "preview": combined_output.getvalue(),
                     "temp_filename": temp_filename,
                     "output_files": output_files,
+                    "productivity_files": productivity_files,
                     "output_filenames": {
                         "B5": b5_filename,
-                        "B6": b6_filename
+                        "B6": b6_filename,
+                        "B5_Productivity": b5_prod_filename,
+                        "B6_Productivity": b6_prod_filename
                     }
                 }
                             
@@ -1631,11 +1704,9 @@ CAMPAIGN_CONFIG = {
         "processor": ROBBikeProcessor
     },
     "BDO Auto B5 & B6": {
-        "automation_options": ["Agency Daily Report", "Daily Productivity Report", "Daily VS Report"],
+        "automation_options": ["Agency Daily Report"],
         "automation_map": {
             "Agency Daily Report": "process_agency_daily_report",
-            "Daily Productivity Report": "process_daily_productivity_report", 
-            "Daily VS Report": "process_daily_vs_report",
         },
         "processor": BDOAutoProcessor
     }
@@ -2479,17 +2550,29 @@ def main():
                             trim_spaces=trim_spaces
                         )
                         st.write("Result keys:", result.keys())
-                        tabs = st.tabs(["B5", "B6"])
+                        tabs = st.tabs(["Daily Report B5", "Daily Report B6", "B5 Prod", "B6 Prod", "B5B6 VS"])
                         
                         with tabs[0]:
-                            st.subheader("BPO AUTO B5")
+                            st.subheader("Daily Report B5")
                             st.dataframe(result['b5_df'], use_container_width=True)
                             st.download_button(label="Download Agency Daily Report B5 File", data=result['b5_binary'], file_name=result['b5_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
                         with tabs[1]:
-                            st.subheader("BPO AUTO B6")
+                            st.subheader("Daily Report B6")
                             st.dataframe(result['b6_df'], use_container_width=True)
                             st.download_button(label="Download Agency Daily Report B6 File", data=result['b6_binary'], file_name=result['b6_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-                        
+                        with tabs[2]:
+                            st.subheader("B5 Prod")
+                            st.dataframe(result['b5_prod'], use_container_width=True)
+                            st.download_button(label="Download Daily Productivity B5 Report File", data=result['b5_prod_binary'], file_name=result['b5_prod_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                        with tabs[3]:
+                            st.subheader("B6 Prod")
+                            st.dataframe(result['b6_prod'], use_container_width=True)
+                            st.download_button(label="Download Daily Productivity B6 Report File", data=result['b6_prod_binary'], file_name=result['b6_prod_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                        with tabs[4]:
+                            st.subheader("B5B6 VS")
+                            st.dataframe(result['b5b6_vs'], use_container_width=True)
+                            st.download_button(label="Downloan B5B6 VS Report File", data=result['b5b6_vs_binary'], file_name=result['b5b6_vs_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                       
                     else:
                         if automation_type == "Data Clean":
                             result_df, output_binary, output_filename = getattr(processor, automation_map[automation_type])(
