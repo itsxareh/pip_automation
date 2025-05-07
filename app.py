@@ -1455,7 +1455,7 @@ class BDOAutoProcessor(BaseProcessor):
                 for merged_range in ws.merged_cells.ranges:
                     if cell_ref in merged_range:
                         return merged_range.min_row, merged_range.min_col
-                return None, None  # Not in a merged range
+                return None, None  
             
             processed_dfs = {}
             for bucket_name, bucket_df in bucket_dfs.items():
@@ -1527,7 +1527,6 @@ class BDOAutoProcessor(BaseProcessor):
                 template_wb = load_workbook(daily_report_template)
                 
                 if not bucket5_df.empty:
-                    # Process Agency Daily Report for B5
                     wb5 = load_workbook(daily_report_template)
                     ws5 = wb5.active
                     
@@ -2540,7 +2539,6 @@ def main():
         if process_button and selected_sheet:
             try:
                 with st.spinner("Processing file..."):
-                    st.write(f"Processing - Available sheets: {sheet_names}")
                     if automation_type == "Cured List":
                         result = processor.process_cured_list(
                             file_content, 
@@ -2574,7 +2572,6 @@ def main():
                             remove_blanks=remove_blanks, 
                             trim_spaces=trim_spaces
                         )
-                        st.write("Result keys:", result.keys())
                         tabs = st.tabs(["Daily Report B5", "Daily Report B6", "B5 Prod", "B6 Prod", "B5B6 VS"])
                         
                         with tabs[0]:
