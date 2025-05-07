@@ -1505,7 +1505,8 @@ class BDOAutoProcessor(BaseProcessor):
                     output_b5 = io.BytesIO()
                     wb5.save(output_b5)
                     output_b5.seek(0)
-                    output_files["B5"] = output_b5.getvalue()
+                    b5_binary = output_b5
+                    output_files["B5"] = b5_binary.getvalue()
                     
                 if not bucket6_df.empty:
                     wb6 = openpyxl.Workbook()
@@ -1524,7 +1525,8 @@ class BDOAutoProcessor(BaseProcessor):
                     output_b6 = io.BytesIO()
                     wb6.save(output_b6)
                     output_b6.seek(0)
-                    output_files["B6"] = output_b6.getvalue()
+                    b6_binary = output_b6
+                    output_files["B6"] = b6_binary.getvalue()
                 
                 combined_output = io.BytesIO()
                 with pd.ExcelWriter(combined_output, engine='openpyxl') as writer:
@@ -1538,10 +1540,10 @@ class BDOAutoProcessor(BaseProcessor):
                 b6_filename = f"AGENCY DAILY REPORT B6 AS OF {current_date}.xlsx"
                 
                 return {
-                    "b5_df": b5_df,
-                    "b6_df": b6_df,
-                    "b5_binary": b5_binary.getvalue(),
-                    "b6_binary": b6_binary.getvalue(),
+                    "b5_df": bucket5_df,
+                    "b6_df": bucket6_df,
+                    "b5_binary": b5_binary.getvalue() if not bucket5_df.empty else None,
+                    "b6_binary": b6_binary.getvalue() if not bucket6_df.empty else None,
                     "b5_filename": b5_filename,
                     "b6_filename": b6_filename,
                     "preview": combined_output.getvalue(),
@@ -1552,7 +1554,7 @@ class BDOAutoProcessor(BaseProcessor):
                         "B6": b6_filename
                     }
                 }
-            
+                            
             return None, None, None
             
         except Exception as e:
