@@ -1547,32 +1547,28 @@ class BDOAutoProcessor(BaseProcessor):
                     b5_binary = output_b5
                     output_files["B5"] = b5_binary.getvalue()
                     
-                    # Process Daily Productivity Template for B5
                     wb5_prod = load_workbook(daily_productivity_template)
                     ws5_prod = wb5_prod.active
                     
-                    # Update C2 with current date, handling merged cells
                     row, col = get_merged_cell_top_left(ws5_prod, 'C2')
                     if row and col:
                         ws5_prod.cell(row=row, column=col, value=current_date_formatted)
                     else:
                         ws5_prod['C2'] = current_date_formatted
                     
-                    # Filter PTP rows and calculate metrics
                     ptp_rows_b5 = bucket5_df[bucket5_df["STATUS4"] == "PTP"]
                     ptp_count_b5 = len(ptp_rows_b5)
-                    ptp_balance_sum_b5 = ptp_rows_b5["BALANCE"].sum() if ptp_count_b5 > 0 else 0
+                    ptp_balance_sum_b5 = float(ptp_rows_b5["BALANCE"].sum()) if ptp_count_b5 > 0 else 0.0
                     
-                    # Create productivity DataFrame for B5
                     b5_prod_df = pd.DataFrame({
                         "Date": [current_date_formatted],
                         "PTP Count": [ptp_count_b5],
                         "Balance Sum": [ptp_balance_sum_b5]
                     })
                     
-                    # Update F8 and G8
                     ws5_prod['F8'] = ptp_count_b5
                     ws5_prod['G8'] = ptp_balance_sum_b5
+                    ws5_prod['G8'].number_format = "0.00"
                     
                     autofit_worksheet_columns(ws5_prod)
                     
@@ -1582,7 +1578,6 @@ class BDOAutoProcessor(BaseProcessor):
                     productivity_files["B5"] = output_b5_prod.getvalue()
                     
                 if not bucket6_df.empty:
-                    # Process Agency Daily Report for B6
                     wb6 = load_workbook(daily_report_template)
                     ws6 = wb6.active
                     
@@ -1602,32 +1597,28 @@ class BDOAutoProcessor(BaseProcessor):
                     b6_binary = output_b6
                     output_files["B6"] = b6_binary.getvalue()
                     
-                    # Process Daily Productivity Template for B6
                     wb6_prod = load_workbook(daily_productivity_template)
                     ws6_prod = wb6_prod.active
                     
-                    # Update C2 with current date, handling merged cells
                     row, col = get_merged_cell_top_left(ws6_prod, 'C2')
                     if row and col:
                         ws6_prod.cell(row=row, column=col, value=current_date_formatted)
                     else:
                         ws6_prod['C2'] = current_date_formatted
                     
-                    # Filter PTP rows and calculate metrics
                     ptp_rows_b6 = bucket6_df[bucket6_df["STATUS4"] == "PTP"]
                     ptp_count_b6 = len(ptp_rows_b6)
-                    ptp_balance_sum_b6 = ptp_rows_b6["BALANCE"].sum() if ptp_count_b6 > 0 else 0
+                    ptp_balance_sum_b6 = float(ptp_rows_b6["BALANCE"].sum()) if ptp_count_b6 > 0 else 0.0
                     
-                    # Create productivity DataFrame for B6
                     b6_prod_df = pd.DataFrame({
                         "Date": [current_date_formatted],
                         "PTP Count": [ptp_count_b6],
                         "Balance Sum": [ptp_balance_sum_b6]
                     })
                     
-                    # Update F8 and G8
                     ws6_prod['F8'] = ptp_count_b6
                     ws6_prod['G8'] = ptp_balance_sum_b6
+                    ws6_prod['G8'].number_format = "0.00"
                     
                     autofit_worksheet_columns(ws6_prod)
                     
