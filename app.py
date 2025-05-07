@@ -1418,10 +1418,22 @@ class BDOAutoProcessor(BaseProcessor):
                         rfd = last_word.upper() if last_word else np.nan
                 return rfd if rfd in rfd_valid_codes else np.nan
             
+            def autofit_worksheet_columns(ws):
+                for col in ws.columns:
+                    max_length = 0
+                    col_letter = get_column_letter(col[0].column)
+                    for cell in col:
+                        try:
+                            if cell.value:
+                                max_length = max(max_length, len(str(cell.value)))
+                        except:
+                            pass
+                    adjusted_width = max_length + 2
+                    ws.column_dimensions[col_letter].width = adjusted_width
+                    
             processed_dfs = {}
             for bucket_name, bucket_df in bucket_dfs.items():
                 filtered_df = pd.DataFrame({
-                    "Card Number": bucket_df["Card No."],
                     "PN": bucket_df["Account No."],
                     "NAME": bucket_df["Debtor"],
                     "BALANCE": bucket_df["Balance"],
@@ -1458,9 +1470,6 @@ class BDOAutoProcessor(BaseProcessor):
                 
                 filtered_df["PN"] = filtered_df["PN"].astype(str)
                 
-                filtered_df.loc[filtered_df["Card Number"].astype(str).str.startswith(("05", "06")), "RFD5"] = \
-                    filtered_df.loc[filtered_df["Card Number"].astype(str).str.startswith(("05", "06")), "PN"]
-                
                 processed_dfs[bucket_name] = filtered_df
             
             if preview_only:
@@ -1496,6 +1505,8 @@ class BDOAutoProcessor(BaseProcessor):
                         for c_idx, value in enumerate(row, 1):
                             ws5.cell(row=r_idx, column=c_idx, value=value)
                     
+                    autofit_worksheet_columns(ws5)
+                    
                     output_b5 = io.BytesIO()
                     wb5.save(output_b5)
                     output_b5.seek(0)
@@ -1513,6 +1524,8 @@ class BDOAutoProcessor(BaseProcessor):
                     for r_idx, row in enumerate(bucket6_df.values, 2):
                         for c_idx, value in enumerate(row, 1):
                             ws6.cell(row=r_idx, column=c_idx, value=value)
+                    
+                    autofit_worksheet_columns(ws6)
                     
                     output_b6 = io.BytesIO()
                     wb6.save(output_b6)
