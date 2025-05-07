@@ -140,6 +140,7 @@ class BaseProcessor:
         except Exception as e:
             st.error(f"Error cleaning file: {str(e)}")
             raise
+
 class BPIProcessor(BaseProcessor):
     
     def setup_directories(self, automation_type):
@@ -1267,19 +1268,24 @@ class ROBBikeProcessor(BaseProcessor):
         except Exception as e:
             st.error(f"Error processing new endorsement: {str(e)}")
             return None, None, None
-    
+
 class BDOAutoProcessor(BaseProcessor):
     def process_agency_daily_report(self, file_content, sheet_name=None, preview_only=False,
                     remove_duplicates=False, remove_blanks=False, trim_spaces=False, report_date=None):
         try:
             DIR = os.getcwd()
+            
+            TEMPLATE_DIR = os.path.join(DIR, "templates", "bdo_auto")
+            template = os.path.join(TEMPLATE_DIR, "AGENCY DAILY REPORT TEMPLATE.xlsx") 
+            
             BASE_DIR = os.path.join(DIR, "database", "bdo_auto")
+            
             bucket_paths = {
                 "Bucket 1": os.path.join(BASE_DIR, "BUCKET1_AGENT.xlsx"),
                 "Bucket 2": os.path.join(BASE_DIR, "BUCKET2_AGENT.xlsx"),
                 "Bucket 5&6": os.path.join(BASE_DIR, "BUCKET5&6_AGENT.xlsx")
             }
-            
+        
             bank_status_path = os.path.join(BASE_DIR, "BANK_STATUS.xlsx")
             rfd_list = os.path.join(BASE_DIR, "RFD_LISTS.xlsx")
             
@@ -1417,6 +1423,27 @@ class BDOAutoProcessor(BaseProcessor):
                     ),
                     "RFD5": bucket_df["Remark"].apply(extract_and_validate_rfd)
                 })
+                
+                filtered_df.reset_index(drop=True, inplace=True)
+                for i in range(1, len(filtered_df)):
+                    if filtered_df.loc[i, "HANDLING OFFICER2"] == "SYSTEM":
+                        filtered_df.loc[i, "HANDLING OFFICER2"] = filtered_df.loc[i-1, "HANDLING OFFICER2"]
+                
+
+                filtered_df.loc[filtered_df["RFD5"].isna() & (filtered_df["STATUS4"] == "PTP"), "RFD5"] = "BUSY"
+                filtered_df.loc[filtered_df["RFD5"].isna() & (filtered_df["STATUS4"] == "CALL NO PTP"), "RFD5"] = "NISV"
+                filtered_df.loc[filtered_df["RFD5"].isna() & (filtered_df["STATUS4"] == "UNCON"), "RFD5"] = "NABZ"
+                
+                filtered_df = filtered_df[~(filtered_df["STATUS4"].isna() | (filtered_df["STATUS4"] == "EXCLUDE"))]
+                
+                filtered_df.loc[filtered_df["STATUS4"] != "PTP", "PTP DATE"] = np.nan
+                filtered_df.loc[filtered_df["STATUS4"] != "PTP", "PTP AMOUNT"] = np.nan
+                
+                filtered_df["PN"] = filtered_df["PN"].astype(str)
+                
+                filtered_df.loc[filtered_df["Card Number"].astype(str).str.startswith(("05", "06")), "RFD5"] = \
+                    filtered_df.loc[filtered_df["Card Number"].astype(str).str.startswith(("05", "06")), "PN"]
+                
                 processed_dfs[bucket_name] = filtered_df
             
             if preview_only:
@@ -1425,25 +1452,97 @@ class BDOAutoProcessor(BaseProcessor):
                     preview_data[bucket_name] = filtered_df.head(10)
                 return preview_data, len(df_main), None
 
-            output_files = {}
-            for bucket_name, filtered_df in processed_dfs.items():
-                output = io.BytesIO()
-                with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                    filtered_df.to_excel(writer, index=False, sheet_name="Sheet1")
-                output.seek(0)
-                output_files[bucket_name] = output.getvalue()
+            bucket_5_6_df = processed_dfs.get("Bucket 5&6", pd.DataFrame())
+            
+            if not bucket_5_6_df.empty:
+                bucket5_df = bucket_5_6_df[bucket_5_6_df["Card Number"].astype(str).str.startswith("05")].copy()
+                bucket6_df = bucket_5_6_df[bucket_5_6_df["Card Number"].astype(str).str.startswith("06")].copy()
+                
+                current_date = datetime.now().strftime("%B %-d").upper() if not report_date else report_date
 
-            combined_output = io.BytesIO()
-            with pd.ExcelWriter(combined_output, engine='openpyxl') as writer:
-                for bucket_name, filtered_df in processed_dfs.items():
-                    filtered_df.to_excel(writer, index=False, sheet_name=bucket_name)
-            combined_output.seek(0)
-            filename = f"Daily_Agency_Report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
-
-            return df_main, combined_output.getvalue(), filename
+                if current_date.endswith(" 0"):
+                    current_date = current_date[:-2] + current_date[-1:]
+                
+                output_files = {}
+                
+                if not bucket5_df.empty:
+                    wb5 = load_workbook(template)
+                    ws5 = wb5.active
+                    
+                    for r_idx, row in enumerate(bucket5_df.values, 2):
+                        for c_idx, value in enumerate(row, 1):
+                            ws5.cell(row=r_idx, column=c_idx, value=value)
+                    
+                    output_b5 = io.BytesIO()
+                    wb5.save(output_b5)
+                    output_b5.seek(0)
+                    output_files["B5"] = output_b5.getvalue()
+                    
+                if not bucket6_df.empty:
+                    wb6 = load_workbook(template)
+                    ws6 = wb6.active
+                    
+                    for r_idx, row in enumerate(bucket6_df.values, 2):
+                        for c_idx, value in enumerate(row, 1):
+                            ws6.cell(row=r_idx, column=c_idx, value=value)
+                    
+                    output_b6 = io.BytesIO()
+                    wb6.save(output_b6)
+                    output_b6.seek(0)
+                    output_files["B6"] = output_b6.getvalue()
+                
+                combined_output = io.BytesIO()
+                with pd.ExcelWriter(combined_output, engine='openpyxl') as writer:
+                    for bucket_name, filtered_df in processed_dfs.items():
+                        filtered_df.to_excel(writer, index=False, sheet_name=bucket_name)
+                combined_output.seek(0)
+                
+                temp_filename = f"temp_daily_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+                
+                b5_filename = f"AGENCY DAILY REPORT B5 AS OF {current_date}.xlsx"
+                b6_filename = f"AGENCY DAILY REPORT B6 AS OF {current_date}.xlsx"
+                
+                return {
+                    "preview": combined_output.getvalue(),
+                    "temp_filename": temp_filename,
+                    "output_files": output_files,
+                    "output_filenames": {
+                        "B5": b5_filename,
+                        "B6": b6_filename
+                    }
+                }
+            
+            return None, None, None
             
         except Exception as e:
             st.error(f"Error processing agency daily report: {str(e)}")
+            import traceback
+            st.error(traceback.format_exc())
+            logging.error(f"Processing error: {str(e)}\n{traceback.format_exc()}")
+            return None, None, None
+
+    def process_daily_productivity_report(self, file_content, sheet_name=None, preview_only=False,
+                    remove_duplicates=False, remove_blanks=False, trim_spaces=False, report_date=None):
+        try:
+            byte_stream = io.BytesIO(file_content)
+            xls = pd.ExcelFile(byte_stream)
+            df = pd.read_excel(xls, sheet_name=sheet_name)
+            df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
+            
+        except Exception as e:
+            st.error(f"Error processing daily remark: {str(e)}")
+            return None, None, None
+
+    def process_daily_vs_report(self, file_content, sheet_name=None, preview_only=False,
+                    remove_duplicates=False, remove_blanks=False, trim_spaces=False, report_date=None):
+        try:
+            byte_stream = io.BytesIO(file_content)
+            xls = pd.ExcelFile(byte_stream)
+            df = pd.read_excel(xls, sheet_name=sheet_name)
+            df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
+            
+        except Exception as e:
+            st.error(f"Error processing daily remark: {str(e)}")
             return None, None, None
 
     def process_daily_productivity_report(self, file_content, sheet_name=None, preview_only=False,
@@ -2336,6 +2435,26 @@ def main():
                             st.dataframe(result['payments_df'], use_container_width=True)
                             st.download_button(label="Download Payments File", data=result['payments_binary'], file_name=result['payments_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
                         st.success("Cured List processed successfully!")
+                        
+                    elif automation_type == "Agency Daily Report":
+                        result = processor.process_agency_daily_report(
+                            file_content, 
+                            sheet_name=selected_sheet,
+                            preview_only=False,
+                            remove_duplicates=remove_duplicates, 
+                            remove_blanks=remove_blanks, 
+                            trim_spaces=trim_spaces
+                        )
+                        tabs = st.tabs(["B5", "B6"])
+                        with tabs[0]:
+                            st.subheader("BPO AUTO B5")
+                            st.dataframe(result['b5_df'], use_container_width=True)
+                            st.download_button(label="Download Agency Daily Report B5 File", data=result['b5_binary'], file_name=result['b5_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                        with tabs[1]:
+                            st.subheader("BPO AUTO B6")
+                            st.dataframe(result['b6_df'], use_container_width=True)
+                            st.download_button(label="Download Agency Daily Report B6 File", data=result['b6_binary'], file_name=result['b6_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                        
                     else:
                         if automation_type == "Data Clean":
                             result_df, output_binary, output_filename = getattr(processor, automation_map[automation_type])(
