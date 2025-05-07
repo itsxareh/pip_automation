@@ -1539,7 +1539,7 @@ def main():
     st.markdown("<div class='title'>Automation Tool</div>", unsafe_allow_html=True)
     st.markdown("<div class='sub-title'>Transform Files into CMS Format</div>", unsafe_allow_html=True)
 
-    campaign = st.sidebar.selectbox("Select Campaign", ["No Campaign","BPI", "ROB Bike"], index=0)
+    campaign = st.sidebar.selectbox("Select Campaign", ["No Campaign","BPI", "ROB Bike", "BDO Auto B5 & B6"], index=0)
     config = CAMPAIGN_CONFIG[campaign]
     processor = config["processor"]()
     automation_map = config["automation_map"]
