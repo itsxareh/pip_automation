@@ -2572,7 +2572,7 @@ def main():
                             remove_blanks=remove_blanks, 
                             trim_spaces=trim_spaces
                         )
-                        tabs = st.tabs(["Daily Report B5", "Daily Report B6", "B5 Prod", "B6 Prod", "B5B6 VS"])
+                        tabs = st.tabs(["Daily Report B5", "Daily Report B6", "B5 Prod", "B6 Prod"])
                         
                         with tabs[0]:
                             st.subheader("Daily Report B5")
@@ -2590,10 +2590,10 @@ def main():
                             st.subheader("B6 Prod")
                             st.dataframe(result['b6_prod_df'], use_container_width=True)
                             st.download_button(label="Download Daily Productivity B6 Report File", data=result['b6_prod_binary'], file_name=result['b6_prod_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-                        with tabs[4]:
-                            st.subheader("B5B6 VS")
-                            st.dataframe(result['b5b6_vs'], use_container_width=True)
-                            st.download_button(label="Downloan B5B6 VS Report File", data=result['b5b6_vs_binary'], file_name=result['b5b6_vs_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                        # with tabs[4]:
+                        #     st.subheader("B5B6 VS")
+                        #     st.dataframe(result['b5b6_vs'], use_container_width=True)
+                        #     st.download_button(label="Downloan B5B6 VS Report File", data=result['b5b6_vs_binary'], file_name=result['b5b6_vs_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
                        
                     else:
                         if automation_type == "Data Clean":
