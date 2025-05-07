@@ -1538,6 +1538,12 @@ class BDOAutoProcessor(BaseProcessor):
                 b6_filename = f"AGENCY DAILY REPORT B6 AS OF {current_date}.xlsx"
                 
                 return {
+                    "b5_df": b5_df,
+                    "b6_df": b6_df,
+                    "b5_binary": b5_binary.getvalue(),
+                    "b6_binary": b6_binary.getvalue(),
+                    "b5_filename": b5_filename,
+                    "b6_filename": b6_filename,
                     "preview": combined_output.getvalue(),
                     "temp_filename": temp_filename,
                     "output_files": output_files,
