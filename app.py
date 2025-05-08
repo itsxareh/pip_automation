@@ -1866,38 +1866,38 @@ def main():
                     
                     status_placeholder.info(f"Found {len(filtered_records)} unique records to insert. Skipping {duplicate_count} duplicates.")
                             
-                            if filtered_records:
-                                batch_size = 100
-                                success_count = 0
-                                
-                                for i in range(0, len(filtered_records), batch_size):
-                                    batch = filtered_records[i:i+batch_size]
-                                    
-                                    if batch:
-                                        response = supabase.table(TABLE_NAME).insert(batch).execute()
-                                        
-                                        if hasattr(response, 'data') and response.data:
-                                            success_count += len(batch)
-                                    
-                                    progress = min(i + batch_size, len(filtered_records)) / max(1, len(filtered_records))
-                                    progress_bar.progress(progress)
-                                    status_text.text(f"Uploaded {success_count} of {len(filtered_records)} records...")
-                                
-                                st.toast(f"Field Result Updated! {success_count} unique records uploaded successfully.")
-                            else:
-                                st.warning("No new unique records to upload.")
+                        if filtered_records:
+                            batch_size = 100
+                            success_count = 0
                             
-                            button_placeholder.button("Upload Complete!", disabled=True, key="complete_button")
+                            for i in range(0, len(filtered_records), batch_size):
+                                batch = filtered_records[i:i+batch_size]
                                 
-                        except Exception as e:
-                            st.error(f"Error uploading field result: {str(e)}")
-                            import traceback
-                            st.code(traceback.format_exc())
+                                if batch:
+                                    response = supabase.table(TABLE_NAME).insert(batch).execute()
+                                    
+                                    if hasattr(response, 'data') and response.data:
+                                        success_count += len(batch)
+                                
+                                progress = min(i + batch_size, len(filtered_records)) / max(1, len(filtered_records))
+                                progress_bar.progress(progress)
+                                status_text.text(f"Uploaded {success_count} of {len(filtered_records)} records...")
                             
-                            button_placeholder.button("Upload Failed - Try Again", key="retry_button")
+                            st.toast(f"Field Result Updated! {success_count} unique records uploaded successfully.")
+                        else:
+                            st.warning("No new unique records to upload.")
+                        
+                        button_placeholder.button("Upload Complete!", disabled=True, key="complete_button")
+                                
+                except Exception as e:
+                    st.error(f"Error uploading field result: {str(e)}")
+                    import traceback
+                    st.code(traceback.format_exc())
+                    
+                    button_placeholder.button("Upload Failed - Try Again", key="retry_button")
                 else:
                     st.error("Required columns not found in the uploaded file.")
-            except Exception as e:
+            except Exception as e:  
                 st.error(f"Error processing Excel file: {str(e)}")
         
         if upload_dataset:
