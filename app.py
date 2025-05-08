@@ -1859,17 +1859,24 @@ def main():
                             df_to_upload = df_extracted.copy()
                             for col in df_to_upload.columns:
                                 if pd.api.types.is_datetime64_any_dtype(df_to_upload[col]):
-                                    df_to_upload[col] = df_to_upload[col].dt.strftime('%Y-%m-%d')
+                                    df_to_upload[col] = df_to_upload[col].dt.strftime('%Y-%m-%d %H:%M:%S')
 
                             df_to_upload = df_to_upload.astype(object).where(pd.notnull(df_to_upload), None)
                             records_to_insert = df_to_upload.to_dict(orient="records")
                             
+                            if not existing_df.empty and 'inserted_date' in existing_df.columns:
+                                existing_df['inserted_date'] = pd.to_datetime(existing_df['inserted_date'], errors='coerce')
+                                existing_df['inserted_date'] = existing_df['inserted_date'].dt.strftime('%Y-%m-%d %H:%M:%S')
+
                             filtered_records = []
                             total_records = len(records_to_insert)
                             duplicate_count = 0
                             
                             progress_bar = st.progress(0)
                             status_text = status_placeholder.empty()
+
+                            st.write("Sample new record:", records_to_insert[0])
+                            st.write("Sample DB record:", existing_df.iloc[0])
                             
                             for i, record in enumerate(records_to_insert):
                                 if not existing_df.empty:
