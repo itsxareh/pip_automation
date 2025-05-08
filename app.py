@@ -2511,7 +2511,10 @@ def main():
             buffer.seek(0)
             file_content = buffer.getvalue()
 
-        if process_button and selected_sheet:
+        if process_button and selected_sheet:if process_button:
+            for key in ["cured_list_result", "agency_daily_result", "output_binary", "output_filename", "result_sheet_names"]:
+                if key in st.session_state:
+                    del st.session_state[key]
             try:
                 with st.spinner("Processing file..."):
                     if automation_type == "Cured List":
