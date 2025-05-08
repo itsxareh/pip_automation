@@ -1849,7 +1849,7 @@ def main():
                         button_placeholder.button("Processing...", disabled=True, key="processing_button")
                         
                         try:
-                            existing_records_response = supabase.table(TABLE_NAME).select("chcode, status, inserted_date").execute()
+                            existing_records_response = supabase.table(TABLE_NAME).select("chcode, status, substatus").execute()
                             if hasattr(existing_records_response, 'data'):  
                                 existing_records = existing_records_response.data
                                 existing_df = pd.DataFrame(existing_records) if existing_records else pd.DataFrame()
@@ -1876,7 +1876,7 @@ def main():
                                     matching = existing_df[
                                         (existing_df['chcode'] == record['chcode']) & 
                                         (existing_df['status'] == record['status']) & 
-                                        (existing_df['inserted_date'] == record['inserted_date'])
+                                        (existing_df['substatus'] == record['substatus'])
                                     ]
                                     
                                     if matching.empty:
