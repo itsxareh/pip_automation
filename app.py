@@ -1879,7 +1879,7 @@ def main():
                             for i, record in enumerate(records_to_insert):
                                 if not existing_df.empty:
                                     matching = existing_df[
-                                        (existing_df['chcode'] == record['chcode'])
+                                        (existing_df['chcode'].str.strip().str.upper() == record['chcode'].strip().upper())
                                     ]
                                     
                                     if matching.empty:
