@@ -1857,15 +1857,14 @@ def main():
                                 existing_df = pd.DataFrame()
 
                             df_to_upload = df_extracted.copy()
-                            for col in df_to_upload.columns:
-                                if pd.api.types.is_datetime64_any_dtype(df_to_upload[col]):
-                                    df_to_upload[col] = df_to_upload[col].dt.strftime('%Y-%m-%d')
 
                             df_extracted['inserted_date'] = pd.to_datetime(df_extracted['inserted_date'], errors='coerce')
                             if not existing_df.empty:
                                 existing_df['inserted_date'] = pd.to_datetime(existing_df['inserted_date'], errors='coerce')
+                            
+                            df_to_upload['inserted_date'] = df_to_upload['inserted_date'].dt.strftime('%Y-%m-%d %H:%M:%S')
 
-                            records_to_insert = df_to_upload.to_dict(orient="records")
+                            records_to_insert = df_extracted.to_dict(orient="records")
                             
                             filtered_records = []
                             total_records = len(records_to_insert)
@@ -1879,7 +1878,7 @@ def main():
                                     matching = existing_df[
                                         (existing_df['chcode'] == record['chcode']) &
                                         (existing_df['status'] == record['status']) &
-                                        (existing_df['inserted_date'] == pd.to_datetime(record['inserted_date']))
+                                        (existing_df['inserted_date'] == record['inserted_date'])
                                     ]
                                     
                                     if matching.empty:
