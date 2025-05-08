@@ -1887,14 +1887,14 @@ def main():
                                 if not existing_df.empty:
                                     record_chcode = str(record['chcode'])
                                     record_status = str(record['status'])
-                                    record_date = str(record['inserted_date']) if record['inserted_date'] else None
+                                    record_date = pd.to_datetime(record['inserted_date'], errors='coerce')
                                     
                                     for _, db_row in existing_df.iterrows():
                                         db_chcode = str(db_row['chcode'])
                                         db_status = str(db_row['status'])
-                                        db_date = str(db_row['inserted_date']) if db_row['inserted_date'] else None
+                                        db_date = pd.to_datetime(db_row['inserted_date'], errors='coerce')
                                         
-                                        date_match = (record_date == db_date) or (record_date is None and db_date is None)
+                                        date_match = pd.notnull(record_date) and pd.notnull(db_date) and record_date == db_date
                                         
                                         if record_chcode == db_chcode and record_status == db_status and date_match:
                                             is_duplicate = True
