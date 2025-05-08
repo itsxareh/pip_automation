@@ -1963,13 +1963,7 @@ def main():
                                 st.code(traceback.format_exc())
                                 
                                 button_placeholder.button("Upload Failed - Try Again", key="retry_button")
-                    else:
-                        st.warning("No new records to insert. All records already exist in the database.")
-                        
-                        if st.button("Show All Extracted Records"):
-                            st.subheader("All Extracted Records (Already in Database):")
-                            st.dataframe(df_extracted)
-                        
+                                
                 else:
                     st.error("Required columns not found in the uploaded file.")
             except Exception as e:
