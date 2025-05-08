@@ -1874,9 +1874,9 @@ def main():
                             for i, record in enumerate(records_to_insert):
                                 if not existing_df.empty:
                                     matching = existing_df[
-                                        (existing_df['chcode'].str.strip().str.upper() == record['chcode'].strip().upper()) & 
-                                        (existing_df['status'].str.strip().str.upper() == record['status'].strip().upper()) & 
-                                        (existing_df['substatus'].str.strip().str.upper() == record['substatus'].strip().upper())
+                                        (existing_df['chcode'].astype(str).str.strip().str.upper() == str(record['chcode']).strip().upper()) &
+                                        (existing_df['status'].astype(str).str.strip().str.upper() == str(record['status']).strip().upper()) &
+                                        (existing_df['substatus'].astype(str).str.strip().str.upper() == str(record['substatus']).strip().upper())
                                     ]
                                     
                                     if matching.empty:
