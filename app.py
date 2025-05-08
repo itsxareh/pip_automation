@@ -1882,7 +1882,7 @@ def main():
                                         (existing_df['chcode'] == record['chcode']) & 
                                         (existing_df['status'] == record['status']) & 
                                         (existing_df['substatus'] == record['substatus']) & 
-                                        (existing_df['inserted_date'] == record['inserted_date'])
+                                        (existing_df['date'] == record['date'])
                                     ]
                                     
                                     if matching.empty:
