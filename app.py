@@ -1876,7 +1876,7 @@ def main():
                                     matching = existing_df[
                                         (existing_df['chcode'].astype(str).str.strip().str.upper() == str(record['chcode']).strip().upper()) &
                                         (existing_df['status'].astype(str).str.strip().str.upper() == str(record['status']).strip().upper()) &
-                                        (existing_df['substatus'].astype(str).str.strip().str.upper() == str(record['substatus']).strip().upper())
+                                        (existing_df['substatus'].astype(str).str.strip().str.upper() == str(record.get('substatus', '')).strip().upper())
                                     ]
                                     
                                     if matching.empty:
