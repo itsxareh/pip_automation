@@ -1857,9 +1857,11 @@ def main():
                                 existing_df = pd.DataFrame()
                             
                             df_to_upload = df_extracted.copy()
-                            
-                            temp_dates = pd.to_datetime(df_to_upload['inserted_date'], errors='coerce')
+                            for col in df_to_upload.columns:
+                                if df_to_upload[col].dtype == 'datetime64[ns]' or isinstance(df_to_upload[col].iloc[0], pd.Timestamp):
+                                    df_to_upload[col] = df_to_upload[col].dt.strftime('%Y-%m-%d %H:%M:%S')
 
+                            temp_dates = pd.to_datetime(df_to_upload['inserted_date'], errors='coerce')
                             df_to_upload['inserted_date'] = temp_dates.dt.strftime('%Y-%m-%d %H:%M:%S')
                             df_to_upload['inserted_date'] = df_to_upload['inserted_date'].replace('NaT', None)
                             
