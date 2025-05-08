@@ -1795,7 +1795,7 @@ def main():
             
             try:
                 xls = pd.ExcelFile(upload_field_result)
-
+        
                 sheet_options = xls.sheet_names
                 if len(sheet_options) > 1: 
                     selected_sheet = st.selectbox(
@@ -1830,12 +1830,12 @@ def main():
                     except:
                         df_extracted.loc[:, 'date'] = df_extracted['date'].astype(str).replace('NaT', '')
 
-                    inserted_dt = pd.to_datetime(
+                    df_extracted['inserted_date'] = pd.to_datetime(
                         df_extracted['date'].astype(str) + ' ' + df_extracted['time'].astype(str), 
                         errors='coerce'
                     )
-                    df_extracted['inserted_date'] = inserted_dt.dt.strftime('%Y-%m-%d %H:%M:%S')
-                    df_extracted['inserted_date'] = df_extracted['inserted_date'].fillna('')
+
+                    df_extracted['inserted_date'] = df_extracted['inserted_date'].astype(str).replace('NaT', None)
 
                     st.subheader("Extracted Field Result Data:")
                     st.dataframe(df_extracted)
@@ -1849,7 +1849,7 @@ def main():
                         button_placeholder.button("Processing...", disabled=True, key="processing_button")
                         
                         try:
-                            existing_records_response = supabase.table(TABLE_NAME).select("chcode, status, inserted_date").execute()
+                            existing_records_response = supabase.table(TABLE_NAME).select("chcode, status, date").execute()
                             if hasattr(existing_records_response, 'data'):  
                                 existing_records = existing_records_response.data
                                 existing_df = pd.DataFrame(existing_records) if existing_records else pd.DataFrame()
@@ -1859,42 +1859,40 @@ def main():
                             df_to_upload = df_extracted.copy()
                             for col in df_to_upload.columns:
                                 if pd.api.types.is_datetime64_any_dtype(df_to_upload[col]):
-                                    df_to_upload[col] = df_to_upload[col].dt.strftime('%Y-%m-%d %H:%M:%S')
+                                    df_to_upload[col] = df_to_upload[col].dt.strftime('%Y-%m-%d')
 
                             df_to_upload = df_to_upload.astype(object).where(pd.notnull(df_to_upload), None)
                             records_to_insert = df_to_upload.to_dict(orient="records")
                             
-                            if not existing_df.empty and 'inserted_date' in existing_df.columns:
-                                existing_df['inserted_date'] = pd.to_datetime(existing_df['inserted_date'], errors='coerce')
-                                existing_df['inserted_date'] = existing_df['inserted_date'].dt.strftime('%Y-%m-%d %H:%M:%S').fillna('')
-                            
-                            existing_records_set = set(zip(
-                                existing_df.get('chcode', []),
-                                existing_df.get('status', []),
-                                existing_df.get('inserted_date', [])
-                            ))
-                            
+                            if not existing_df.empty and 'date' in existing_df.columns:
+                                existing_df['date'] = pd.to_datetime(existing_df['date'], errors='coerce')
+                                existing_df['date'] = existing_df['date'].dt.strftime('%Y-%m-%d')
+
                             filtered_records = []
-                            duplicate_count = 0
-                            
                             total_records = len(records_to_insert)
+                            duplicate_count = 0
                             
                             progress_bar = st.progress(0)
                             status_text = status_placeholder.empty()
 
+
                             for i, record in enumerate(records_to_insert):
-                                record_key = (
-                                    record.get('chcode', ''),
-                                    record.get('status', ''),
-                                    record.get('inserted_date', '') or '' 
-                                )
-                                if record_key not in existing_records_set:
-                                    filtered_records.append(record)
+                                if not existing_df.empty:
+                                    matching = existing_df[
+                                        (existing_df['chcode'] == record['chcode']) & 
+                                        (existing_df['status'] == record['status']) & 
+                                        (existing_df['inserted_date'] == record['inserted_date'])
+                                    ]
+                                    
+                                    if matching.empty:
+                                        filtered_records.append(record)
+                                    else:
+                                        st.warning(f"Duplicate found — skipping:\n{record}")
+                                        duplicate_count += 1
                                 else:
-                                    st.warning(f"Duplicate found — skipping:\n{record}")
-                                    duplicate_count += 1
+                                    filtered_records.append(record)
                                 
-                                progress = (i + 1) / total_records if total_records > 0 else 1
+                                progress = (i + 1) / total_records
                                 progress_bar.progress(progress)
                                 status_text.text(f"Processing {i+1} of {total_records} records...")
                             
