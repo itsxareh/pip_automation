@@ -1903,7 +1903,7 @@ def main():
                     new_records = len(df_new_records)
                     duplicate_records = total_records - new_records
                     
-                    st.info(f"Found {total_records} total records. {new_records} are new and {duplicate_records} already exist in the database.")
+                    st.info(f"Found {total_records} total records. {new_records} are new and {duplicate_records} already exist.")
                     
                     if new_records > 0:
                         st.subheader("New Records to Insert:")
@@ -1963,7 +1963,7 @@ def main():
                                 st.code(traceback.format_exc())
                                 
                                 button_placeholder.button("Upload Failed - Try Again", key="retry_button")
-                                
+
                 else:
                     st.error("Required columns not found in the uploaded file.")
             except Exception as e:
