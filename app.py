@@ -2623,15 +2623,15 @@ def main():
             with tabs[0]:
                 st.subheader("Remarks Data")
                 st.dataframe(result['remarks_df'], use_container_width=True)
-                st.download_button(label="Download Remarks File", data=result['remarks_binary'], file_name=result['remarks_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="remarks_download")
+                st.download_button(label="Download Remarks File", data=result['remarks_binary'], file_name=result['remarks_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="sremarks_download")
             with tabs[1]:
                 st.subheader("Reshuffle Data")
                 st.dataframe(result['others_df'], use_container_width=True)
-                st.download_button(label="Download Reshuffle File", data=result['others_binary'], file_name=result['others_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="reshuffle_download")
+                st.download_button(label="Download Reshuffle File", data=result['others_binary'], file_name=result['others_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="sreshuffle_download")
             with tabs[2]:
                 st.subheader("Payments Data")
                 st.dataframe(result['payments_df'], use_container_width=True)
-                st.download_button(label="Download Payments File", data=result['payments_binary'], file_name=result['payments_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="payments_download")
+                st.download_button(label="Download Payments File", data=result['payments_binary'], file_name=result['payments_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="spayments_download")
         
         elif automation_type == "Agency Daily Report" and 'agency_daily_result' in st.session_state:
             result = st.session_state['agency_daily_result']
@@ -2640,19 +2640,19 @@ def main():
             with tabs[0]:
                 st.subheader("Daily Report B5")
                 st.dataframe(result['b5_df'], use_container_width=True)
-                st.download_button(label="Download Agency Daily Report B5 File", data=result['b5_binary'], file_name=result['b5_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="b5_download")
+                st.download_button(label="Download Agency Daily Report B5 File", data=result['b5_binary'], file_name=result['b5_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="sb5_download")
             with tabs[1]:
                 st.subheader("Daily Report B6")
                 st.dataframe(result['b6_df'], use_container_width=True)
-                st.download_button(label="Download Agency Daily Report B6 File", data=result['b6_binary'], file_name=result['b6_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="b6_download")
+                st.download_button(label="Download Agency Daily Report B6 File", data=result['b6_binary'], file_name=result['b6_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="sb6_download")
             with tabs[2]:
                 st.subheader("B5 Prod")
                 st.dataframe(result['b5_prod_df'], use_container_width=True)
-                st.download_button(label="Download Daily Productivity B5 Report File", data=result['b5_prod_binary'], file_name=result['b5_prod_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="b5_prod_download")
+                st.download_button(label="Download Daily Productivity B5 Report File", data=result['b5_prod_binary'], file_name=result['b5_prod_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="sb5_prod_download")
             with tabs[3]:
                 st.subheader("B6 Prod")
                 st.dataframe(result['b6_prod_df'], use_container_width=True)
-                st.download_button(label="Download Daily Productivity B6 Report File", data=result['b6_prod_binary'], file_name=result['b6_prod_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="b6_prod_download")
+                st.download_button(label="Download Daily Productivity B6 Report File", data=result['b6_prod_binary'], file_name=result['b6_prod_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="sb6_prod_download")
         
         elif 'output_binary' in st.session_state and 'result_sheet_names' in st.session_state:
             excel_file = pd.ExcelFile(io.BytesIO(st.session_state['output_binary']))
