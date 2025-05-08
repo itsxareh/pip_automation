@@ -1849,7 +1849,7 @@ def main():
                         button_placeholder.button("Processing...", disabled=True, key="processing_button")
                         
                         try:
-                            existing_records_response = supabase.table(TABLE_NAME).select("chcode").execute()
+                            existing_records_response = supabase.table(TABLE_NAME).select("chcode, status, inserted_date").execute()
                             if hasattr(existing_records_response, 'data'):  
                                 existing_records = existing_records_response.data
                                 existing_df = pd.DataFrame(existing_records) if existing_records else pd.DataFrame()
@@ -1864,28 +1864,24 @@ def main():
                             df_to_upload = df_to_upload.astype(object).where(pd.notnull(df_to_upload), None)
                             records_to_insert = df_to_upload.to_dict(orient="records")
                             
-                            if not existing_df.empty and 'date' in existing_df.columns:
-                                existing_df['date'] = pd.to_datetime(existing_df['date'], errors='coerce')
-                                existing_df['date'] = existing_df['date'].dt.strftime('%Y-%m-%d')
-
                             filtered_records = []
                             total_records = len(records_to_insert)
                             duplicate_count = 0
                             
                             progress_bar = st.progress(0)
                             status_text = status_placeholder.empty()
-
-
+                            
                             for i, record in enumerate(records_to_insert):
                                 if not existing_df.empty:
                                     matching = existing_df[
-                                        (existing_df['chcode'].str.strip().str.upper() == record['chcode'].strip().upper())
+                                        (existing_df['chcode'] == record['chcode']) & 
+                                        (existing_df['status'] == record['status']) & 
+                                        (existing_df['inserted_date'] == record['inserted_date'])
                                     ]
                                     
                                     if matching.empty:
                                         filtered_records.append(record)
                                     else:
-                                        st.warning(f"Duplicate found — skipping:\n{record}")
                                         duplicate_count += 1
                                 else:
                                     filtered_records.append(record)
