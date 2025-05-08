@@ -1835,7 +1835,6 @@ def main():
                         errors='coerce'
                     )
 
-                    # Convert to standard string format for display and later use
                     df_extracted['inserted_date'] = df_extracted['inserted_date'].astype(str).replace('NaT', None)
 
                     st.subheader("Extracted Field Result Data:")
@@ -1850,7 +1849,6 @@ def main():
                         button_placeholder.button("Processing...", disabled=True, key="processing_button")
                         
                         try:
-                            # 1. Get existing records from database
                             existing_records_response = supabase.table(TABLE_NAME).select("chcode, status, inserted_date").execute()
                             if hasattr(existing_records_response, 'data'):  
                                 existing_records = existing_records_response.data
@@ -1858,26 +1856,20 @@ def main():
                             else:
                                 existing_df = pd.DataFrame()
                             
-                            # 2. Prepare the data to upload
                             df_to_upload = df_extracted.copy()
                             
-                            # 3. Convert dates for proper comparison
-                            # Convert to datetime first for consistent formatting
                             temp_dates = pd.to_datetime(df_to_upload['inserted_date'], errors='coerce')
-                            # Then convert to standardized string format
+
                             df_to_upload['inserted_date'] = temp_dates.dt.strftime('%Y-%m-%d %H:%M:%S')
                             df_to_upload['inserted_date'] = df_to_upload['inserted_date'].replace('NaT', None)
                             
-                            # Do the same for database dates if needed
                             if not existing_df.empty and 'inserted_date' in existing_df.columns:
                                 temp_dates = pd.to_datetime(existing_df['inserted_date'], errors='coerce')
                                 existing_df['inserted_date'] = temp_dates.dt.strftime('%Y-%m-%d %H:%M:%S')
                                 existing_df['inserted_date'] = existing_df['inserted_date'].replace('NaT', None)
                             
-                            # 4. Create records to insert from the formatted df_to_upload
                             records_to_insert = df_to_upload.to_dict(orient="records")
                             
-                            # 5. Apply duplicate checking
                             filtered_records = []
                             total_records = len(records_to_insert)
                             duplicate_count = 0
@@ -1885,7 +1877,6 @@ def main():
                             progress_bar = st.progress(0)
                             status_text = status_placeholder.empty()
                             
-                            # Optional debugging
                             st.write("Sample record to check for duplicates:", records_to_insert[0] if records_to_insert else "No records")
                             if not existing_df.empty:
                                 st.write("Sample database record:", existing_df.iloc[0].to_dict() if len(existing_df) > 0 else "No DB records")
@@ -1894,7 +1885,6 @@ def main():
                                 is_duplicate = False
                                 
                                 if not existing_df.empty:
-                                    # Convert everything to strings for comparison to avoid type issues
                                     record_chcode = str(record['chcode'])
                                     record_status = str(record['status'])
                                     record_date = str(record['inserted_date']) if record['inserted_date'] else None
@@ -1904,7 +1894,6 @@ def main():
                                         db_status = str(db_row['status'])
                                         db_date = str(db_row['inserted_date']) if db_row['inserted_date'] else None
                                         
-                                        # Handle None/null values correctly
                                         date_match = (record_date == db_date) or (record_date is None and db_date is None)
                                         
                                         if record_chcode == db_chcode and record_status == db_status and date_match:
@@ -1923,7 +1912,6 @@ def main():
                             
                             status_placeholder.info(f"Found {len(filtered_records)} unique records to insert. Skipping {duplicate_count} duplicates.")
                             
-                            # 6. Upload the filtered records
                             if filtered_records:
                                 batch_size = 100
                                 success_count = 0
