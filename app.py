@@ -2511,12 +2511,13 @@ def main():
             buffer.seek(0)
             file_content = buffer.getvalue()
 
-        if process_button and selected_sheet:
-            for key in ["cured_list_result", "agency_daily_result", "output_binary", "output_filename", "result_sheet_names"]:
-                if key in st.session_state:
-                    del st.session_state[key]
+        if 'file_processed' not in st.session_state:
+            st.session_state['file_processed'] = False
+
+        if process_button and selected_sheet and not st.session_state['file_processed']:
             try:
                 with st.spinner("Processing file..."):
+                    st.session_state['file_processed'] = True
                     if automation_type == "Cured List":
                         result = processor.process_cured_list(
                             file_content, 
@@ -2618,6 +2619,7 @@ def main():
                     st.session_state.pop("renamed_df", None)
 
             except Exception as e:
+                st.session_state['file_processed'] = False
                 st.error(f"Error processing file: {str(e)}")
 
         if automation_type == "Cured List" and 'cured_list_result' in st.session_state:
