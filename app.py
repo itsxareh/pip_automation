@@ -1812,7 +1812,6 @@ def main():
                     df_clean = df.replace({np.nan: 0})
                 
                 if 'chcode' in df_clean.columns and 'status' in df_clean.columns and 'SUB STATUS' in df_clean.columns and 'DATE' in df_clean.columns and 'TIME' in df_clean.columns:
-                    # Initial filtering of the data
                     df_filtered = df_clean[(df_clean['status'] != 'CANCEL') & (df_clean['bank'] == 'ROB MOTOR LOAN')]
                     df_extracted = df_filtered[['chcode', 'status', 'SUB STATUS', 'DATE', 'TIME']].copy()
                     
@@ -1838,39 +1837,30 @@ def main():
 
                     df_extracted['inserted_date'] = df_extracted['inserted_date'].astype(str).replace('NaT', None)
                     
-                    # Show a loading message while we check the database for existing records
                     with st.spinner("Checking for existing records in database..."):
-                        # Prepare the dataframe for comparison
                         df_to_check = df_extracted.copy()
                         
-                        # Get unique combinations of chcode, status, date, and time
                         unique_combinations = df_to_check[['chcode', 'status', 'date', 'time', 'inserted_date']].drop_duplicates()
                         
-                        # Process unique combinations to check against database
                         existing_records = []
                         total_combinations = len(unique_combinations)
                         
                         if total_combinations > 0:
-                            # Create a progress bar for checking
                             check_progress = st.progress(0)
                             check_status = st.empty()
                             check_status.text(f"Checking 0 of {total_combinations} records...")
                             
-                            # Process in batches for efficiency
-                            batch_size = 20
+                            batch_size = 100
                             for i in range(0, total_combinations, batch_size):
                                 batch = unique_combinations.iloc[i:i+batch_size]
                                 
                                 for _, row in batch.iterrows():
-                                    # Query for this specific combination
                                     chcode = row['chcode']
                                     status = row['status']
                                     inserted_date = row['inserted_date']
                                     
-                                    # Build the query
                                     query = supabase.table(TABLE_NAME).select("*").eq('chcode', chcode).eq('status', status)
                                     
-                                    # Add inserted_date if it's not None
                                     if inserted_date is not None and inserted_date != 'NaT':
                                         query = query.eq('inserted_date', inserted_date)
                                         
@@ -1881,28 +1871,22 @@ def main():
                                     except Exception as e:
                                         st.warning(f"Error checking record: {str(e)}. Continuing...")
                                 
-                                # Update progress
                                 progress_value = min(1.0, (i + batch_size) / total_combinations)
                                 check_progress.progress(progress_value)
                                 check_status.text(f"Checking {min(i + batch_size, total_combinations)} of {total_combinations} records...")
                             
-                            # Clean up the progress indicators
                             check_progress.empty()
                             check_status.empty()
                         
-                        # Create a DataFrame from existing records
                         existing_df = pd.DataFrame(existing_records) if existing_records else pd.DataFrame()
                         
-                        # Mark records that exist in the database
                         if not existing_df.empty:
-                            # Prepare for merging by ensuring types match
                             df_extracted['chcode'] = df_extracted['chcode'].astype(str)
                             df_extracted['status'] = df_extracted['status'].astype(str)
                             
                             existing_df['chcode'] = existing_df['chcode'].astype(str)
                             existing_df['status'] = existing_df['status'].astype(str)
                             
-                            # Create a unique key for comparison
                             df_extracted['unique_key'] = df_extracted['chcode'] + '_' + df_extracted['status'] + '_' + df_extracted['inserted_date'].astype(str)
                             
                             existing_keys = []
@@ -1910,26 +1894,21 @@ def main():
                                 key = str(row['chcode']) + '_' + str(row['status']) + '_' + str(row['inserted_date'])
                                 existing_keys.append(key)
                             
-                            # Filter out records that already exist
                             df_new_records = df_extracted[~df_extracted['unique_key'].isin(existing_keys)].copy()
                             df_new_records.drop('unique_key', axis=1, inplace=True)
                         else:
-                            # If no existing records, all are new
                             df_new_records = df_extracted.copy()
                     
-                    # Display information about the data
                     total_records = len(df_extracted)
                     new_records = len(df_new_records)
                     duplicate_records = total_records - new_records
                     
                     st.info(f"Found {total_records} total records. {new_records} are new and {duplicate_records} already exist in the database.")
                     
-                    # Show the new records that will be inserted
                     if new_records > 0:
                         st.subheader("New Records to Insert:")
                         st.dataframe(df_new_records)
                         
-                        # Add upload button for new records
                         button_placeholder = st.empty()
                         status_placeholder = st.empty()
                         
@@ -1939,22 +1918,17 @@ def main():
                             button_placeholder.button("Processing...", disabled=True, key="processing_button")
                             
                             try:
-                                # Prepare records for insertion - convert datetime objects to strings
                                 df_to_upload = df_new_records.copy()
                                 
-                                # Convert any datetime columns to strings
                                 for col in df_to_upload.columns:
                                     if pd.api.types.is_datetime64_any_dtype(df_to_upload[col]):
                                         df_to_upload[col] = df_to_upload[col].dt.strftime('%Y-%m-%d %H:%M:%S')
                                 
-                                # Handle NaN and None values
                                 df_to_upload = df_to_upload.astype(object).where(pd.notnull(df_to_upload), None)
                                 
-                                # Convert to records
                                 records_to_insert = df_to_upload.to_dict(orient="records")
                                 
                                 if records_to_insert:
-                                    # Insert records in batches
                                     batch_size = 100
                                     success_count = 0
                                     
@@ -1992,7 +1966,6 @@ def main():
                     else:
                         st.warning("No new records to insert. All records already exist in the database.")
                         
-                        # Show all records if requested
                         if st.button("Show All Extracted Records"):
                             st.subheader("All Extracted Records (Already in Database):")
                             st.dataframe(df_extracted)
@@ -2001,7 +1974,7 @@ def main():
                     st.error("Required columns not found in the uploaded file.")
             except Exception as e:
                 st.error(f"Error processing Excel file: {str(e)}")
-                
+
         if upload_dataset:
             TABLE_NAME = 'rob_bike_dataset'
             try:
