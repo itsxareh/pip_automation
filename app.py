@@ -936,6 +936,9 @@ class ROBBikeProcessor(BaseProcessor):
                 if 'Remark' in ptp_data.columns:
                     ptp_df['Notes'] = ptp_data['Remark']
                 
+                if not isinstance(report_date, date):
+                    raise ValueError(f"Invalid report_date: {report_date}. It must be a datetime.date object.")
+
                 if 'Time' in ptp_data.columns:
                     time_only = pd.to_datetime(ptp_data['Time'], errors='coerce').dt.time
 
