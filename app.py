@@ -1877,8 +1877,14 @@ def main():
 
                             st.write("Sample new record:", records_to_insert[0])
                             st.write("Sample DB record:", existing_df.iloc[0])
-                            
+
                             for i, record in enumerate(records_to_insert):
+                                record['chcode'] = record['chcode'].strip().upper() if record['chcode'] else ''
+                                record['status'] = record['status'].strip().upper() if record['status'] else ''
+                                record['inserted_date'] = record['inserted_date'].strip() if record['inserted_date'] else ''
+                                existing_df['chcode'] = existing_df['chcode'].str.strip().str.upper()
+                                existing_df['status'] = existing_df['status'].str.strip().str.upper()
+                                existing_df['inserted_date'] = existing_df['inserted_date'].str.strip()
                                 if not existing_df.empty:
                                     matching = existing_df[
                                         (existing_df['chcode'] == record['chcode']) & 
@@ -1889,6 +1895,7 @@ def main():
                                     if matching.empty:
                                         filtered_records.append(record)
                                     else:
+                                        st.warning(f"Duplicate found — skipping:\n{record}")
                                         duplicate_count += 1
                                 else:
                                     filtered_records.append(record)
