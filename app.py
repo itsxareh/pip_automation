@@ -1872,8 +1872,8 @@ def main():
                             status_text = status_placeholder.empty()
                             
                             for i, record in enumerate(records_to_insert):
-                                print("Existing: ", existing_df['inserted_date'])
-                                print("Record: ", record['inserted_date'])
+                                st.write("Existing: ", existing_df['inserted_date'])
+                                st.write("Record: ", record['inserted_date'])
                                 if not existing_df.empty:
                                     matching = existing_df[
                                         (existing_df['chcode'] == record['chcode']) & 
