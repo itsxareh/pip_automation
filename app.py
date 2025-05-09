@@ -1644,10 +1644,10 @@ class BDOAutoProcessor(BaseProcessor):
                 b6_prod_filename = f"DAILY PRODUCTIVITY B6 AS OF {current_date}.xlsx"
                 
                 return {
-                    "b5_df": bucket5_df if not bucket5_df.empty else None,
-                    "b6_df": bucket6_df if not bucket6_df.empty else None,
-                    "b5_prod_df": b5_prod_df if not b5_prod_df.empty else None,
-                    "b6_prod_df": b6_prod_df if not b6_prod_df.empty else None,
+                    "b5_df": bucket5_df,
+                    "b6_df": bucket6_df,
+                    "b5_prod_df": b5_prod_df,
+                    "b6_prod_df": b6_prod_df,
                     "b5_binary": b5_binary.getvalue() if not bucket5_df.empty else None,
                     "b6_binary": b6_binary.getvalue() if not bucket6_df.empty else None,
                     "b5_filename": b5_filename,
@@ -2575,6 +2575,7 @@ def main():
                             remove_blanks=remove_blanks, 
                             trim_spaces=trim_spaces
                         )
+                        st.write(result)
                         st.session_state['agency_daily_result'] = result
                         
                         
