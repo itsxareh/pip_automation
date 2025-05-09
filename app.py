@@ -1913,55 +1913,49 @@ def main():
                         st.info(f"Found {total_records} total records. {new_records} are new and {duplicate_records} already exist.")
                         
                         if new_records > 0:
-                            st.subheader("New Records to Insert:")
-                            st.dataframe(df_new_records)
-                            
-                            confirm_button = st.button("Confirm Upload", key="confirm_upload_button")
-                            
-                            if confirm_button:
-                                try:
-                                    df_to_upload = df_new_records.copy()
-                                    
-                                    for col in df_to_upload.columns:
-                                        if pd.api.types.is_datetime64_any_dtype(df_to_upload[col]):
-                                            df_to_upload[col] = df_to_upload[col].dt.strftime('%Y-%m-%d %H:%M:%S')
-                                    
-                                    df_to_upload = df_to_upload.astype(object).where(pd.notnull(df_to_upload), None)
-                                    
-                                    records_to_insert = df_to_upload.to_dict(orient="records")
-                                    
-                                    if records_to_insert:
-                                        batch_size = 100
-                                        success_count = 0
-                                        
-                                        progress_bar = st.progress(0)
-                                        status_text = st.empty()
-                                        
-                                        for i in range(0, len(records_to_insert), batch_size):
-                                            batch = records_to_insert[i:i+batch_size]
-                                            
-                                            if batch:
-                                                try:
-                                                    response = supabase.table(TABLE_NAME).insert(batch).execute()
-                                                    
-                                                    if hasattr(response, 'data') and response.data:
-                                                        success_count += len(response.data)
-                                                except Exception as e:
-                                                    st.error(f"Error inserting batch: {str(e)}")
-                                            
-                                            progress = min(i + batch_size, len(records_to_insert)) / max(1, len(records_to_insert))
-                                            progress_bar.progress(progress)
-                                            status_text.text(f"Uploaded {success_count} of {len(records_to_insert)} records...")
-                                        
-                                        st.toast(f"Field Result Updated! {success_count} unique records uploaded successfully.")
-                                        st.success("Upload completed successfully!")
-                                    else:
-                                        st.warning("No new records to upload.")
+                            try:
+                                df_to_upload = df_new_records.copy()
                                 
-                                except Exception as e:
-                                    st.error(f"Error uploading field result: {str(e)}")
-                                    import traceback
-                                    st.code(traceback.format_exc())
+                                for col in df_to_upload.columns:
+                                    if pd.api.types.is_datetime64_any_dtype(df_to_upload[col]):
+                                        df_to_upload[col] = df_to_upload[col].dt.strftime('%Y-%m-%d %H:%M:%S')
+                                
+                                df_to_upload = df_to_upload.astype(object).where(pd.notnull(df_to_upload), None)
+                                
+                                records_to_insert = df_to_upload.to_dict(orient="records")
+                                
+                                if records_to_insert:
+                                    batch_size = 100
+                                    success_count = 0
+                                    
+                                    progress_bar = st.progress(0)
+                                    status_text = st.empty()
+                                    
+                                    for i in range(0, len(records_to_insert), batch_size):
+                                        batch = records_to_insert[i:i+batch_size]
+                                        
+                                        if batch:
+                                            try:
+                                                response = supabase.table(TABLE_NAME).insert(batch).execute()
+                                                
+                                                if hasattr(response, 'data') and response.data:
+                                                    success_count += len(response.data)
+                                            except Exception as e:
+                                                st.error(f"Error inserting batch: {str(e)}")
+                                        
+                                        progress = min(i + batch_size, len(records_to_insert)) / max(1, len(records_to_insert))
+                                        progress_bar.progress(progress)
+                                        status_text.text(f"Uploaded {success_count} of {len(records_to_insert)} records...")
+                                    
+                                    st.toast(f"Field Result Updated! {success_count} unique records uploaded successfully.")
+                                    st.success("Upload completed successfully!")
+                                else:
+                                    st.warning("No new records to upload.")
+                            
+                            except Exception as e:
+                                st.error(f"Error uploading field result: {str(e)}")
+                                import traceback
+                                st.code(traceback.format_exc())
                         else:
                             st.warning("No new records to upload. All records already exist in the database.")
 
