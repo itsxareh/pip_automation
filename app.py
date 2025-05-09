@@ -1334,13 +1334,9 @@ class BDOAutoProcessor(BaseProcessor):
             rfd_list = os.path.join(BASE_DIR, "RFD_LISTS.xlsx")
             
             expected_columns = [
-                "S.No", "Date", "Time", "Debtor", "Account No.", "Card No.", "Service No.", "DPD", 
-                "Reason For Default", "Call Status", "Status", "Remark", "Remark By", "Remark Type", 
-                "Field Visit Date", "Collector", "Client", "Product Description", "Product Type", "Batch No", 
-                "Account Type", "Relation", "PTP Amount", "Next Call", "PTP Date", "Claim Paid Amount", 
-                "Claim Paid Date", "Dialed Number", "Days Past Write Off", "Balance", "Contact Type", 
-                "Black Case No.", "Red Case No.", "Court Name", "Lawyer", "Legal Stage", "Legal Status", 
-                "Next Legal Follow up", "Call Duration", "Talk Time Duration"
+                "Date", "Debtor", "Account No.", "Card No.", "Remark", "Remark By",
+                "PTP Amount", "PTP Date", "Claim Paid Amount", "Claim Paid Date", 
+                "Balance", "Status"
             ]
             
             bank_status_lookup = {}
