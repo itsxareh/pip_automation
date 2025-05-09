@@ -1370,7 +1370,7 @@ class BDOAutoProcessor(BaseProcessor):
             
             missing_columns = [col for col in expected_columns if col not in df_main.columns]
             if missing_columns:
-                st.error(f"Missing required columns: {', '.join(missing_columns)}")
+                st.error("Required columns not found in the uploaded file.")
                 return None, None, None
                 
             df_main["Remark By"] = df_main["Remark By"].astype(str).str.strip()
