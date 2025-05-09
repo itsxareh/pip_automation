@@ -1423,6 +1423,8 @@ class BDOAutoProcessor(BaseProcessor):
                     
                     if not matched_df.empty:
                         bucket_dfs[bucket_name] = matched_df
+                    else: 
+                        raise ValueError("Error processing angecy daily report. Please check the file content.")
                 else:
                     st.error(f"Missing file: {bucket_path}")
             
