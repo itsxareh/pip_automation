@@ -2643,7 +2643,7 @@ def main():
                     st.dataframe(result['payments_df'], use_container_width=True)
                     st.download_button(label="Download Payments File", data=result['payments_binary'], file_name=result['payments_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="payments_download")
             else:
-                st.warning("No result available.")
+                st.error("Error processing. Please check the file content and try again.")
         elif automation_type == "Agency Daily Report" and 'agency_daily_result' in st.session_state:
             result = st.session_state['agency_daily_result']
             if result != (None, None, None):
@@ -2665,7 +2665,7 @@ def main():
                     st.dataframe(result['b6_prod_df'], use_container_width=True)
                     st.download_button(label="Download Daily Productivity B6 Report File", data=result['b6_prod_binary'], file_name=result['b6_prod_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="b6_prod_download")
             else:
-                st.warning("No result available.")
+                st.error("Error processing. Please check the file content and try again.")
         elif 'output_binary' in st.session_state and 'result_sheet_names' in st.session_state:
             excel_file = pd.ExcelFile(io.BytesIO(st.session_state['output_binary']))
             result_sheet_names = st.session_state['result_sheet_names']
