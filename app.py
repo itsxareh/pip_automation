@@ -1706,9 +1706,10 @@ CAMPAIGN_CONFIG = {
         "processor": ROBBikeProcessor
     },
     "BDO Auto B5 & B6": {
-        "automation_options": ["Agency Daily Report"],
+        "automation_options": ["Agency Daily Report", "Endorsement"],
         "automation_map": {
             "Agency Daily Report": "process_agency_daily_report",
+            "Endorsement": "process_new_endorsement", 
         },
         "processor": BDOAutoProcessor
     }
@@ -1753,7 +1754,7 @@ def main():
     st.markdown("<div class='title'>Automation Tool</div>", unsafe_allow_html=True)
     st.markdown("<div class='sub-title'>Transform Files into CMS Format</div>", unsafe_allow_html=True)
 
-    campaign = st.sidebar.selectbox("Select Campaign", ["No Campaign","BPI", "ROB Bike", "BDO Auto B5 & B6"], index=0)
+    campaign = st.sidebar.selectbox("Select Campaign", CAMPAIGN_CONFIG, index=0)
     config = CAMPAIGN_CONFIG[campaign]
     processor = config["processor"]()
     automation_map = config["automation_map"]
