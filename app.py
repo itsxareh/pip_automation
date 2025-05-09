@@ -1640,8 +1640,8 @@ class BDOAutoProcessor(BaseProcessor):
                 
                 b5_filename = f"AGENCY DAILY REPORT B5 AS OF {current_date}.xlsx"
                 b6_filename = f"AGENCY DAILY REPORT B6 AS OF {current_date}.xlsx"
-                b5_prod_filename = f"DAILY PRODUCTIVITY B5 AS OF {current_date}.xlsx"
-                b6_prod_filename = f"DAILY PRODUCTIVITY B6 AS OF {current_date}.xlsx"
+                b5_prod_filename = f"B5 Daily Productivity AS OF {current_date}.xlsx"
+                b6_prod_filename = f"B6 Daily Productivity AS OF {current_date}.xlsx"
                 
                 return {
                     "b5_df": bucket5_df,
