@@ -686,7 +686,8 @@ class ROBBikeProcessor(BaseProcessor):
             
             missing_columns = [col for col in required_columns if col not in df.columns]
             if missing_columns:
-                raise ValueError("Required columns not found in the uploaded file.")
+                st.error("Required columns not found in the uploaded file.")
+                return None, None, None
             else: 
                 if 'Time' in df.columns:
                     if pd.api.types.is_object_dtype(df['Time']):
