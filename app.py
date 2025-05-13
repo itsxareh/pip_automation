@@ -1568,7 +1568,10 @@ class BDOAutoProcessor(BaseProcessor):
                     b5_prod_df = pd.DataFrame({
                         "Date": [current_date_formatted],
                         "PTP Count": [ptp_count_b5],
-                        "Balance Sum": [ptp_balance_sum_b5]
+                        "Balance Sum": [ptp_balance_sum_b5],
+                        "Kept Count": [kept_count_b5],
+                        "Kept Balance": [kept_bal_b5],
+                        "Allocation Balance": [alloc_bal_b5]
                     })
                     
                     ws5_prod['F8'] = ptp_count_b5
@@ -1622,7 +1625,10 @@ class BDOAutoProcessor(BaseProcessor):
                     b6_prod_df = pd.DataFrame({
                         "Date": [current_date_formatted],
                         "PTP Count": [ptp_count_b6],
-                        "Balance Sum": [ptp_balance_sum_b6]
+                        "Balance Sum": [ptp_balance_sum_b6],
+                        "Kept Count": [kept_count_b6],
+                        "Kept Balance": [kept_bal_b6],
+                        "Allocation Balance": [alloc_bal_b6]
                     })
                     
                     ws6_prod['F8'] = ptp_count_b6
@@ -2264,7 +2270,10 @@ def main():
         with col2:
             kept_bal_b6 = clean_number_input("Kept Balance (B6)")
         alloc_bal_b6 = clean_number_input("Allocation Balance (B6)")
-        
+     
+        if None in [kept_count_b5, kept_bal_b5, alloc_bal_b5, kept_count_b6, kept_bal_b6, alloc_bal_b6]:
+            st.error("Please enter valid numbers for all B5 and B6 fields (numbers only, commas allowed).")
+         
     df = None
     sheet_names = []
 
