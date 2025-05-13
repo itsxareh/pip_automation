@@ -2249,14 +2249,20 @@ def main():
             except ValueError:
                 return None
                 
-        st.sidebar.subheader("B5 Values")
-        kept_count_b5 = clean_number_input("Kept Count (B5)")
-        kept_bal_b5 = clean_number_input("Kept Balance (B5)")
+        st.sidebar.subheader("B5")
+        col1, col2 = st.columns(2)
+        with col1:
+            kept_count_b5 = clean_number_input("Kept Count (B5)")
+        with col2:
+            kept_bal_b5 = clean_number_input("Kept Balance (B5)")
         alloc_bal_b5 = clean_number_input("Allocation Balance (B5)")
         
-        st.sidebar.subheader("B6 Values")
-        kept_count_b6 = clean_number_input("Kept Count (B6)")
-        kept_bal_b6 = clean_number_input("Kept Balance (B6)")
+        st.sidebar.subheader("B6")
+        col1, col2 = st.columns(2)
+        with col1:
+            kept_count_b6 = clean_number_input("Kept Count (B6)")
+        with col2:
+            kept_bal_b6 = clean_number_input("Kept Balance (B6)")
         alloc_bal_b6 = clean_number_input("Allocation Balance (B6)")
         
     df = None
