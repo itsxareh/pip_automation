@@ -1687,10 +1687,7 @@ class BDOAutoProcessor(BaseProcessor):
             st.error(traceback.format_exc())
             logging.error(f"Processing error: {str(e)}\n{traceback.format_exc()}")
             return None, None, None
-
-    #def process_new_endorsement(self, file_content, sheet_name=None, preview_only=False,
-                remove_duplicates=False, remove_blanks=False, trim_spaces=False, report_date=None):
-        #try:        
+  
 class NoProcessor(BaseProcessor):
     pass
 
