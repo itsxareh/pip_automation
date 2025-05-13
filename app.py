@@ -2241,7 +2241,14 @@ def main():
                 st.error(f"An error occurred: {str(e)}")
 
     if campaign == "BDO Auto B5 & B6" and automation_type == "Agency Daily Report":
-
+        def clean_number_input(label):
+            raw_input = st.sidebar.text_input(label)
+            clean_input = raw_input.replace(",", "")
+            try:
+                return float(clean_input)
+            except ValueError:
+                return None
+                
         st.sidebar.subheader("B5 Values")
         kept_count_b5 = clean_number_input("Kept Count (B5)")
         kept_bal_b5 = clean_number_input("Kept Balance (B5)")
