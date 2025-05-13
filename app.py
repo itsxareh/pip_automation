@@ -1279,7 +1279,10 @@ class ROBBikeProcessor(BaseProcessor):
 
 class BDOAutoProcessor(BaseProcessor):
     def process_agency_daily_report(self, file_content, sheet_name=None, preview_only=False,
-                    remove_duplicates=False, remove_blanks=False, trim_spaces=False, report_date=None):
+        remove_duplicates=False, remove_blanks=False, trim_spaces=False, report_date=None,
+        kept_count_b5=None, kept_bal_b5=None, alloc_bal_b5=None,
+        kept_count_b6=None, kept_bal_b6=None, alloc_bal_b6=None):
+
         try:
             DIR = os.getcwd()
             
@@ -1571,7 +1574,11 @@ class BDOAutoProcessor(BaseProcessor):
                     ws5_prod['F8'] = ptp_count_b5
                     ws5_prod['G8'] = ptp_balance_sum_b5
                     ws5_prod['G8'].number_format = "0.00"
-                    
+                    ws5_prod["K8"] = kept_count_b5
+                    ws5_prod["K9"] = kept_count_b5
+                    ws5_prod["L8"] = kept_bal_b5
+                    ws5_prod["C13"] = alloc_bal_b5
+
                     autofit_worksheet_columns(ws5_prod)
                     
                     output_b5_prod = io.BytesIO()
@@ -1621,7 +1628,11 @@ class BDOAutoProcessor(BaseProcessor):
                     ws6_prod['F8'] = ptp_count_b6
                     ws6_prod['G8'] = ptp_balance_sum_b6
                     ws6_prod['G8'].number_format = "0.00"
-                    
+                    ws6_prod["K8"] = kept_count_b6
+                    ws6_prod["K9"] = kept_count_b6
+                    ws6_prod["L8"] = kept_bal_b6
+                    ws6_prod["C13"] = alloc_bal_b6
+
                     autofit_worksheet_columns(ws6_prod)
                     
                     output_b6_prod = io.BytesIO()
@@ -1676,7 +1687,10 @@ class BDOAutoProcessor(BaseProcessor):
             st.error(traceback.format_exc())
             logging.error(f"Processing error: {str(e)}\n{traceback.format_exc()}")
             return None, None, None
-            
+
+    def process_new_endorsement(self, file_content, sheet_name=None, preview_only=False,
+                remove_duplicates=False, remove_blanks=False, trim_spaces=False, report_date=None):
+        try:        
 class NoProcessor(BaseProcessor):
     pass
 
@@ -2229,6 +2243,18 @@ def main():
             except Exception as e:
                 st.error(f"An error occurred: {str(e)}")
 
+    if campaign == "BDO Auto B5 & B6" and automation_type == "Agency Daily Report":
+
+        st.sidebar.subheader("B5 Values")
+        kept_count_b5 = clean_number_input("Kept Count (B5)")
+        kept_bal_b5 = clean_number_input("Kept Balance (B5)")
+        alloc_bal_b5 = clean_number_input("Allocation Balance (B5)")
+        
+        st.sidebar.subheader("B6 Values")
+        kept_count_b6 = clean_number_input("Kept Count (B6)")
+        kept_bal_b6 = clean_number_input("Kept Balance (B6)")
+        alloc_bal_b6 = clean_number_input("Allocation Balance (B6)")
+        
     df = None
     sheet_names = []
 
@@ -2574,8 +2600,14 @@ def main():
                             preview_only=False,
                             remove_duplicates=remove_duplicates, 
                             remove_blanks=remove_blanks, 
-                            trim_spaces=trim_spaces
-                            )
+                            trim_spaces=trim_spaces,
+                            kept_count_b5=kept_count_b5,
+                            kept_bal_b5=kept_bal_b5,
+                            alloc_bal_b5=alloc_bal_b5,
+                            kept_count_b6=kept_count_b6,
+                            kept_bal_b6=kept_bal_b6,
+                            alloc_bal_b6=alloc_bal_b6
+                        )
                         st.session_state['agency_daily_result'] = result
                         
                         
