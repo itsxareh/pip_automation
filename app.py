@@ -2262,7 +2262,7 @@ def main():
         with col2:
             kept_bal_b5 = clean_number_input("Kept Balance (B5)")
         alloc_bal_b5 = clean_number_input("Allocation Balance (B5)")
-        
+
         st.sidebar.subheader("B6")
         col1, col2 = st.columns(2)
         with col1:
@@ -2270,9 +2270,7 @@ def main():
         with col2:
             kept_bal_b6 = clean_number_input("Kept Balance (B6)")
         alloc_bal_b6 = clean_number_input("Allocation Balance (B6)")
-     
-        if None in [kept_count_b5, kept_bal_b5, alloc_bal_b5, kept_count_b6, kept_bal_b6, alloc_bal_b6]:
-            st.error("Please enter valid numbers for all B5 and B6 fields (numbers only, commas allowed).")
+                              
          
     df = None
     sheet_names = []
@@ -2613,21 +2611,24 @@ def main():
                         st.session_state['cured_list_result'] = result
                         
                     elif automation_type == "Agency Daily Report":
-                        result = processor.process_agency_daily_report(
-                            file_content, 
-                            sheet_name=selected_sheet,
-                            preview_only=False,
-                            remove_duplicates=remove_duplicates, 
-                            remove_blanks=remove_blanks, 
-                            trim_spaces=trim_spaces,
-                            kept_count_b5=kept_count_b5,
-                            kept_bal_b5=kept_bal_b5,
-                            alloc_bal_b5=alloc_bal_b5,
-                            kept_count_b6=kept_count_b6,
-                            kept_bal_b6=kept_bal_b6,
-                            alloc_bal_b6=alloc_bal_b6
-                        )
-                        st.session_state['agency_daily_result'] = result
+                        if None in [kept_count_b5, kept_bal_b5, alloc_bal_b5, kept_count_b6, kept_bal_b6, alloc_bal_b6]:
+                            st.error("Please enter valid numbers for all B5 and B6 fields (numbers only, commas allowed).")
+                        else: 
+                            result = processor.process_agency_daily_report(
+                                file_content, 
+                                sheet_name=selected_sheet,
+                                preview_only=False,
+                                remove_duplicates=remove_duplicates, 
+                                remove_blanks=remove_blanks, 
+                                trim_spaces=trim_spaces,
+                                kept_count_b5=kept_count_b5,
+                                kept_bal_b5=kept_bal_b5,
+                                alloc_bal_b5=alloc_bal_b5,
+                                kept_count_b6=kept_count_b6,
+                                kept_bal_b6=kept_bal_b6,
+                                alloc_bal_b6=alloc_bal_b6
+                            )
+                            st.session_state['agency_daily_result'] = result
                         
                         
                     else:
