@@ -90,12 +90,20 @@ class BaseProcessor:
         cleaned_df = cleaned_df.replace(r'^\s*$', pd.NA, regex=True)
         return cleaned_df
         
-    def clean_only(self, file_content, sheet_name=None, preview_only=False, 
+    def clean_only(self, file_content, sheet_name, preview_only=False, 
                    remove_duplicates=False, remove_blanks=False, trim_spaces=False, file_name=None):
         try:
             byte_stream = io.BytesIO(file_content)
             xls = pd.ExcelFile(byte_stream)
-            df = pd.read_excel(xls, sheet_name=sheet_name)
+            #df = pd.read_excel(xls, sheet_name=sheet_name)
+            available_sheets = xls.sheet_names
+            st.write(f"clean_only - Available sheets: {available_sheets}, Requested sheet: {sheet_name}")
+
+            if sheet_name not in available_sheets:
+                raise ValueError(f"Worksheet named '{sheet_name}' not found in file. Available sheets: {available_sheets}")
+
+            df = pd.read_excel(byte_stream, sheet_name=sheet_name)
+            byte_stream.seek(0)
 
             sanitized_headers = [re.sub(r'[^A-Za-z0-9_]', '_', str(col)) for col in df.columns]
             df.columns = sanitized_headers
