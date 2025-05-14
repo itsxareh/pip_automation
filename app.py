@@ -1689,8 +1689,8 @@ class BDOAutoProcessor(BaseProcessor):
 
 class SumishoProcessor(BaseProcessor):
     def process_daily_remark(self, file_content, sheet_name=None, preview_only=False,
-        remove_duplicates=False, remove_blanks=False, trim_spaces=False,
-        template_content=None, template_sheet=None):
+    remove_duplicates=False, remove_blanks=False, trim_spaces=False,
+    template_content=None, template_sheet=None):
 
         try:
             byte_stream = io.BytesIO(file_content)
@@ -1701,6 +1701,9 @@ class SumishoProcessor(BaseProcessor):
             template_stream = io.BytesIO(template_content)
             template_xls = pd.ExcelFile(template_stream)
             template_df = pd.read_excel(template_xls, sheet_name=template_sheet)
+            
+            # Debug: Print column names in template_df
+            st.write("Template columns:", template_df.columns.tolist())
 
             if 'Date' not in df.columns or 'Remark' not in df.columns or 'Account No.' not in df.columns:
                 raise ValueError("Required columns not found in the uploaded file.")
@@ -1716,6 +1719,15 @@ class SumishoProcessor(BaseProcessor):
                         date_columns[col] = str(template_dates[col].date())
                 except TypeError:
                     continue
+            
+            account_number_col = None
+            for col in template_df.columns:
+                if col.upper() == 'ACCOUNT NUMBER' or col == 'ACCOUNT NUMBER':
+                    account_number_col = col
+                    break
+                    
+            if not account_number_col:
+                raise ValueError("'ACCOUNT NUMBER' column not found in template file.")
                 
             for idx, row in df.iterrows():
                 account_number = row['Account No.']
@@ -1723,7 +1735,7 @@ class SumishoProcessor(BaseProcessor):
                 value = row['Date_Remark']
 
                 for template_idx in range(2, len(template_df)):
-                    if str(template_df.at[template_idx, 'ACCOUNT NUMBER']) == str(account_number):
+                    if str(template_df.at[template_idx, account_number_col]) == str(account_number):
                         for col, col_date in date_columns.items():
                             if col_date == date_str:
                                 template_df.at[template_idx, col] = value
@@ -1744,9 +1756,10 @@ class SumishoProcessor(BaseProcessor):
 
         except Exception as e:
             st.error(f"Error processing daily report: {str(e)}")
+            # Print more detailed error information
+            import traceback
+            st.write(traceback.format_exc())
             raise
-
-
 class NoProcessor(BaseProcessor):
     pass
 
