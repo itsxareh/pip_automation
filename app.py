@@ -1710,10 +1710,10 @@ class SumishoProcessor(BaseProcessor):
 
             template_dates = template_df.iloc[1]
             date_columns = {col: str(template_dates[col].date()) for col in template_df.columns 
-                            if isinstance(template_dates[col], (pd.Timestamp, datetime.date))}
+                            if isinstance(template_dates[col], (pd.Timestamp, datetime.datetime.date))}
 
             for idx, row in df.iterrows():
-                account_number = row['Account Number']
+                account_number = row['Account No.']
                 date_str = row['FormattedDate']
                 value = row['Date_Remark']
 
