@@ -2327,7 +2327,7 @@ def main():
         alloc_bal_b6 = clean_number_input("Allocation Balance (B6)")
 
     if campaign == "Sumisho" and automation_type == "Daily Remark Report":
-        upload_madrid_daily = st.file_uploader(
+        upload_madrid_daily = st.sidebar.file_uploader(
             "SP Madrid Daily",
             type=["xlsx", "xls"],
             key=f"{campaign}_sp_madrid_daily"
