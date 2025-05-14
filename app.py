@@ -1704,21 +1704,16 @@ class SumishoProcessor(BaseProcessor):
                 raise ValueError("Required columns not found in the uploaded file.")
 
             df['FormattedDate'] = pd.to_datetime(df['Date']).dt.strftime('%m/%d/%Y')
+            print(df['FormattedDate'])
             df['Date_Remark'] = df['FormattedDate'] + ' ' + df['Remark'].astype(str)
 
-            # Read the template file - first load as is to get original structure
             template_stream = io.BytesIO(template_content)
             template_xls = pd.ExcelFile(template_stream)
             original_template = pd.read_excel(template_xls, sheet_name=template_sheet, header=None)
             
-            # Now read it again, but use the second row as headers
             template_stream.seek(0)
             template_df = pd.read_excel(template_xls, sheet_name=template_sheet, header=1)
             
-            # Debug: print the new header row
-            st.write("Template headers:", template_df.columns.tolist())
-            
-            # Find the account number column
             account_number_col = None
             for col in template_df.columns:
                 col_str = str(col)
@@ -1732,7 +1727,6 @@ class SumishoProcessor(BaseProcessor):
             
             st.write(f"Using account column: {account_number_col}")
                 
-            # Find date columns - these should be columns with dates in their values
             date_columns = {}
             # Check the first row for date values
             for col in template_df.columns:
