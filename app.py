@@ -1699,7 +1699,10 @@ class SumishoProcessor(BaseProcessor):
 
             template_stream = io.BytesIO(template_content)
             template_xls = pd.ExcelFile(template_stream)
-            template_df = pd.read_excel(template_xls)
+            template_sheet_names = template_xls.sheet_names
+            
+            template_selected_sheet = st.selectbox("Select sheet", template_sheet_names)
+            template_df = pd.read_excel(template_xls, template_selected_sheet)
 
             if 'Date' not in df.columns or 'Remark' not in df.columns or 'Account Number' not in df.columns:
                 raise ValueError("Required columns not found in the uploaded file.")
@@ -2331,7 +2334,7 @@ def main():
             type=["xlsx", "xls"],
             key=f"{campaign}_sp_madrid_daily"
         )
-        
+
         if upload_madrid_daily is not None:
             sp_madrid_daily = upload_madrid_daily.getvalue()
         else:
