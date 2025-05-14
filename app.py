@@ -1704,7 +1704,7 @@ class SumishoProcessor(BaseProcessor):
                 raise ValueError("Required columns not found in the uploaded file.")
 
             df['FormattedDate'] = pd.to_datetime(df['Date']).dt.strftime('%m/%d/%Y')
-            print(df['FormattedDate'])
+            st.write(df['FormattedDate'])
             df['Date_Remark'] = df['FormattedDate'] + ' ' + df['Remark'].astype(str)
 
             # Read the template file - first load as is to get original structure
