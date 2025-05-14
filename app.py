@@ -1702,7 +1702,7 @@ class SumishoProcessor(BaseProcessor):
             template_xls = pd.ExcelFile(template_stream)
             template_df = pd.read_excel(template_xls, sheet_name=template_sheet)
 
-            if 'Date' not in df.columns or 'Remark' not in df.columns or 'Account Number' not in df.columns:
+            if 'Date' not in df.columns or 'Remark' not in df.columns or 'Account No.' not in df.columns:
                 raise ValueError("Required columns not found in the uploaded file.")
 
             df['FormattedDate'] = pd.to_datetime(df['Date']).dt.strftime('%m/%d/%Y')
