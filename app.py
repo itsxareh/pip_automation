@@ -1693,70 +1693,90 @@ class SumishoProcessor(BaseProcessor):
     template_content=None, template_sheet=None):
 
         try:
+            # Read the input file
             byte_stream = io.BytesIO(file_content)
             xls = pd.ExcelFile(byte_stream)
             df = pd.read_excel(xls, sheet_name=sheet_name)
             df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
 
-            template_stream = io.BytesIO(template_content)
-            template_xls = pd.ExcelFile(template_stream)
-            template_df_raw = pd.read_excel(template_xls, sheet_name=template_sheet, header=None)
-            
-            header_row = template_df_raw.iloc[1]
-            template_df = pd.DataFrame(template_df_raw.values[2:], columns=header_row)
-            
-            st.write("Template headers from second row:", template_df.columns.tolist())
-            
+            # Check if required columns exist in the input file
             if 'Date' not in df.columns or 'Remark' not in df.columns or 'Account No.' not in df.columns:
                 raise ValueError("Required columns not found in the uploaded file.")
 
             df['FormattedDate'] = pd.to_datetime(df['Date']).dt.strftime('%m/%d/%Y')
             df['Date_Remark'] = df['FormattedDate'] + ' ' + df['Remark'].astype(str)
 
-            date_columns = {}
-            for col in template_df.columns:
-                try:
-                    col_value = template_df.iloc[0, template_df.columns.get_loc(col)]
-                    if isinstance(col_value, (pd.Timestamp, datetime.date)):
-                        date_columns[col] = str(col_value.date())
-                except (TypeError, AttributeError):
-                    continue
+            # Read the template file - first load as is to get original structure
+            template_stream = io.BytesIO(template_content)
+            template_xls = pd.ExcelFile(template_stream)
+            original_template = pd.read_excel(template_xls, sheet_name=template_sheet, header=None)
             
+            # Now read it again, but use the second row as headers
+            template_stream.seek(0)
+            template_df = pd.read_excel(template_xls, sheet_name=template_sheet, header=1)
+            
+            # Debug: print the new header row
+            st.write("Template headers:", template_df.columns.tolist())
+            
+            # Find the account number column
             account_number_col = None
             for col in template_df.columns:
-                if isinstance(col, str) and ('ACCOUNT NUMBER' in col.upper() or 'ACCOUNT NO' in col.upper()):
+                col_str = str(col)
+                if 'ACCOUNT' in col_str.upper() and ('NUMBER' in col_str.upper() or 'NO' in col_str.upper()):
                     account_number_col = col
                     break
                     
             if not account_number_col:
+                st.write("Available columns:", template_df.columns.tolist())
                 raise ValueError("Account number column not found in template file.")
+            
+            st.write(f"Using account column: {account_number_col}")
                 
+            # Find date columns - these should be columns with dates in their values
+            date_columns = {}
+            # Check the first row for date values
+            for col in template_df.columns:
+                try:
+                    if len(template_df) > 0:  # Make sure there's at least one data row
+                        val = template_df.iloc[0, template_df.columns.get_loc(col)]
+                        if pd.notna(val) and isinstance(val, (pd.Timestamp, datetime.date)):
+                            date_columns[col] = val.strftime('%m/%d/%Y')
+                except (TypeError, AttributeError) as e:
+                    st.write(f"Error checking column {col}: {str(e)}")
+                    continue
+            
+            st.write(f"Found date columns: {date_columns}")
+            
+            # Process the data
             for idx, row in df.iterrows():
                 account_number = row['Account No.']
                 date_str = row['FormattedDate']
                 value = row['Date_Remark']
 
+                # Find matching account rows
                 for template_idx in range(len(template_df)):
-                    template_acct = template_df.at[template_idx, account_number_col]
-                    if pd.notna(template_acct) and str(template_acct) == str(account_number):
+                    template_acct = template_df.iloc[template_idx][account_number_col]
+                    if pd.notna(template_acct) and str(template_acct).strip() == str(account_number).strip():
+                        # Found matching account, now look for matching date column
                         for col, col_date in date_columns.items():
                             if col_date == date_str:
-                                template_df.at[template_idx, col] = value
+                                template_df.loc[template_df.index[template_idx], col] = value
 
             if preview_only:
                 return template_df
 
-            output_df = template_df_raw.copy()
-            for idx in range(len(template_df)):
-                for col in template_df.columns:
-                    col_idx = template_df_raw.columns.get_loc(template_df.columns.get_loc(col))
-                    output_df.iloc[idx+2, col_idx] = template_df.iloc[idx, col]
-
+            # Create output file
             output_filename = "Processed_Daily_Remark.xlsx"
             output_path = os.path.join(self.temp_dir, output_filename)
-
+            
+            # Write the updated template back to Excel
             with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
-                output_df.to_excel(writer, index=False, header=False)
+                # Write the first row from original template
+                header_df = pd.DataFrame([original_template.iloc[0].values], columns=original_template.columns)
+                header_df.to_excel(writer, sheet_name='Sheet1', index=False, header=False)
+                
+                # Append the processed data with its headers
+                template_df.to_excel(writer, sheet_name='Sheet1', index=False, header=True, startrow=1)
 
             with open(output_path, 'rb') as f:
                 output_binary = f.read()
