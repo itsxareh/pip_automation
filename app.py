@@ -1689,7 +1689,8 @@ class BDOAutoProcessor(BaseProcessor):
 
 class SumishoProcessor(BaseProcessor):
     def process_daily_remark(self, file_content, sheet_name=None, preview_only=False,
-        remove_duplicates=False, remove_blanks=False, trim_spaces=False, template_content=None):
+        remove_duplicates=False, remove_blanks=False, trim_spaces=False,
+        template_content=None, template_sheet=None):
 
         try:
             byte_stream = io.BytesIO(file_content)
@@ -1699,10 +1700,7 @@ class SumishoProcessor(BaseProcessor):
 
             template_stream = io.BytesIO(template_content)
             template_xls = pd.ExcelFile(template_stream)
-            template_sheet_names = template_xls.sheet_names
-            
-            template_selected_sheet = st.selectbox("Select sheet", template_sheet_names)
-            template_df = pd.read_excel(template_xls, template_selected_sheet)
+            template_df = pd.read_excel(template_xls, sheet_name=template_sheet)
 
             if 'Date' not in df.columns or 'Remark' not in df.columns or 'Account Number' not in df.columns:
                 raise ValueError("Required columns not found in the uploaded file.")
@@ -2334,9 +2332,15 @@ def main():
             type=["xlsx", "xls"],
             key=f"{campaign}_sp_madrid_daily"
         )
-
+        
         if upload_madrid_daily is not None:
             sp_madrid_daily = upload_madrid_daily.getvalue()
+
+            template_stream = io.BytesIO(sp_madrid_daily)
+            template_xls = pd.ExcelFile(template_stream)
+            template_sheets = template_xls.sheet_names
+
+            selected_template_sheet = st.selectbox("Select a sheet from the SP Madrid Daily Template", template_sheets)
         else:
             st.warning("Please upload the SP Madrid Daily template file.")
             st.stop()
@@ -2731,6 +2735,7 @@ def main():
                                 remove_blanks=remove_blanks, 
                                 trim_spaces=trim_spaces,
                                 template_content=sp_madrid_daily,
+                                template_sheet=selected_template_sheet
                             )
                         else:
                             result_df, output_binary, output_filename = getattr(processor, automation_map[automation_type])(
