@@ -2326,12 +2326,17 @@ def main():
         alloc_bal_b6 = clean_number_input("Allocation Balance (B6)")
 
     if campaign == "Sumisho" and automation_type == "Daily Remark Report":
-            upload_madrid_daily = st.file_uploader(
-                "SP Madrid Daily",
-                type=["xlsx", "xls"],
-                key=f"{campaign}_sp_madrid_daily"
-            )
+        upload_madrid_daily = st.file_uploader(
+            "SP Madrid Daily",
+            type=["xlsx", "xls"],
+            key=f"{campaign}_sp_madrid_daily"
+        )
+        
+        if upload_madrid_daily is not None:
             sp_madrid_daily = upload_madrid_daily.getvalue()
+        else:
+            st.warning("Please upload the SP Madrid Daily template file.")
+            st.stop()
             
 
     df = None
