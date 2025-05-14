@@ -1704,7 +1704,6 @@ class SumishoProcessor(BaseProcessor):
                 raise ValueError("Required columns not found in the uploaded file.")
 
             df['FormattedDate'] = pd.to_datetime(df['Date']).dt.strftime('%m/%d/%Y')
-            st.write(df['FormattedDate'])
             df['Date_Remark'] = df['FormattedDate'] + ' ' + df['Remark'].astype(str)
 
             # Read the template file - first load as is to get original structure
@@ -1740,15 +1739,54 @@ class SumishoProcessor(BaseProcessor):
                 try:
                     if len(template_df) > 0:  # Make sure there's at least one data row
                         val = template_df.iloc[0, template_df.columns.get_loc(col)]
-                        if pd.notna(val) and isinstance(val, (pd.Timestamp, datetime.date)):
-                            date_columns[col] = val.strftime('%m/%d/%Y')
-                except (TypeError, AttributeError) as e:
+                        
+                        # Use safer date detection instead of isinstance
+                        is_date = False
+                        if pd.notna(val):
+                            if hasattr(val, 'date') and callable(getattr(val, 'date')):
+                                is_date = True
+                            elif str(type(val)) == "<class 'datetime.date'>":
+                                is_date = True
+                            elif str(type(val)) == "<class 'pandas._libs.tslibs.timestamps.Timestamp'>":
+                                is_date = True
+                        
+                        if is_date:
+                            # Convert to date string
+                            try:
+                                if hasattr(val, 'strftime'):
+                                    date_columns[col] = val.strftime('%m/%d/%Y')
+                                else:
+                                    date_columns[col] = pd.to_datetime(val).strftime('%m/%d/%Y')
+                            except:
+                                # If we can't format it, try a simpler approach
+                                date_columns[col] = str(val).split()[0]
+                                
+                except Exception as e:
                     st.write(f"Error checking column {col}: {str(e)}")
                     continue
             
             st.write(f"Found date columns: {date_columns}")
             
+            # If no date columns found, try to find them by column name
+            if not date_columns:
+                st.write("No date columns found by value - trying to find by column name")
+                for col in template_df.columns:
+                    col_str = str(col).upper()
+                    if any(date_term in col_str for date_term in ['DATE', 'DAY', 'MONTH']):
+                        # Try to convert first few values to see if they're dates
+                        for i in range(min(5, len(template_df))):
+                            try:
+                                val = template_df.iloc[i, template_df.columns.get_loc(col)]
+                                if pd.notna(val):
+                                    parsed_date = pd.to_datetime(val)
+                                    date_columns[col] = parsed_date.strftime('%m/%d/%Y')
+                                    st.write(f"Found date column by name: {col}")
+                                    break
+                            except:
+                                pass
+            
             # Process the data
+            updated_count = 0
             for idx, row in df.iterrows():
                 account_number = row['Account No.']
                 date_str = row['FormattedDate']
@@ -1762,6 +1800,9 @@ class SumishoProcessor(BaseProcessor):
                         for col, col_date in date_columns.items():
                             if col_date == date_str:
                                 template_df.loc[template_df.index[template_idx], col] = value
+                                updated_count += 1
+            
+            st.write(f"Updated {updated_count} cells in the template")
 
             if preview_only:
                 return template_df
@@ -1789,6 +1830,7 @@ class SumishoProcessor(BaseProcessor):
             import traceback
             st.write(traceback.format_exc())
             raise
+    
 class NoProcessor(BaseProcessor):
     pass
 
