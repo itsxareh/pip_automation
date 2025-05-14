@@ -2325,7 +2325,7 @@ def main():
             kept_bal_b6 = clean_number_input("Kept Balance (B6)")
         alloc_bal_b6 = clean_number_input("Allocation Balance (B6)")
 
-        if campaign == "Sumisho" and automation_type == "Daily Remark Report":
+    if campaign == "Sumisho" and automation_type == "Daily Remark Report":
             upload_madrid_daily = st.file_uploader(
                 "SP Madrid Daily",
                 type=["xlsx", "xls"],
@@ -2333,6 +2333,7 @@ def main():
             )
             sp_madrid_daily = upload_madrid_daily.getvalue()
             
+
     df = None
     sheet_names = []
 
