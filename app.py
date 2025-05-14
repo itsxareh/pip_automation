@@ -1686,7 +1686,61 @@ class BDOAutoProcessor(BaseProcessor):
             st.error(traceback.format_exc())
             logging.error(f"Processing error: {str(e)}\n{traceback.format_exc()}")
             return None, None, None
-  
+
+class SumishoProcessor(BaseProcessor):
+    def process_daily_remark(self, file_content, sheet_name=None, preview_only=False,
+        remove_duplicates=False, remove_blanks=False, trim_spaces=False, template_content=None):
+
+        try:
+            byte_stream = io.BytesIO(file_content)
+            xls = pd.ExcelFile(byte_stream)
+            df = pd.read_excel(xls, sheet_name=sheet_name)
+            df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
+
+            template_stream = io.BytesIO(template_content)
+            template_xls = pd.ExcelFile(template_stream)
+            template_df = pd.read_excel(template_xls)
+
+            if 'Date' not in df.columns or 'Remark' not in df.columns or 'Account Number' not in df.columns:
+                raise ValueError("Required columns not found in the uploaded file.")
+
+            df['FormattedDate'] = pd.to_datetime(df['Date']).dt.strftime('%m/%d/%Y')
+            df['Date_Remark'] = df['FormattedDate'] + ' ' + df['Remark'].astype(str)
+
+            template_dates = template_df.iloc[1]
+            date_columns = {col: str(template_dates[col].date()) for col in template_df.columns 
+                            if isinstance(template_dates[col], (pd.Timestamp, datetime.date))}
+
+            for idx, row in df.iterrows():
+                account_number = row['Account Number']
+                date_str = row['FormattedDate']
+                value = row['Date_Remark']
+
+                for template_idx in range(2, len(template_df)):
+                    if str(template_df.at[template_idx, 'ACCOUNT NUMBER']) == str(account_number):
+                        for col, col_date in date_columns.items():
+                            if col_date == date_str:
+                                template_df.at[template_idx, col] = value
+
+            if preview_only:
+                return template_df
+
+            output_filename = "Processed_Daily_Remark.xlsx"
+            output_path = os.path.join(self.temp_dir, output_filename)
+
+            with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
+                template_df.to_excel(writer, index=False)
+
+            with open(output_path, 'rb') as f:
+                output_binary = f.read()
+
+            return template_df, output_binary, output_filename
+
+        except Exception as e:
+            st.error(f"Error processing daily report: {str(e)}")
+            raise
+
+
 class NoProcessor(BaseProcessor):
     pass
 
@@ -1722,7 +1776,14 @@ CAMPAIGN_CONFIG = {
             "Endorsement": "process_new_endorsement", 
         },
         "processor": BDOAutoProcessor
-    }
+    },
+    "Sumisho": {
+        "automation_options": ["Daily Remark Report"],
+        "automation_map": {
+            "Daily Remark Report": "process_daily_remark",
+        },
+        "processor": SumishoProcessor
+    },
 }
 
 def main():
@@ -2263,8 +2324,15 @@ def main():
         with col2:
             kept_bal_b6 = clean_number_input("Kept Balance (B6)")
         alloc_bal_b6 = clean_number_input("Allocation Balance (B6)")
-                              
-         
+
+        if campaign == "Sumisho" and automation_type == "Daily Remark Report":
+            upload_madrid_daily = st.file_uploader(
+                "SP Madrid Daily",
+                type=["xlsx", "xls"],
+                key=f"{campaign}_sp_madrid_daily"
+            )
+            sp_madrid_daily = upload_madrid_daily.getvalue()
+            
     df = None
     sheet_names = []
 
@@ -2635,7 +2703,7 @@ def main():
                                 trim_spaces=trim_spaces,
                                 file_name=uploaded_file.name
                             )
-                        elif automation_type == "Daily Remark Report":
+                        elif campaign == "ROB Bike" and automation_type == "Daily Remark Report":
                             result_df, output_binary, output_filename = getattr(processor, automation_map[automation_type])(
                                 file_content,  
                                 sheet_name=selected_sheet,
@@ -2644,6 +2712,16 @@ def main():
                                 remove_blanks=remove_blanks, 
                                 trim_spaces=trim_spaces,
                                 report_date=report_date
+                            )
+                        elif campaign == "Sumisho" and automation_type == "Daily Remark Report":
+                            result_df, output_binary, output_filename = getattr(processor, automation_map[automation_type])(
+                                file_content,  
+                                sheet_name=selected_sheet,
+                                preview_only=False,
+                                remove_duplicates=remove_duplicates, 
+                                remove_blanks=remove_blanks, 
+                                trim_spaces=trim_spaces,
+                                template_content=sp_madrid_daily,
                             )
                         else:
                             result_df, output_binary, output_filename = getattr(processor, automation_map[automation_type])(
