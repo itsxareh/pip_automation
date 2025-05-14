@@ -1709,9 +1709,14 @@ class SumishoProcessor(BaseProcessor):
             df['Date_Remark'] = df['FormattedDate'] + ' ' + df['Remark'].astype(str)
 
             template_dates = template_df.iloc[1]
-            date_columns = {col: str(template_dates[col].date()) for col in template_df.columns 
-                            if isinstance(template_dates[col], (pd.Timestamp, datetime.datetime.date))}
-
+            date_columns = {}
+            for col in template_df.columns:
+                try:
+                    if isinstance(template_dates[col], pd.Timestamp) or isinstance(template_dates[col], datetime.date):
+                        date_columns[col] = str(template_dates[col].date())
+                except TypeError:
+                    continue
+                
             for idx, row in df.iterrows():
                 account_number = row['Account No.']
                 date_str = row['FormattedDate']
