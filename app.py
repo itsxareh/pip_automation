@@ -1700,42 +1700,45 @@ class SumishoProcessor(BaseProcessor):
 
             template_stream = io.BytesIO(template_content)
             template_xls = pd.ExcelFile(template_stream)
-            template_df = pd.read_excel(template_xls, sheet_name=template_sheet)
+            template_df_raw = pd.read_excel(template_xls, sheet_name=template_sheet, header=None)
             
-            # Debug: Print column names in template_df
-            st.write("Template columns:", template_df.columns.tolist())
-
+            header_row = template_df_raw.iloc[1]
+            template_df = pd.DataFrame(template_df_raw.values[2:], columns=header_row)
+            
+            st.write("Template headers from second row:", template_df.columns.tolist())
+            
             if 'Date' not in df.columns or 'Remark' not in df.columns or 'Account No.' not in df.columns:
                 raise ValueError("Required columns not found in the uploaded file.")
 
             df['FormattedDate'] = pd.to_datetime(df['Date']).dt.strftime('%m/%d/%Y')
             df['Date_Remark'] = df['FormattedDate'] + ' ' + df['Remark'].astype(str)
 
-            template_dates = template_df.iloc[1]
             date_columns = {}
             for col in template_df.columns:
                 try:
-                    if isinstance(template_dates[col], pd.Timestamp) or isinstance(template_dates[col], datetime.date):
-                        date_columns[col] = str(template_dates[col].date())
-                except TypeError:
+                    col_value = template_df.iloc[0, template_df.columns.get_loc(col)]
+                    if isinstance(col_value, (pd.Timestamp, datetime.date)):
+                        date_columns[col] = str(col_value.date())
+                except (TypeError, AttributeError):
                     continue
             
             account_number_col = None
             for col in template_df.columns:
-                if col.upper() == 'ACCOUNT NUMBER' or col == 'ACCOUNT NUMBER':
+                if isinstance(col, str) and ('ACCOUNT NUMBER' in col.upper() or 'ACCOUNT NO' in col.upper()):
                     account_number_col = col
                     break
                     
             if not account_number_col:
-                raise ValueError("'ACCOUNT NUMBER' column not found in template file.")
+                raise ValueError("Account number column not found in template file.")
                 
             for idx, row in df.iterrows():
                 account_number = row['Account No.']
                 date_str = row['FormattedDate']
                 value = row['Date_Remark']
 
-                for template_idx in range(2, len(template_df)):
-                    if str(template_df.at[template_idx, account_number_col]) == str(account_number):
+                for template_idx in range(len(template_df)):
+                    template_acct = template_df.at[template_idx, account_number_col]
+                    if pd.notna(template_acct) and str(template_acct) == str(account_number):
                         for col, col_date in date_columns.items():
                             if col_date == date_str:
                                 template_df.at[template_idx, col] = value
@@ -1743,11 +1746,17 @@ class SumishoProcessor(BaseProcessor):
             if preview_only:
                 return template_df
 
+            output_df = template_df_raw.copy()
+            for idx in range(len(template_df)):
+                for col in template_df.columns:
+                    col_idx = template_df_raw.columns.get_loc(template_df.columns.get_loc(col))
+                    output_df.iloc[idx+2, col_idx] = template_df.iloc[idx, col]
+
             output_filename = "Processed_Daily_Remark.xlsx"
             output_path = os.path.join(self.temp_dir, output_filename)
 
             with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
-                template_df.to_excel(writer, index=False)
+                output_df.to_excel(writer, index=False, header=False)
 
             with open(output_path, 'rb') as f:
                 output_binary = f.read()
@@ -1756,7 +1765,6 @@ class SumishoProcessor(BaseProcessor):
 
         except Exception as e:
             st.error(f"Error processing daily report: {str(e)}")
-            # Print more detailed error information
             import traceback
             st.write(traceback.format_exc())
             raise
