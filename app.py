@@ -1775,7 +1775,13 @@ class SumishoProcessor(BaseProcessor):
             updated_count = 0
             for idx, row in df.iterrows():
                 account_number = row['Account No.']
-                value = row['FormattedDate'] + ' ' + str(row['Remark'])
+                formatted_date = row.get('FormattedDate')
+                remark = row.get('Remark', '')
+
+                if pd.isna(formatted_date):
+                    value = str(remark)
+                else:
+                    value = str(formatted_date) + ' ' + str(remark)
 
                 for template_idx in range(len(template_df)):
                     template_acct = template_df.iloc[template_idx][account_number_col]
@@ -1788,17 +1794,13 @@ class SumishoProcessor(BaseProcessor):
             if preview_only:
                 return template_df
 
-            # Create output file
             output_filename = "Processed_Daily_Remark.xlsx"
             output_path = os.path.join(self.temp_dir, output_filename)
             
-            # Write the updated template back to Excel
             with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
-                # Write the first row from original template
                 header_df = pd.DataFrame([original_template.iloc[0].values], columns=original_template.columns)
                 header_df.to_excel(writer, sheet_name='Sheet1', index=False, header=False)
                 
-                # Append the processed data with its headers
                 template_df.to_excel(writer, sheet_name='Sheet1', index=False, header=True, startrow=1)
 
             with open(output_path, 'rb') as f:
