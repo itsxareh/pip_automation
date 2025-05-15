@@ -1711,7 +1711,9 @@ class SumishoProcessor(BaseProcessor):
             template_stream.seek(0)
             template_df = pd.read_excel(template_xls, sheet_name=template_sheet, header=1)
             
-            st.write("Template headers:", template_df.columns.tolist())
+            if target_column not in template_df.columns:
+                st.write("Available columns:", template_df.columns.tolist())
+                raise ValueError(f"Target column '{target_column}' not found in template file.")
             
             account_number_col = None
             for col in template_df.columns:
@@ -1725,53 +1727,8 @@ class SumishoProcessor(BaseProcessor):
                 raise ValueError("Account number column not found in template file.")
             
             st.write(f"Using account column: {account_number_col}")
-                
-            date_columns = {}
-            for col in template_df.columns:
-                try:
-                    if len(template_df) > 0: 
-                        val = template_df.iloc[0, template_df.columns.get_loc(col)]
-                        
-                        is_date = False
-                        if pd.notna(val):
-                            if hasattr(val, 'date') and callable(getattr(val, 'date')):
-                                is_date = True
-                            elif str(type(val)) == "<class 'datetime.date'>":
-                                is_date = True
-                            elif str(type(val)) == "<class 'pandas._libs.tslibs.timestamps.Timestamp'>":
-                                is_date = True
-                        
-                        if is_date:
-                            try:
-                                if hasattr(val, 'strftime'):
-                                    date_columns[col] = val.strftime('%m/%d/%Y')
-                                else:
-                                    date_columns[col] = pd.to_datetime(val).strftime('%m/%d/%Y')
-                            except:
-                                date_columns[col] = str(val).split()[0]
-                                
-                except Exception as e:
-                    st.write(f"Error checking column {col}: {str(e)}")
-                    continue
-            
-            st.write(f"Found date columns: {date_columns}")
-            
-            if not date_columns:
-                st.write("No date columns found by value - trying to find by column name")
-                for col in template_df.columns:
-                    col_str = str(col).upper()
-                    if any(date_term in col_str for date_term in ['DATE', 'DAY', 'MONTH']):
-                        for i in range(min(5, len(template_df))):
-                            try:
-                                val = template_df.iloc[i, template_df.columns.get_loc(col)]
-                                if pd.notna(val):
-                                    parsed_date = pd.to_datetime(val)
-                                    date_columns[col] = parsed_date.strftime('%m/%d/%Y')
-                                    st.write(f"Found date column by name: {col}")
-                                    break
-                            except:
-                                pass
-            
+            st.write(f"Target column for remarks: {target_column}")
+                    
             updated_count = 0
             for idx, row in df.iterrows():
                 account_number = row['Account No.']
@@ -1779,15 +1736,16 @@ class SumishoProcessor(BaseProcessor):
                 remark = row.get('Remark', '')
 
                 if pd.isna(formatted_date):
-                    value = str(remark)
+                    value = str(remark) if pd.notna(remark) else ""
                 else:
-                    value = str(formatted_date) + ' ' + str(remark)
+                    value = str(formatted_date) + ' ' + (str(remark) if pd.notna(remark) else "")
 
                 for template_idx in range(len(template_df)):
                     template_acct = template_df.iloc[template_idx][account_number_col]
                     if pd.notna(template_acct) and str(template_acct).strip() == str(account_number).strip():
-                        template_df.at[template_idx, target_column] = value
+                        template_df.loc[template_df.index[template_idx], target_column] = value
                         updated_count += 1
+                        break 
             
             st.write(f"Updated {updated_count} cells in the template")
 
@@ -1797,11 +1755,42 @@ class SumishoProcessor(BaseProcessor):
             output_filename = "Processed_Daily_Remark.xlsx"
             output_path = os.path.join(self.temp_dir, output_filename)
             
-            with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
-                header_df = pd.DataFrame([original_template.iloc[0].values], columns=original_template.columns)
-                header_df.to_excel(writer, sheet_name='Sheet1', index=False, header=False)
+            workbook = load_workbook(template_stream)
+            sheet = workbook.active if workbook.sheetnames else workbook.create_sheet()
+            
+            account_col_idx = None
+            target_col_idx = None
+            
+            for col_idx, cell in enumerate(sheet[2], 1): 
+                if cell.value == account_number_col:
+                    account_col_idx = col_idx
+                if cell.value == target_column:
+                    target_col_idx = col_idx
+            
+            if account_col_idx is None or target_col_idx is None:
+                st.write("Could not find column indices in the sheet")
+                raise ValueError("Could not locate columns in Excel sheet")
                 
-                template_df.to_excel(writer, sheet_name='Sheet1', index=False, header=True, startrow=1)
+            for row_idx in range(3, sheet.max_row + 1):
+                account_cell = sheet.cell(row=row_idx, column=account_col_idx)
+                
+                if account_cell.value is not None:
+                    account_str = str(account_cell.value).strip()
+                    
+                    for idx, row in df.iterrows():
+                        if str(row['Account No.']).strip() == account_str:
+                            formatted_date = row.get('FormattedDate')
+                            remark = row.get('Remark', '')
+                            
+                            if pd.isna(formatted_date):
+                                value = str(remark) if pd.notna(remark) else ""
+                            else:
+                                value = str(formatted_date) + ' ' + (str(remark) if pd.notna(remark) else "")
+                                
+                            sheet.cell(row=row_idx, column=target_col_idx).value = value
+                            break
+
+            workbook.save(output_path)
 
             with open(output_path, 'rb') as f:
                 output_binary = f.read()
