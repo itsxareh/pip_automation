@@ -1690,35 +1690,29 @@ class BDOAutoProcessor(BaseProcessor):
 class SumishoProcessor(BaseProcessor):
     def process_daily_remark(self, file_content, sheet_name=None, preview_only=False,
     remove_duplicates=False, remove_blanks=False, trim_spaces=False,
-    template_content=None, template_sheet=None):
+    template_content=None, template_sheet=None, target_column=None):
 
         try:
-            # Read the input file
             byte_stream = io.BytesIO(file_content)
             xls = pd.ExcelFile(byte_stream)
             df = pd.read_excel(xls, sheet_name=sheet_name)
             df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
 
-            # Check if required columns exist in the input file
             if 'Date' not in df.columns or 'Remark' not in df.columns or 'Account No.' not in df.columns:
                 raise ValueError("Required columns not found in the uploaded file.")
 
             df['FormattedDate'] = pd.to_datetime(df['Date']).dt.strftime('%m/%d/%Y')
             df['Date_Remark'] = df['FormattedDate'] + ' ' + df['Remark'].astype(str)
 
-            # Read the template file - first load as is to get original structure
             template_stream = io.BytesIO(template_content)
             template_xls = pd.ExcelFile(template_stream)
             original_template = pd.read_excel(template_xls, sheet_name=template_sheet, header=None)
             
-            # Now read it again, but use the second row as headers
             template_stream.seek(0)
             template_df = pd.read_excel(template_xls, sheet_name=template_sheet, header=1)
             
-            # Debug: print the new header row
             st.write("Template headers:", template_df.columns.tolist())
             
-            # Find the account number column
             account_number_col = None
             for col in template_df.columns:
                 col_str = str(col)
@@ -1732,15 +1726,12 @@ class SumishoProcessor(BaseProcessor):
             
             st.write(f"Using account column: {account_number_col}")
                 
-            # Find date columns - these should be columns with dates in their values
             date_columns = {}
-            # Check the first row for date values
             for col in template_df.columns:
                 try:
-                    if len(template_df) > 0:  # Make sure there's at least one data row
+                    if len(template_df) > 0: 
                         val = template_df.iloc[0, template_df.columns.get_loc(col)]
                         
-                        # Use safer date detection instead of isinstance
                         is_date = False
                         if pd.notna(val):
                             if hasattr(val, 'date') and callable(getattr(val, 'date')):
@@ -1751,14 +1742,12 @@ class SumishoProcessor(BaseProcessor):
                                 is_date = True
                         
                         if is_date:
-                            # Convert to date string
                             try:
                                 if hasattr(val, 'strftime'):
                                     date_columns[col] = val.strftime('%m/%d/%Y')
                                 else:
                                     date_columns[col] = pd.to_datetime(val).strftime('%m/%d/%Y')
                             except:
-                                # If we can't format it, try a simpler approach
                                 date_columns[col] = str(val).split()[0]
                                 
                 except Exception as e:
@@ -1767,13 +1756,11 @@ class SumishoProcessor(BaseProcessor):
             
             st.write(f"Found date columns: {date_columns}")
             
-            # If no date columns found, try to find them by column name
             if not date_columns:
                 st.write("No date columns found by value - trying to find by column name")
                 for col in template_df.columns:
                     col_str = str(col).upper()
                     if any(date_term in col_str for date_term in ['DATE', 'DAY', 'MONTH']):
-                        # Try to convert first few values to see if they're dates
                         for i in range(min(5, len(template_df))):
                             try:
                                 val = template_df.iloc[i, template_df.columns.get_loc(col)]
@@ -1785,39 +1772,29 @@ class SumishoProcessor(BaseProcessor):
                             except:
                                 pass
             
-            # Process the data
             updated_count = 0
             for idx, row in df.iterrows():
                 account_number = row['Account No.']
-                date_str = row['FormattedDate']
-                value = row['Date_Remark']
+                value = row['FormattedDate'] + ' ' + str(row['Remark'])
 
-                # Find matching account rows
                 for template_idx in range(len(template_df)):
                     template_acct = template_df.iloc[template_idx][account_number_col]
                     if pd.notna(template_acct) and str(template_acct).strip() == str(account_number).strip():
-                        # Found matching account, now look for matching date column
-                        for col, col_date in date_columns.items():
-                            if col_date == date_str:
-                                template_df.loc[template_df.index[template_idx], col] = value
-                                updated_count += 1
+                        template_df.at[template_idx, target_column] = value
+                        updated_count += 1
             
             st.write(f"Updated {updated_count} cells in the template")
 
             if preview_only:
                 return template_df
 
-            # Create output file
             output_filename = "Processed_Daily_Remark.xlsx"
             output_path = os.path.join(self.temp_dir, output_filename)
             
-            # Write the updated template back to Excel
             with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
-                # Write the first row from original template
                 header_df = pd.DataFrame([original_template.iloc[0].values], columns=original_template.columns)
                 header_df.to_excel(writer, sheet_name='Sheet1', index=False, header=False)
                 
-                # Append the processed data with its headers
                 template_df.to_excel(writer, sheet_name='Sheet1', index=False, header=True, startrow=1)
 
             with open(output_path, 'rb') as f:
@@ -2429,7 +2406,13 @@ def main():
             template_xls = pd.ExcelFile(template_stream)
             template_sheets = template_xls.sheet_names
 
-            selected_template_sheet = st.selectbox("Select a sheet from the SP Madrid Daily Template", template_sheets)
+            selected_template_sheet = st.sidebar.selectbox("Select a sheet from the SP Madrid Daily Template", template_sheets)
+        
+            template_stream.seek(0)
+            template_df_preview = pd.read_excel(template_sheets, sheet_name=selected_template_sheet, header=1)
+            available_columns = list(template_df_preview.columns)
+
+            selected_date_column = st.sidebar.selectbox("Select the column to insert the 'Date + Remark'", available_columns)
         else:
             st.warning("Please upload the SP Madrid Daily template file.")
             st.stop()
@@ -2825,6 +2808,7 @@ def main():
                                 trim_spaces=trim_spaces,
                                 template_content=sp_madrid_daily,
                                 template_sheet=selected_template_sheet
+                                target_column=selected_date_column
                             )
                         else:
                             result_df, output_binary, output_filename = getattr(processor, automation_map[automation_type])(
