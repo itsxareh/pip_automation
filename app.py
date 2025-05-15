@@ -1690,7 +1690,7 @@ class BDOAutoProcessor(BaseProcessor):
 class SumishoProcessor(BaseProcessor):
     def process_daily_remark(self, file_content, sheet_name=None, preview_only=False,
     remove_duplicates=False, remove_blanks=False, trim_spaces=False,
-    template_content=None, template_sheet=None, target_column=None):
+    template_content=None, template_sheet=None):
 
         try:
             byte_stream = io.BytesIO(file_content)
@@ -1775,26 +1775,33 @@ class SumishoProcessor(BaseProcessor):
             updated_count = 0
             for idx, row in df.iterrows():
                 account_number = row['Account No.']
-                value = row['FormattedDate'] + ' ' + str(row['Remark'])
+                date_str = row['FormattedDate']
+                value = row['Date_Remark']
 
                 for template_idx in range(len(template_df)):
                     template_acct = template_df.iloc[template_idx][account_number_col]
                     if pd.notna(template_acct) and str(template_acct).strip() == str(account_number).strip():
-                        template_df.at[template_idx, target_column] = value
-                        updated_count += 1
+                        for col, col_date in date_columns.items():
+                            if col_date == date_str:
+                                template_df.loc[template_df.index[template_idx], col] = value
+                                updated_count += 1
             
             st.write(f"Updated {updated_count} cells in the template")
 
             if preview_only:
                 return template_df
 
+            # Create output file
             output_filename = "Processed_Daily_Remark.xlsx"
             output_path = os.path.join(self.temp_dir, output_filename)
             
+            # Write the updated template back to Excel
             with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
+                # Write the first row from original template
                 header_df = pd.DataFrame([original_template.iloc[0].values], columns=original_template.columns)
                 header_df.to_excel(writer, sheet_name='Sheet1', index=False, header=False)
                 
+                # Append the processed data with its headers
                 template_df.to_excel(writer, sheet_name='Sheet1', index=False, header=True, startrow=1)
 
             with open(output_path, 'rb') as f:
@@ -2408,11 +2415,7 @@ def main():
 
             selected_template_sheet = st.sidebar.selectbox("Select a sheet from the SP Madrid Daily Template", template_sheets)
         
-            template_stream.seek(0)
-            template_df_preview = pd.read_excel(template_sheets, sheet_name=selected_template_sheet, header=1)
-            available_columns = list(template_df_preview.columns)
-
-            selected_date_column = st.sidebar.selectbox("Select the column to insert the 'Date + Remark'", available_columns)
+            
         else:
             st.warning("Please upload the SP Madrid Daily template file.")
             st.stop()
@@ -2808,7 +2811,6 @@ def main():
                                 trim_spaces=trim_spaces,
                                 template_content=sp_madrid_daily,
                                 template_sheet=selected_template_sheet
-                                target_column=selected_date_column
                             )
                         else:
                             result_df, output_binary, output_filename = getattr(processor, automation_map[automation_type])(
