@@ -647,7 +647,7 @@ class ROBBikeProcessor(BaseProcessor):
                         cell = worksheet.cell(row=row, column=maturity_col_idx)
                         if cell.value is not None:
                             try:
-                                date_value = pd.to_datetime(cell.value)
+                                date_value = pd.to_datetime(cell.value).strftime("%m/%d/%Y")
                                 cell.value = date_value
                                 cell.number_format = 'mm/dd/yyyy'
                             except:
@@ -657,7 +657,7 @@ class ROBBikeProcessor(BaseProcessor):
                         cell = worksheet.cell(row=row, column=endo_date_col_idx)
                         if cell.value is not None:
                             try:
-                                date_value = pd.to_datetime(cell.value)
+                                date_value = pd.to_datetime(cell.value).strftime("%m/%d/%Y")
                                 cell.value = date_value
                                 cell.number_format = '@'
                             except:
