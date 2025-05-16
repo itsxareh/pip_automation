@@ -538,7 +538,7 @@ class ROBBikeProcessor(BaseProcessor):
             return None, None, None
 
     def process_new_endorsement(self, file_content, sheet_name=None, preview_only=False,
-                         remove_duplicates=False, remove_blanks=False, trim_spaces=False):
+                         remove_duplicates=False, remove_blanks=False, trim_spaces=False, preserve_colors=True):
         try:
             if isinstance(file_content, bytes):
                 file_content = io.BytesIO(file_content)
@@ -551,8 +551,13 @@ class ROBBikeProcessor(BaseProcessor):
                 dtype={'Account Number': str}, 
                 parse_dates=['Maturity date'] if sheet_name else None 
             )
+            df = df.replace('', pd.NA)
+            df = df.dropna(how='all')
+            df = df.dropna(axis=1, how='all')
+            df.columns = df.columns.str.strip()
+            original_df = df.copy()
             
-            df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
+            df = self.clean_data(original_df, remove_duplicates, remove_blanks, trim_spaces)
             
             if 'Endorsement Date' in df.columns:
                 df = df.drop(columns='Endorsement Date')
@@ -560,21 +565,22 @@ class ROBBikeProcessor(BaseProcessor):
             if 'Account Number 1' in df.columns:
                 df = df.drop(columns='Account Number 1')
 
+            if 'Contact No.' in df.columns:
+                st.write(f"Found 'Contact No.' column with {df['Contact No.'].notna().sum()} non-null values")
+                sample_phones = df['Contact No.'].dropna().head(3).tolist()
+
             if 'Account Number' in df.columns:
                 df['Account Number'] = df['Account Number'].astype(str)
-                account_numbers_list = df['Account Number'].dropna().unique().tolist()
+                account_numbers_list = [str(int(acc)) for acc in df['Account Number'].dropna().unique().tolist()]
                 
                 batch_size = 100 
                 existing_accounts = []
-                
                 for i in range(0, len(account_numbers_list), batch_size):
                     batch = account_numbers_list[i:i + batch_size]
                     response = supabase.table('rob_bike_dataset').select('*').in_('account_number', batch).execute()
-                    st.write(response)
-                    if hasattr(response, 'data') and response.data:
-                        existing_accounts.extend([str(item['account_number']) for item in response.data])
 
-                st.write(existing_accounts)
+                    if hasattr(response, 'data') and response.data:
+                        existing_accounts.extend(['00' + str(item['account_number']) for item in response.data])
 
                 initial_rows = len(df)
                 df = df[~df['Account Number'].astype(str).isin(existing_accounts)]
@@ -599,81 +605,164 @@ class ROBBikeProcessor(BaseProcessor):
             if preview_only:
                 return df, None, None
             
-            result_df = df
-            output_filename = f"rob_bike-new-{datetime.now().strftime('%Y-%m-%d')}.xlsx"
-            output_path = os.path.join(os.getcwd(), output_filename)  
+            new_endo_df = df.copy()
+            new_endo_filename = f"rob_bike-new-{datetime.now().strftime('%Y-%m-%d')}.xlsx"
+            new_endo_path = os.path.join(os.getcwd(), new_endo_filename)  
             
-            with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
-                result_df.to_excel(writer, index=False, sheet_name='Sheet1')
-
-                workbook = writer.book
-                worksheet = writer.sheets['Sheet1']
-                final_columns = result_df.columns
-
-                thin_border = Border(
-                    left=Side(style='thin'),
-                    right=Side(style='thin'),
-                    top=Side(style='thin'),
-                    bottom=Side(style='thin')
-                )
-
-                account_col_idx = None
-                maturity_col_idx = None
-                endo_date_col_idx = None
+            cms_endo_df = df.copy()
+            if 'Contact No.' in cms_endo_df.columns:
+                before_cleaning = cms_endo_df['Contact No.'].tolist()
+                cms_endo_df['Contact No.'] = cms_endo_df['Contact No.'].apply(self.clean_phone_number)
+                after_cleaning = cms_endo_df['Contact No.'].tolist()
                 
-                for i, col in enumerate(final_columns):
-                    col_letter = get_column_letter(i + 1)
-                    
-                    if col == 'Account Number':
-                        account_col_idx = i + 1
-                    elif col == 'Maturity date':
-                        maturity_col_idx = i + 1
-                    elif col == 'ENDO DATE':
-                        endo_date_col_idx = i + 1
-                    
-                    if col in ['Account Number', 'ACCT NAME', 'Endrosement DPD', 'ENDO DATE', 'Endrosement OB', 'MONTHLY AMORT', 'Maturity date']:
-                        max_length = max(
-                            [len(str(cell.value)) if cell.value is not None else 0
-                            for cell in worksheet[col_letter]]
-                        )
-                        adjusted_width = max_length + 2
-                        worksheet.column_dimensions[col_letter].width = adjusted_width
+                for before, after in zip(before_cleaning, after_cleaning):
+                    if str(before) != str(after):
+                        st.write(f"Cleaned: '{before}' → '{after}'")
 
-                for row in range(2, len(result_df) + 2):  
-                    if account_col_idx:
-                        cell = worksheet.cell(row=row, column=account_col_idx)
-                        cell.number_format = '@' 
-                        if cell.value is not None:
-                            cell.value = str(cell.value)
-                            
-                    if maturity_col_idx:
-                        cell = worksheet.cell(row=row, column=maturity_col_idx)
-                        if cell.value is not None:
-                            try:
-                                date_value = pd.to_datetime(cell.value).strftime("%m/%d/%Y")
-                                cell.value = date_value
-                            except:
-                                pass
-
-                    if endo_date_col_idx:
-                        cell = worksheet.cell(row=row, column=endo_date_col_idx)
-                        if cell.value is not None:
-                            try:
-                                date_value = pd.to_datetime(cell.value).strftime("%m/%d/%Y")
-                                cell.value = date_value
-                                cell.number_format = '@'
-                            except:
-                                pass
-                    
-                    for col_idx in range(1, len(final_columns) + 1):
-                        cell = worksheet.cell(row=row, column=col_idx)
-                        cell.border = thin_border
-
-            with open(output_path, 'rb') as f:
-                output_binary = f.read()
+            if 'BRAND' in cms_endo_df.columns and 'MODEL' in cms_endo_df.columns:
+                cms_endo_df['DESCRIP'] = cms_endo_df.apply(
+                    lambda row: '' if (pd.isna(row['BRAND']) or pd.isna(row['MODEL']) or 
+                                      str(row['BRAND']).strip() == '' or str(row['MODEL']).strip() == '' or
+                                      str(row['BRAND']).lower() == 'nan' or str(row['MODEL']).lower() == 'nan')
+                                else f"{row['BRAND']} {row['MODEL']}", 
+                    axis=1  
+                )
+                cols = cms_endo_df.columns.tolist()
+                cols.remove('DESCRIP')
+                cols.append('DESCRIP')
+                cms_endo_df = cms_endo_df[cols]
+                
+            cms_endo_filename = f"ROBBike-CMS-NewEndo-{datetime.now().strftime('%m-%d-%Y')}.xlsx"
+            cms_endo_path = os.path.join(os.getcwd(), cms_endo_filename)
             
-            return result_df, output_binary, output_filename
+            new_endo_binary = self.create_excel_file(new_endo_df, new_endo_path, xls)
+            
+            cms_endo_binary = self.create_excel_file(cms_endo_df, cms_endo_path, xls)
+            
+            return {                 
+                'new_endo_df': new_endo_df,                
+                'new_endo_binary': new_endo_binary,                 
+                'new_endo_filename': new_endo_filename,
+                'cms_endo_df': cms_endo_df, 
+                'cms_endo_binary': cms_endo_binary,                 
+                'cms_endo_filename': cms_endo_filename,
+            }
         
         except Exception as e:
             st.error(f"Error processing new endorsement: {str(e)}")
             return None, None, None
+        
+    def clean_phone_number(self, phone):
+        if pd.isna(phone) or phone == 'nan':
+                return ''
+                
+        phone = str(phone)
+        
+        if '/' in phone:
+            phone = phone.split('/')[0]
+            
+        digits = ''.join(c for c in phone if c.isdigit())
+        
+        if len(digits) >= 10:
+            if digits.startswith('63'):
+                digits = '0' + digits[2:]
+            elif digits.startswith('0') and not digits.startswith('09'):
+                if len(digits) >= 10:  
+                    digits = '09' + digits[-8:]
+                else:
+                    digits = '09' + digits[1:]
+            elif digits.startswith('9') and not digits.startswith('09'):
+                digits = '0' + digits
+        
+        if len(digits) > 11:
+            digits = digits[:11]
+        elif len(digits) < 11 and len(digits) > 0:
+            if digits.startswith('09'):
+                digits = digits.ljust(11, '0')
+            elif len(digits) >= 9:
+                digits = '09' + digits[-9:].ljust(9, '0')
+            else:
+                digits = '09' + digits.ljust(9, '0')
+        
+        return digits
+        
+    def create_excel_file(self, df, output_path, source_file=None):
+        with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='Sheet1')
+
+            workbook = writer.book
+            worksheet = writer.sheets['Sheet1']
+            final_columns = df.columns
+            
+            thin_border = Border(
+                left=Side(style='thin'),
+                right=Side(style='thin'),
+                top=Side(style='thin'),
+                bottom=Side(style='thin')
+            )
+
+            account_col_idx = None
+            maturity_col_idx = None
+            endo_date_col_idx = None
+            
+            for i, col in enumerate(final_columns):
+                col_letter = get_column_letter(i + 1)
+                
+                if col == 'Account Number':
+                    account_col_idx = i + 1
+                elif col == 'Maturity date':
+                    maturity_col_idx = i + 1
+                elif col == 'ENDO DATE':
+                    endo_date_col_idx = i + 1
+                
+                if col in ['Account Number', 'ACCT NAME', 'Endrosement DPD', 'ENDO DATE', 'Endrosement OB', 
+                          'MONTHLY AMORT', 'Maturity date', 'Contact No.', 'DESCRIP']:
+                    max_length = max(
+                        [len(str(cell.value)) if cell.value is not None else 0
+                        for cell in worksheet[col_letter]]
+                    )
+                    adjusted_width = max_length + 2
+                    worksheet.column_dimensions[col_letter].width = adjusted_width
+                
+                if col == 'Contact No.':
+                    for row in range(2, len(df) + 2):
+                        cell = worksheet.cell(row=row, column=i+1)
+                        cell.number_format = '@' 
+                        if cell.value is not None:
+                            cell.value = str(cell.value)
+
+            for row in range(2, len(df) + 2):  
+                if account_col_idx:
+                    cell = worksheet.cell(row=row, column=account_col_idx)
+                    cell.number_format = '@' 
+                    if cell.value is not None:
+                        cell.value = str(cell.value)
+                        
+                if maturity_col_idx:
+                    cell = worksheet.cell(row=row, column=maturity_col_idx)
+                    if cell.value is not None:
+                        try:
+                            date_value = pd.to_datetime(cell.value).strftime("%m/%d/%Y")
+                            cell.value = date_value
+                        except:
+                            pass
+
+                if endo_date_col_idx:
+                    cell = worksheet.cell(row=row, column=endo_date_col_idx)
+                    if cell.value is not None:
+                        try:
+                            date_value = pd.to_datetime(cell.value).strftime("%m/%d/%Y")
+                            cell.value = date_value
+                            cell.number_format = '@'
+                        except:
+                            pass
+
+                for col_idx in range(1, len(final_columns) + 1):
+                        cell = worksheet.cell(row=row, column=col_idx)
+                        cell.border = thin_border
+
+        with open(output_path, 'rb') as f:
+            output_binary = f.read()
+            
+        return output_binary
+        

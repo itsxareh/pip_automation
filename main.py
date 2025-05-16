@@ -35,7 +35,7 @@ CAMPAIGN_CONFIG = {
         },
         "processor": base_process
     },
-    "BPI": {
+    "BPI Auto Curing": {
         "automation_options": ["Updates", "Uploads", "Cured List"],
         "automation_map": {
             "Uploads": "process_uploads",
@@ -962,7 +962,7 @@ def main():
         if process_button and selected_sheet:
             try:
                 with st.spinner("Processing file..."):
-                    if automation_type == "Cured List":
+                    if campaign == "BPI Auto Curing" and automation_type == "Cured List":
                         result = processor.process_cured_list(
                             file_content, 
                             sheet_name=selected_sheet,
@@ -973,7 +973,7 @@ def main():
                         )
                         st.session_state['cured_list_result'] = result
                         
-                    elif automation_type == "Agency Daily Report":
+                    elif campaign == "BDO Auto B5 & B6" and automation_type == "Agency Daily Report":
                         if None in [kept_count_b5, kept_bal_b5, alloc_bal_b5, kept_count_b6, kept_bal_b6, alloc_bal_b6]:
                             st.error("Please enter valid numbers for all B5 and B6 fields (numbers only, commas allowed).")
                         else: 
@@ -992,8 +992,17 @@ def main():
                                 alloc_bal_b6=alloc_bal_b6
                             )
                             st.session_state['agency_daily_result'] = result
-                        
-                        
+
+                    elif campaign == "ROB Bike" and automation_type == "Endorsement":
+                        result = processor.process_new_endorsement(
+                            file_content, 
+                            sheet_name=selected_sheet,
+                            preview_only=False,
+                            remove_duplicates=remove_duplicates, 
+                            remove_blanks=remove_blanks, 
+                            trim_spaces=trim_spaces,
+                        )
+                        st.session_state['rob_bike_new_endorsement'] = result
                     else:
                         if automation_type == "Data Clean":
                             result_df, output_binary, output_filename = getattr(processor, automation_map[automation_type])(
@@ -1072,6 +1081,7 @@ def main():
                     st.download_button(label="Download Payments File", data=result['payments_binary'], file_name=result['payments_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="payments_download")
             else:
                 st.error("Error processing. Please check the file content and try again.")
+
         elif automation_type == "Agency Daily Report" and 'agency_daily_result' in st.session_state:
             result = st.session_state['agency_daily_result']
             if result != (None, None, None):
@@ -1092,8 +1102,22 @@ def main():
                     st.subheader("B6 Prod")
                     st.dataframe(result['b6_prod_df'], use_container_width=True)
                     st.download_button(label="Download Daily Productivity B6 Report File", data=result['b6_prod_binary'], file_name=result['b6_prod_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="b6_prod_download")
+            
+        elif automation_type == "Endorsement" and 'rob_bike_new_endorsement' in st.session_state:
+            result = st.session_state['rob_bike_new_endorsement']
+            if result != (None, None, None):
+                tabs = st.tabs(["ENDO Bot", "CMS"])
+                with tabs[0]:
+                    st.subheader("ENDO Bot")
+                    st.dataframe(result['new_endo_df'], use_container_width=True)
+                    st.download_button(label="Download File", data=result['new_endo_binary'], file_name=result['new_endo_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="new_endo_download")
+                with tabs[1]:
+                    st.subheader("CMS")
+                    st.dataframe(result['cms_endo_df'], use_container_width=True)
+                    st.download_button(label="Download File", data=result['cms_endo_binary'], file_name=result['cms_endo_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="cms_endo_download")
             else:
                 st.error("Error processing. Please check the file content and try again.")
+
         elif 'output_binary' in st.session_state and 'result_sheet_names' in st.session_state:
             excel_file = pd.ExcelFile(io.BytesIO(st.session_state['output_binary']))
             result_sheet_names = st.session_state['result_sheet_names']
