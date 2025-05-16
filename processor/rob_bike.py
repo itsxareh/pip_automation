@@ -625,6 +625,7 @@ class ROBBikeProcessor(BaseProcessor):
                     if col == 'Account Number':
                         account_col_idx = i + 1
                     elif col == 'Maturity date':
+                        st.write("maturity column exists")
                         maturity_col_idx = i + 1
                     elif col == 'ENDO DATE':
                         endo_date_col_idx = i + 1
@@ -648,14 +649,10 @@ class ROBBikeProcessor(BaseProcessor):
                         cell = worksheet.cell(row=row, column=maturity_col_idx)
                         if cell.value is not None:
                             try:
-                                if isinstance(cell.value, datetime):
-                                    cell.number_format = 'mm/dd/yyyy'
-
-                                elif isinstance(cell.value, str) and '00:00:00' in cell.value:
-                                    dt = pd.to_datetime(cell.value)
-                                    cell.value = dt 
-                                    cell.number_format = 'mm/dd/yyyy'
-                            except Exception as e:
+                                date_value = pd.to_datetime(cell.value).strftime("%m/%d/%Y")
+                                cell.value = date_value
+                                cell.number_format = 'mm/dd/yyyy'
+                            except:
                                 pass
 
                     if endo_date_col_idx:
