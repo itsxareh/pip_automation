@@ -572,6 +572,7 @@ class ROBBikeProcessor(BaseProcessor):
                     response = supabase.table('rob_bike_dataset').select('account_number').in_('account_number', batch).execute()
                     
                     if hasattr(response, 'data') and response.data:
+                        st.write(response.data)
                         existing_accounts.extend([str(item['account_number']) for item in response.data])
                 
                 initial_rows = len(df)
@@ -629,7 +630,7 @@ class ROBBikeProcessor(BaseProcessor):
                     elif col == 'ENDO DATE':
                         endo_date_col_idx = i + 1
                     
-                    if col in ['Account Number', 'ACCT NAME', 'ENDO DATE']:
+                    if col in ['Account Number', 'ACCT NAME', 'Endrosement DPD', 'ENDO DATE', 'Endrosement OB', 'MONTHLY AMORT', 'Maturity date']:
                         max_length = max(
                             [len(str(cell.value)) if cell.value is not None else 0
                             for cell in worksheet[col_letter]]
