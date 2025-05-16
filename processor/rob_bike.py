@@ -549,7 +549,7 @@ class ROBBikeProcessor(BaseProcessor):
                 xls, 
                 sheet_name=sheet_name,
                 dtype={'Account Number': str}, 
-                parse_dates=['Maturity Date'] if sheet_name else None 
+                parse_dates=['Maturity date'] if sheet_name else None 
             )
             
             df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
