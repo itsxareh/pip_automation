@@ -644,6 +644,16 @@ class ROBBikeProcessor(BaseProcessor):
                         if cell.value is not None:
                             cell.value = str(cell.value)
                             
+                    if maturity_col_idx:
+                        cell = worksheet.cell(row=row, column=maturity_col_idx)
+                        if cell.value is not None:
+                            try:
+                                date_value = pd.to_datetime(cell.value).strftime("%m/%d/%Y")
+                                cell.value = date_value
+                                cell.number_format = '@'
+                            except:
+                                pass
+
                     if endo_date_col_idx:
                         cell = worksheet.cell(row=row, column=endo_date_col_idx)
                         if cell.value is not None:
