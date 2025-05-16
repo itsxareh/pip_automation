@@ -647,9 +647,9 @@ class ROBBikeProcessor(BaseProcessor):
                         cell = worksheet.cell(row=row, column=maturity_col_idx)
                         if cell.value is not None:
                             try:
-                                date_value = pd.to_datetime(cell.value).strftime("%m/%d/%Y")
-                                cell.value = date_value
-                                cell.number_format = 'mm/dd/yyyy'
+                                date_value = pd.to_datetime(cell.value)
+                                cell.value = date_value.replace(hour=0, minute=0, second=0, microsecond=0)
+                                cell.number_format = 'mm/dd/yyyy;@'
                             except:
                                 pass
 
