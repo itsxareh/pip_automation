@@ -3,6 +3,8 @@ import pandas as pd
 import os
 import numpy as np
 from openpyxl.utils import get_column_letter, column_index_from_string
+from openpyxl.styles import Border, Side, Alignment
+from openpyxl.styles import numbers
 from openpyxl import load_workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.styles import Border, Side
@@ -592,28 +594,41 @@ class ROBBikeProcessor(BaseProcessor):
             
             with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
                 result_df.to_excel(writer, index=False, sheet_name='Sheet1')
-                
+
                 worksheet = writer.sheets['Sheet1']
                 final_columns = result_df.columns
-                
+
+                thin_border = Border(
+                    left=Side(style='thin'),
+                    right=Side(style='thin'),
+                    top=Side(style='thin'),
+                    bottom=Side(style='thin')
+                )
+
                 for i, col in enumerate(final_columns):
                     col_letter = chr(65 + i)
-                    
-                    # if col in numeric_cols:
-                    #     for row in range(2, len(result_df) + 2):
-                    #         cell = worksheet[f"{col_letter}{row}"]
-                    #         cell.number_format = '0.00'
-                    
-                    if col == 'ENDO DATE':
-                        for row in range(2, len(result_df) + 2):
-                            cell = worksheet[f"{col_letter}{row}"]
-                            value = cell.value
-                            if value:
+
+                    for row in range(2, len(result_df) + 2): 
+                        cell = worksheet[f"{col_letter}{row}"]
+
+                        if col == 'Account Number':
+                            cell.number_format = '@' 
+                            cell.value = str(cell.value)  
+
+                        elif col == 'ENDO DATE':
+                            if cell.value:
                                 try:
-                                    cell.value = pd.to_datetime(value).strftime("%m/%d/%Y")
+                                    cell.value = pd.to_datetime(cell.value).strftime("%m/%d/%Y")
                                     cell.number_format = '@'
                                 except:
                                     pass
+
+                        cell.border = thin_border
+
+                for col_idx, column_cells in enumerate(worksheet.columns, 1):
+                    max_length = max((len(str(cell.value)) for cell in column_cells if cell.value), default=0)
+                    adjusted_width = max_length + 2
+                    worksheet.column_dimensions[chr(64 + col_idx)].width = adjusted_width
             
             with open(output_path, 'rb') as f:
                 output_binary = f.read()

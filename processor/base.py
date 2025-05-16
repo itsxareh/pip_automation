@@ -7,7 +7,6 @@ import io
 import tempfile
 import shutil
 import re 
- 
 
 class BaseProcessor:
     def __init__(self):
