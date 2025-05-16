@@ -564,19 +564,18 @@ class ROBBikeProcessor(BaseProcessor):
                 df['Account Number'] = df['Account Number'].astype(str)
                 account_numbers_list = df['Account Number'].dropna().unique().tolist()
                 
-                st.write(account_numbers_list)
                 batch_size = 100 
                 existing_accounts = []
                 
                 for i in range(0, len(account_numbers_list), batch_size):
                     batch = account_numbers_list[i:i + batch_size]
-                    response = supabase.table('rob_bike_dataset').select('*').in_('account_number', account_numbers_list).execute()
+                    response = supabase.table('rob_bike_dataset').select('*').in_('account_number', batch).execute()
                     st.write(response)
                     if hasattr(response, 'data') and response.data:
                         existing_accounts.extend([str(item['account_number']) for item in response.data])
 
                 st.write(existing_accounts)
-                st.write(f"Account number in uploaded file: {df['Account Number']}")
+
                 initial_rows = len(df)
                 df = df[~df['Account Number'].astype(str).isin(existing_accounts)]
                 removed_rows = initial_rows - len(df)
