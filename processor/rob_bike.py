@@ -648,10 +648,12 @@ class ROBBikeProcessor(BaseProcessor):
                         cell = worksheet.cell(row=row, column=maturity_col_idx)
                         if cell.value is not None:
                             try:
-                                date_value = pd.to_datetime(cell.value).strftime("%m/%d/%Y")
-                                cell.value = date_value
-                                cell.number_format = 'mm/dd/yyyy'
-                            except:
+                                if isinstance(cell.value, datetime) and cell.value.time() == datetime.min.time():
+                                    cell.number_format = 'mm/dd/yyyy'
+                                elif isinstance(cell.value, str) and '00:00:00' in cell.value:
+                                    dt = pd.to_datetime(cell.value)
+                                    cell.number_format = 'mm/dd/yyyy'
+                            except Exception as e:
                                 pass
 
                     if endo_date_col_idx:
