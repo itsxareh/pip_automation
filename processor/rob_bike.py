@@ -568,7 +568,7 @@ class ROBBikeProcessor(BaseProcessor):
                 existing_accounts = []
                 
                 for i in range(0, len(account_numbers_list), batch_size):
-                    batch = [str(acc) for acc in batch]
+                    batch = account_numbers_list[i:i + batch_size]
                     response = supabase.table('rob_bike_dataset').select('*').in_('account_number', account_numbers_list).execute()
                     st.write(response)
                     if hasattr(response, 'data') and response.data:
