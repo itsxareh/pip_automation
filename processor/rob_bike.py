@@ -564,6 +564,7 @@ class ROBBikeProcessor(BaseProcessor):
                 df['Account Number'] = df['Account Number'].astype(str)
                 account_numbers_list = df['Account Number'].dropna().unique().tolist()
                 
+                st.write(account_numbers_list)
                 batch_size = 100 
                 existing_accounts = []
                 
