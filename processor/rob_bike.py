@@ -549,7 +549,9 @@ class ROBBikeProcessor(BaseProcessor):
             
             if 'Endorsement Date' in df.columns:
                 df = df.drop(columns='Endorsement Date')
-            
+            if 'Account Number 1' in df.columns:
+                df = df.drop(columns='Account Number 1')
+
             if 'Account Number' in df.columns:
                 account_numbers_list = [str(acc) for acc in df['Account Number'].dropna().unique().tolist()]
                 
@@ -606,12 +608,20 @@ class ROBBikeProcessor(BaseProcessor):
                 )
 
                 for i, col in enumerate(final_columns):
-                    col_letter = chr(65 + i)
+                    col_letter = get_column_letter(i + 1)
+
+                    if col in ['Account Number', 'ACCT NAME']:
+                        max_length = max(
+                            [len(str(cell.value)) if cell.value is not None else 0
+                            for cell in worksheet[col_letter]]
+                        )
+                        adjusted_width = max_length + 2
+                        worksheet.column_dimensions[col_letter].width = adjusted_width
 
                     for row in range(2, len(result_df) + 2): 
                         cell = worksheet[f"{col_letter}{row}"]
 
-                        if col == 'Account Number' and col == 'Account Number 1':
+                        if col == 'Account Number':
                             cell.number_format = '@' 
                             cell.value = str(cell.value)  
 
@@ -623,9 +633,11 @@ class ROBBikeProcessor(BaseProcessor):
                                 except:
                                     pass
                         elif col == 'Maturity Date':
-                            cell.number_format = 'mm/dd/yyyy'
-                            
+                            cell.value = pd.to_datetime(cell.value).strftime("%m/%d/%Y")
+                            cell.number_format = 'mm/dd/yyyy' 
+                        
                         cell.border = thin_border
+
 
             with open(output_path, 'rb') as f:
                 output_binary = f.read()
