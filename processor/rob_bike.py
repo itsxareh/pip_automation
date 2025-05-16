@@ -624,7 +624,7 @@ class ROBBikeProcessor(BaseProcessor):
                     
                     if col == 'Account Number':
                         account_col_idx = i + 1
-                    elif col == 'Maturity Date':
+                    elif col == 'Maturity date':
                         maturity_col_idx = i + 1
                     elif col == 'ENDO DATE':
                         endo_date_col_idx = i + 1
