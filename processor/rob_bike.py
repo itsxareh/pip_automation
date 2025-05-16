@@ -570,9 +570,10 @@ class ROBBikeProcessor(BaseProcessor):
                 for i in range(0, len(account_numbers_list), batch_size):
                     batch = account_numbers_list[i:i + batch_size]
                     response = supabase.table('rob_bike_dataset').select('account_number').in_('account_number', batch).execute()
-                    
+                    st.write(response)
                     if hasattr(response, 'data') and response.data:
                         existing_accounts.extend([str(item['account_number']) for item in response.data])
+
                 st.write(existing_accounts)
                 st.write(f"Account number in uploaded file: {df['Account Number']}")
                 initial_rows = len(df)
