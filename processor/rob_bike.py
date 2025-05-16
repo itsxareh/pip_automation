@@ -625,12 +625,11 @@ class ROBBikeProcessor(BaseProcessor):
                     if col == 'Account Number':
                         account_col_idx = i + 1
                     elif col == 'Maturity date':
-                        st.write("maturity column exists")
                         maturity_col_idx = i + 1
                     elif col == 'ENDO DATE':
                         endo_date_col_idx = i + 1
                     
-                    if col in ['Account Number', 'ACCT NAME']:
+                    if col in ['Account Number', 'ACCT NAME', 'ENDO DATE']:
                         max_length = max(
                             [len(str(cell.value)) if cell.value is not None else 0
                             for cell in worksheet[col_letter]]
@@ -651,7 +650,6 @@ class ROBBikeProcessor(BaseProcessor):
                             try:
                                 date_value = pd.to_datetime(cell.value).strftime("%m/%d/%Y")
                                 cell.value = date_value
-                                cell.number_format = 'mm/dd/yyyy'
                             except:
                                 pass
 
