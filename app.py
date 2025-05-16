@@ -1512,7 +1512,12 @@ class BDOAutoProcessor(BaseProcessor):
                 bucket5_df = bucket5_df.drop(columns=["Card Number"])
                 bucket6_df = bucket6_df.drop(columns=["Card Number"])
                 
-                current_date = datetime.now().strftime("%B %-d").upper() if not report_date else report_date
+                if not report_date:
+                    day = datetime.now().day
+                    month = datetime.now().strftime("%B")
+                    current_date = f"{month} {day}".upper()
+                else:
+                    current_date = report_date
                 current_date_formatted = datetime.now().strftime("%m/%d/%Y") if not report_date else datetime.strptime(report_date, "%B %d").strftime("%m/%d/%Y")
 
                 if current_date.endswith(" 0"):

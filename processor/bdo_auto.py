@@ -8,7 +8,7 @@ from datetime import datetime
 import io
 import re 
 import zipfile
-from base import BaseProcessor
+from processor.base import BaseProcessor
 
 class BDOAutoProcessor(BaseProcessor):
     def process_agency_daily_report(self, file_content, sheet_name=None, preview_only=False,
@@ -69,7 +69,7 @@ class BDOAutoProcessor(BaseProcessor):
             bank_status_path = os.path.join(BASE_DIR, "BANK_STATUS.xlsx")
             rfd_list = os.path.join(BASE_DIR, "RFD_LISTS.xlsx")
             
-            expected_columns = [
+            required_columns = [
                 "Date", "Debtor", "Account No.", "Card No.", "Remark", "Remark By",
                 "PTP Amount", "PTP Date", "Claim Paid Amount", "Claim Paid Date", 
                 "Balance", "Status"
@@ -104,11 +104,13 @@ class BDOAutoProcessor(BaseProcessor):
             
             df_main = self.clean_data(df_main, remove_duplicates, remove_blanks, trim_spaces)
             
-            missing_columns = [col for col in expected_columns if col not in df_main.columns]
+            missing_columns = [col for col in required_columns if col not in df_main.columns]
             if missing_columns:
-                st.error("Required columns not found in the uploaded file.")
+                st.error(f"Required columns not found in the uploaded file: {', '.join(missing_columns)}")
                 return None, None, None
                 
+            df_main = df_main[required_columns]
+            
             df_main["Remark By"] = df_main["Remark By"].astype(str).str.strip()
             
             df_main = df_main[~df_main["Remark"].isin([
@@ -252,7 +254,12 @@ class BDOAutoProcessor(BaseProcessor):
                 bucket5_df = bucket5_df.drop(columns=["Card Number"])
                 bucket6_df = bucket6_df.drop(columns=["Card Number"])
                 
-                current_date = datetime.now().strftime("%B %-d").upper() if not report_date else report_date
+                if not report_date:
+                    day = datetime.now().day
+                    month = datetime.now().strftime("%B")
+                    current_date = f"{month} {day}".upper()
+                else:
+                    current_date = report_date
                 current_date_formatted = datetime.now().strftime("%m/%d/%Y") if not report_date else datetime.strptime(report_date, "%B %d").strftime("%m/%d/%Y")
 
                 if current_date.endswith(" 0"):

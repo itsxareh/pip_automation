@@ -1,21 +1,13 @@
 import streamlit as st
 import pandas as pd
 import os
-import numpy as np
 import openpyxl
-from openpyxl.utils import get_column_letter, column_index_from_string
-from openpyxl import load_workbook
-from openpyxl.utils.dataframe import dataframe_to_rows
-from openpyxl.styles import Border, Side
-import warnings
-from datetime import datetime, date, time, timedelta
+from openpyxl.utils import get_column_letter
+from datetime import datetime, date, time
 import io
 import tempfile
 import shutil
-import re 
-import msoffcrypto
-import zipfile
-from base import BaseProcessor
+from processor.base import BaseProcessor
 
 class BPIAutoCuringProcessor(BaseProcessor):
     
@@ -49,6 +41,11 @@ class BPIAutoCuringProcessor(BaseProcessor):
                 'PRINCIPAL', 'LPC', 'ADA SHORTAGE', 'UNIT', 'DPD',
                 'EMAIL', 'CONTACT NUMBER 1', 'CONTACT NUMBER 2', 'ENDO DATE'
             ]
+            
+            missing_columns = [col for col in required_columns if col not in df.columns]
+            if missing_columns:
+                st.error("Required columns not found in the uploaded file.")
+                return None, None, None
             
             df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
             

@@ -8,7 +8,7 @@ from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.styles import Border, Side
 from datetime import datetime
 import io
-from base import BaseProcessor
+from processor.base import BaseProcessor
 
 
 from supabase import create_client
@@ -401,7 +401,7 @@ class ROBBikeProcessor(BaseProcessor):
                     
                 eod_df = pd.concat([eod_df, pd.DataFrame(bottom_rows)], ignore_index=True)
                 
-                template_path = os.path.join(os.path.dirname(__file__), "templates", "rob_bike", output_template)
+                template_path = os.path.join(os.getcwd(), "templates", "rob_bike", output_template)
                 
                 output_buffer = io.BytesIO()
                 
