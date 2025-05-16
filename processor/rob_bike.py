@@ -572,9 +572,9 @@ class ROBBikeProcessor(BaseProcessor):
                     response = supabase.table('rob_bike_dataset').select('account_number').in_('account_number', batch).execute()
                     
                     if hasattr(response, 'data') and response.data:
-                        st.write(response.data)
                         existing_accounts.extend([str(item['account_number']) for item in response.data])
-                
+                st.write(existing_accounts)
+                st.write(f"Account number in uploaded file: {df['Account Number']}")
                 initial_rows = len(df)
                 df = df[~df['Account Number'].astype(str).isin(existing_accounts)]
                 removed_rows = initial_rows - len(df)
