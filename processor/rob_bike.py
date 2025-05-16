@@ -650,7 +650,7 @@ class ROBBikeProcessor(BaseProcessor):
                             try:
                                 date_value = pd.to_datetime(cell.value).strftime("%m/%d/%Y")
                                 cell.value = date_value
-                                cell.number_format = '@'
+                                cell.number_format = 'mm/dd/yyyy'
                             except:
                                 pass
 
