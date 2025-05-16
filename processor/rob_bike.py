@@ -548,7 +548,8 @@ class ROBBikeProcessor(BaseProcessor):
             df = pd.read_excel(
                 xls, 
                 sheet_name=sheet_name,
-                dtype={'Account Number': str}  
+                dtype={'Account Number': str}, 
+                parse_dates=['Maturity Date'] if sheet_name else None 
             )
             
             df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
@@ -642,17 +643,7 @@ class ROBBikeProcessor(BaseProcessor):
                         cell.number_format = '@' 
                         if cell.value is not None:
                             cell.value = str(cell.value)
-
-                    if maturity_col_idx:
-                        cell = worksheet.cell(row=row, column=maturity_col_idx)
-                        if cell.value is not None:
-                            try:
-                                date_value = pd.to_datetime(cell.value)
-                                cell.value = date_value.replace(hour=0, minute=0, second=0, microsecond=0)
-                                cell.number_format = 'mm/dd/yyyy;@'
-                            except:
-                                pass
-
+                            
                     if endo_date_col_idx:
                         cell = worksheet.cell(row=row, column=endo_date_col_idx)
                         if cell.value is not None:
