@@ -538,22 +538,30 @@ class ROBBikeProcessor(BaseProcessor):
             return None, None, None
 
     def process_new_endorsement(self, file_content, sheet_name=None, preview_only=False,
-                            remove_duplicates=False, remove_blanks=False, trim_spaces=False):
+                         remove_duplicates=False, remove_blanks=False, trim_spaces=False):
         try:
             if isinstance(file_content, bytes):
                 file_content = io.BytesIO(file_content)
             
             xls = pd.ExcelFile(file_content)
-            df = pd.read_excel(xls, sheet_name=sheet_name)
+            
+            df = pd.read_excel(
+                xls, 
+                sheet_name=sheet_name,
+                dtype={'Account Number': str}  
+            )
+            
             df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
             
             if 'Endorsement Date' in df.columns:
                 df = df.drop(columns='Endorsement Date')
+
             if 'Account Number 1' in df.columns:
                 df = df.drop(columns='Account Number 1')
 
             if 'Account Number' in df.columns:
-                account_numbers_list = [str(acc) for acc in df['Account Number'].dropna().unique().tolist()]
+                df['Account Number'] = df['Account Number'].astype(str)
+                account_numbers_list = df['Account Number'].dropna().unique().tolist()
                 
                 batch_size = 100 
                 existing_accounts = []
@@ -592,11 +600,10 @@ class ROBBikeProcessor(BaseProcessor):
             output_filename = f"rob_bike-new-{datetime.now().strftime('%Y-%m-%d')}.xlsx"
             output_path = os.path.join(os.getcwd(), output_filename)  
             
-            # numeric_cols = ['Endrosement OB']  
-            
             with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
                 result_df.to_excel(writer, index=False, sheet_name='Sheet1')
 
+                workbook = writer.book
                 worksheet = writer.sheets['Sheet1']
                 final_columns = result_df.columns
 
@@ -607,9 +614,20 @@ class ROBBikeProcessor(BaseProcessor):
                     bottom=Side(style='thin')
                 )
 
+                account_col_idx = None
+                maturity_col_idx = None
+                endo_date_col_idx = None
+                
                 for i, col in enumerate(final_columns):
                     col_letter = get_column_letter(i + 1)
-
+                    
+                    if col == 'Account Number':
+                        account_col_idx = i + 1
+                    elif col == 'Maturity Date':
+                        maturity_col_idx = i + 1
+                    elif col == 'ENDO DATE':
+                        endo_date_col_idx = i + 1
+                    
                     if col in ['Account Number', 'ACCT NAME']:
                         max_length = max(
                             [len(str(cell.value)) if cell.value is not None else 0
@@ -618,26 +636,36 @@ class ROBBikeProcessor(BaseProcessor):
                         adjusted_width = max_length + 2
                         worksheet.column_dimensions[col_letter].width = adjusted_width
 
-                    for row in range(2, len(result_df) + 2): 
-                        cell = worksheet[f"{col_letter}{row}"]
+                for row in range(2, len(result_df) + 2):  
+                    if account_col_idx:
+                        cell = worksheet.cell(row=row, column=account_col_idx)
+                        cell.number_format = '@' 
+                        if cell.value is not None:
+                            cell.value = str(cell.value)
 
-                        if col == 'Account Number':
-                            cell.number_format = '@' 
-                            cell.value = str(cell.value)  
+                    if maturity_col_idx:
+                        cell = worksheet.cell(row=row, column=maturity_col_idx)
+                        if cell.value is not None:
+                            try:
+                                date_value = pd.to_datetime(cell.value)
+                                cell.value = date_value
+                                cell.number_format = 'mm/dd/yyyy'
+                            except:
+                                pass
 
-                        elif col == 'ENDO DATE':
-                            if cell.value:
-                                try:
-                                    cell.value = pd.to_datetime(cell.value).strftime("%m/%d/%Y")
-                                    cell.number_format = '@'
-                                except:
-                                    pass
-                        elif col == 'Maturity Date':
-                            cell.value = pd.to_datetime(cell.value).strftime("%m/%d/%Y")
-                            cell.number_format = 'mm/dd/yyyy' 
-                        
+                    if endo_date_col_idx:
+                        cell = worksheet.cell(row=row, column=endo_date_col_idx)
+                        if cell.value is not None:
+                            try:
+                                date_value = pd.to_datetime(cell.value)
+                                cell.value = date_value
+                                cell.number_format = '@'
+                            except:
+                                pass
+                    
+                    for col_idx in range(1, len(final_columns) + 1):
+                        cell = worksheet.cell(row=row, column=col_idx)
                         cell.border = thin_border
-
 
             with open(output_path, 'rb') as f:
                 output_binary = f.read()
