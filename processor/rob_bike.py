@@ -611,7 +611,7 @@ class ROBBikeProcessor(BaseProcessor):
                     for row in range(2, len(result_df) + 2): 
                         cell = worksheet[f"{col_letter}{row}"]
 
-                        if col == 'Account Number':
+                        if col == 'Account Number' and col == 'Account Number 1':
                             cell.number_format = '@' 
                             cell.value = str(cell.value)  
 
@@ -622,14 +622,11 @@ class ROBBikeProcessor(BaseProcessor):
                                     cell.number_format = '@'
                                 except:
                                     pass
-
+                        elif col == 'Maturity Date':
+                            cell.number_format = 'mm/dd/yyyy'
+                            
                         cell.border = thin_border
 
-                for col_idx, column_cells in enumerate(worksheet.columns, 1):
-                    max_length = max((len(str(cell.value)) for cell in column_cells if cell.value), default=0)
-                    adjusted_width = max_length + 2
-                    worksheet.column_dimensions[chr(64 + col_idx)].width = adjusted_width
-            
             with open(output_path, 'rb') as f:
                 output_binary = f.read()
             
