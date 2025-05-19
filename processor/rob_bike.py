@@ -12,7 +12,6 @@ from datetime import datetime
 import io
 from processor.base import BaseProcessor
 
-
 from supabase import create_client
 from dotenv import load_dotenv
 load_dotenv()
@@ -564,10 +563,6 @@ class ROBBikeProcessor(BaseProcessor):
 
             if 'Account Number 1' in df.columns:
                 df = df.drop(columns='Account Number 1')
-
-            if 'Contact No.' in df.columns:
-                st.write(f"Found 'Contact No.' column with {df['Contact No.'].notna().sum()} non-null values")
-                sample_phones = df['Contact No.'].dropna().head(3).tolist()
 
             if 'Account Number' in df.columns:
                 df['Account Number'] = df['Account Number'].astype(str)

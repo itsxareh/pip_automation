@@ -167,15 +167,39 @@ class BPIAutoCuringProcessor(BaseProcessor):
     
     def process_cured_list(self, file_content, sheet_name=None, preview_only=False,
                            remove_duplicates=False, remove_blanks=False, trim_spaces=False):
+        def is_file_locked(file_path):
+            try:
+                with open(file_path, 'rb+'):
+                    return False
+            except (PermissionError, OSError):
+                return True
+
+        def try_process(temp_path):
+            xls = pd.ExcelFile(temp_path)
+            df = pd.read_excel(xls, sheet_name=sheet_name)
+            return self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
+
         with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as temp_input:
             temp_input.write(file_content)
             temp_input_path = temp_input.name
-            
+
         try:
-            xls = pd.ExcelFile(temp_input_path)
-            df = pd.read_excel(xls, sheet_name=sheet_name)
-            df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
-            
+            if is_file_locked(temp_input_path):
+                print("File is currently in use. Attempting to retry...")
+                time.sleep(0.5)
+                try:
+                    os.remove(temp_input_path)
+                    print("Removed locked temp file. Retrying...")
+                except Exception as e:
+                    print(f"Could not remove locked file: {e}")
+                    raise
+
+                with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as temp_input_retry:
+                    temp_input_retry.write(file_content)
+                    temp_input_path = temp_input_retry.name
+
+            df = try_process(temp_input_path)
+
             if preview_only:
                 return df
                 
@@ -543,5 +567,8 @@ class BPIAutoCuringProcessor(BaseProcessor):
             }
         finally:
             if os.path.exists(temp_input_path):
-                os.unlink(temp_input_path)
+                try:
+                    os.remove(temp_input_path)
+                except Exception as e:
+                    print(f"Failed to delete temp file: {e}")
  

@@ -117,10 +117,8 @@ def main():
     st.sidebar.header("Settings")
     automation_type = st.sidebar.selectbox("Select Automation Type", automation_options, key=f"{campaign}_automation_type")
 
-    preview = st.sidebar.checkbox("Preview file before processing", value=True, key=f"{campaign}_preview")
-    st.markdown("""
+    preview = st.sidebar.checkbox("Preview file before processing", value=True, key='file_preview')
 
-        """, unsafe_allow_html=True)
     uploaded_file = st.sidebar.file_uploader(
         "Upload File", 
         type=["xlsx", "xls"], 
@@ -756,7 +754,7 @@ def main():
                     if column_source_type == "Input Value":
                         input_value = st.text_input("Value to fill in each row")
                     elif column_source_type == "Copy From Column":
-                        source_column = st.selectbox("Source Column (copy from)", df.columns.tolist(), key="source_column")
+                        source_column = st.selectbox("Source Column (copy from)",    df.columns.tolist(), key="source_column")
                         modification_type = st.radio("Modification Type", ["Direct Copy", "Text Prefix", "Text Suffix", "Apply Function"], key="mod_type")
 
                         if modification_type == "Text Prefix":
@@ -1079,8 +1077,6 @@ def main():
                     st.subheader("Payments Data")
                     st.dataframe(result['payments_df'], use_container_width=True)
                     st.download_button(label="Download Payments File", data=result['payments_binary'], file_name=result['payments_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="payments_download")
-            else:
-                st.error("Error processing. Please check the file content and try again.")
 
         elif automation_type == "Agency Daily Report" and 'agency_daily_result' in st.session_state:
             result = st.session_state['agency_daily_result']
@@ -1115,8 +1111,6 @@ def main():
                     st.subheader("CMS")
                     st.dataframe(result['cms_endo_df'], use_container_width=True)
                     st.download_button(label="Download File", data=result['cms_endo_binary'], file_name=result['cms_endo_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="cms_endo_download")
-            else:
-                st.error("Error processing. Please check the file content and try again.")
 
         elif 'output_binary' in st.session_state and 'result_sheet_names' in st.session_state:
             excel_file = pd.ExcelFile(io.BytesIO(st.session_state['output_binary']))
