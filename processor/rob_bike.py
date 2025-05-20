@@ -10,6 +10,7 @@ from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.styles import Border, Side
 from datetime import datetime
 import io
+import pytz
 from processor.base import BaseProcessor
 
 from supabase import create_client
@@ -588,7 +589,9 @@ class ROBBikeProcessor(BaseProcessor):
                     st.warning("No new account numbers found (all account numbers exists)")
                     return None, None, None
             
-            current_date = datetime.now().strftime('%Y/%m/%d')
+            manila_timezone = pytz.timezone('Asia/Manila')
+            current_datetime_manila = datetime.now(manila_timezone)
+            current_date = current_datetime_manila.strftime('%m/%d/%Y')
             df.insert(0, 'ENDO DATE', current_date)
             
             if 'Endrosement OB' in df.columns:
@@ -634,10 +637,10 @@ class ROBBikeProcessor(BaseProcessor):
             
             cms_endo_binary = self.create_excel_file(cms_endo_df, cms_endo_path, xls)
             
-            return {                 
-                'new_endo_df': new_endo_df,                
-                'new_endo_binary': new_endo_binary,                 
-                'new_endo_filename': new_endo_filename,
+            return {
+                'bcrm_endo_df': bcrm_endo_df,                
+                'bcrm_endo_binary': bcrm_endo_binary,                 
+                'bcrm_endo_filename': bcrm_endo_filename,
                 'cms_endo_df': cms_endo_df, 
                 'cms_endo_binary': cms_endo_binary,                 
                 'cms_endo_filename': cms_endo_filename,

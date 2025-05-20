@@ -3,8 +3,10 @@ import pandas as pd
 import os
 import numpy as np
 from openpyxl.utils import get_column_letter
+from openpyxl.styles import Border, Side
 from openpyxl import load_workbook
 from datetime import datetime
+import pytz
 import io
 import re 
 import zipfile
@@ -430,3 +432,180 @@ class BDOAutoProcessor(BaseProcessor):
         except Exception as e:
             st.error(f"Error processing agency daily report: {str(e)}")
             return None, None, None
+
+    def process_new_endorsement(self, file_content, sheet_name=None, preview_only=False,
+        remove_duplicates=False, remove_blanks=False, trim_spaces=False, bucket=None):
+
+        try:
+            if isinstance(file_content, bytes):
+                file_content = io.BytesIO(file_content)
+
+            xls = pd.ExcelFile(file_content)
+
+            df = pd.read_excel(
+                xls,
+                sheet_name=sheet_name,
+                dtype={'PN': str}
+            )
+            df = df.replace('', pd.NA)
+            df = df.dropna(how='all')
+            df = df.dropna(axis=1, how='all')
+            df.columns = df.columns.str.strip()
+            original_df = df.copy()
+
+            df = self.clean_data(original_df, remove_duplicates, remove_blanks, trim_spaces)
+
+            required_columns = ['PN', 'COMPLETE_NAME', 'BALANCE', 'BUCKET', 'GROUP', 'Due Date',
+                'MO_Amort', 'LAST_DATE', 'ZIP_CODE', 'Model', 'OVERDUE AMOUNT', 'ADDRESS',
+                'Email Address', 'MOBILE NUMBER', 'REMARKS'
+            ]
+
+            missing_columns = [col for col in required_columns if col not in df.columns]
+
+            if missing_columns:
+                st.error("Required columns not found in the uploaded file.")
+                return None, None, None
+            else:
+                manila_timezone = pytz.timezone('Asia/Manila')
+                current_datetime_manila = datetime.now(manila_timezone)
+                current_date = current_datetime_manila.strftime('%m/%d/%Y')
+
+                bcrm_endo_columns = ['AGENCY', 'PN', 'BALANCE', 'PORT DATE', 'STATUS', 
+                    'PTC/PB', 'ENDO DATE', 'STATUS DATE', 'Delq. Reason', 'Customer Name',
+                    'Mobile', 'Home address', 'Office address', 'OD Amount2', 'EMAIL',
+                    'COBORROWER_EMAIL', 'OD_DAYS', 'COBORROWER_NAME', 'COBORROWER_NUMBER', 
+                    'LAST_BUCKET_AMOUNT', 'NEXT_PAYMENT_DUE_AMOUNT', 'EMPLOYER', 'AGENT', 'BUCKET'
+                ]
+                num_rows = len(df)
+                bcrm_endo_df = pd.DataFrame(index=range(num_rows), columns=bcrm_endo_columns)
+
+                bcrm_endo_df['AGENCY'] = 'SPM'
+                bcrm_endo_df['STATUS'] = 'RETAINED'
+                bcrm_endo_df['ENDO DATE'] = current_date
+                bcrm_endo_df['AGENT'] = 'PJIO'  
+                bcrm_endo_df['BUCKET'] = bucket
+
+                if 'PN' in df.columns:
+                    bcrm_endo_df['PN'] = df['PN'].astype(str)
+
+                if 'BALANCE' in df.columns:
+                    bcrm_endo_df['BALANCE'] = df['BALANCE']
+
+                if 'COMPLETE_NAME' in df.columns:
+                    bcrm_endo_df['Customer Name'] = df['COMPLETE_NAME']
+                
+                if 'MOBILE NUMBER' in df.columns:
+                    bcrm_endo_df['Mobile'] = df['MOBILE NUMBER'].apply(self.process_mobile_number)
+
+                if 'ADDRESS' in df.columns:
+                    bcrm_endo_df['Home address'] = df['ADDRESS']
+
+                if 'OVERDUE AMOUNT' in df.columns:
+                    bcrm_endo_df['OD Amount2'] = df['OVERDUE AMOUNT']
+                
+                if 'Email Address' in df.columns:
+                    bcrm_endo_df['EMAIL'] = df['Email Address']
+                
+                split_bucket = bucket[0] + bucket[-1]
+                file_date_format = datetime.now().strftime('%Y-%m-%d')
+
+                bcrm_endo_filename = f"bdo_auto_loan-new-({file_date_format}) {split_bucket}.xlsx"
+                bcrm_endo_path = os.path.join(os.getcwd(), bcrm_endo_filename)
+                bcrm_endo_binary = self.create_excel_file(bcrm_endo_df, bcrm_endo_path, xls)  
+
+                cms_endo_columns = ['Bucket/Placement', 'Ch Code', 'Account Number', "Borrower's Name", 'Endo date',
+                    'Outstanding Balance', 'Overdue Balance', 'DPD', 'Monthly Amonization', 'Last Payment', 'Due Date',
+                    'Contact Number', 'EMAIL', 'Address', 'Unit Model', 'Engine Number', 'Chassis Number', 'Plate Number'
+                ]
+                cms_endo_df = pd.DataFrame(index=range(num_rows), columns=cms_endo_columns)
+
+                cms_endo_df['Bucket/Placement'] = bucket
+                cms_endo_df['Endo date'] = current_date
+
+                if 'PN' in df.columns:
+                    cms_endo_df['Account Number'] = df['PN'].astype(str)
+
+                if 'COMPLETE_NAME' in df.columns:
+                    cms_endo_df["Borrower's Name"] = df['COMPLETE_NAME']
+                if 'BALANCE' in df.columns:
+                    cms_endo_df['Outstanding Balance'] = df['BALANCE']
+
+                if 'OVERDUE AMOUNT' in df.columns:
+                    cms_endo_df['Overdue Balance'] = df['OVERDUE AMOUNT']
+                
+                if 'BUCKET' in df.columns:
+                    cms_endo_df['DPD'] = df['BUCKET']
+
+                if 'MO_Amort' in df.columns:
+                    cms_endo_df['Monthly Amortization'] = df['MO_Amort']
+                
+                if 'LAST_DATE' in df.columns:
+                    cms_endo_df['Last Payment'] = pd.to_datetime(df['LAST_DATE']).dt.strftime('%m/%d/%Y')
+
+                if 'Due Date' in df.columns:
+                    cms_endo_df['Due Date'] = pd.to_datetime(df['Due Date']).dt.strftime('%m/%d/%Y')
+                
+                if 'MOBILE NUMBER' in df.columns:
+                    cms_endo_df['Contact Number'] = df['MOBILE NUMBER'].apply(self.process_mobile_number)
+
+                if 'Email Address' in df.columns:
+                    cms_endo_df['EMAIL'] = df['Email Address']
+                
+                if 'Model' in df.columns:
+                    cms_endo_df['Unit Model'] = df['Model']
+                
+                if 'ADDRESS' in df.columns:
+                    cms_endo_df['Address'] = df['ADDRESS']
+
+                cms_endo_filename = f"BDO Auto {split_bucket} New Endo {file_date_format}.xlsx"
+                cms_endo_path = os.path.join(os.getcwd(), cms_endo_filename)
+                cms_endo_binary = self.create_excel_file(cms_endo_df, cms_endo_path, xls)                
+
+                return {
+                    'bcrm_endo_df': bcrm_endo_df,                
+                    'bcrm_endo_binary': bcrm_endo_binary,                 
+                    'bcrm_endo_filename': bcrm_endo_filename,
+                    'cms_endo_df': cms_endo_df, 
+                    'cms_endo_binary': cms_endo_binary,                 
+                    'cms_endo_filename': cms_endo_filename,
+                }
+
+        except Exception as e:
+            st.error(f"Error processing new endorsement: {str(e)}")
+            return None, None, None
+    
+    def create_excel_file(self, df, output_path, source_file=None):
+        with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='Sheet1')
+
+            workbook = writer.book
+            worksheet = writer.sheets['Sheet1']
+            final_columns = df.columns
+
+            thin_border = Border(
+                left=Side(style='thin'),
+                right=Side(style='thin'),
+                top=Side(style='thin'),
+                bottom=Side(style='thin')
+            )
+
+            for i, col in enumerate(final_columns):
+                if col == 'Due Date' or col == 'Last Payment' or col == 'ENDO DATE':
+                    col_letter = get_column_letter(i + 1)
+
+                    for row in range(2, len(df) + 2):
+                        cell = worksheet[f"{col_letter}{row}"]
+                        if cell.value is not None:
+                            try:
+                                date_value = pd.to_datetime(cell.value).strftime("%m/%d/%Y")
+                                cell.value = date_value
+                                cell.number_format = '@'
+                            except:
+                                pass
+
+        with open(output_path, 'rb') as f:
+            output_binary = f.read()
+
+        return output_binary
+
+

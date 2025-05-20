@@ -606,6 +606,10 @@ def main():
             kept_bal_b6 = clean_number_input("Kept Balance (B6)")
         alloc_bal_b6 = clean_number_input("Allocation Balance (B6)")
 
+    if campaign == "BDO Auto B5 & B6" and automation_type == "Endorsement":
+        buckets = ['BUCKET 5', 'BUCKET 6']
+        bucket = st.sidebar.selectbox("Select Bucket", buckets)
+
     if campaign == "Sumisho" and automation_type == "Daily Remark Report":
         upload_madrid_daily = st.sidebar.file_uploader(
             "SP Madrid Daily",
@@ -668,31 +672,40 @@ def main():
           
         file_content = uploaded_file.getvalue()
         file_buffer = io.BytesIO(file_content)
-        
+                
         try:
+            file_buffer.seek(0) 
             xlsx = pd.ExcelFile(file_buffer)
             sheet_names = xlsx.sheet_names
             is_encrypted = False
             decrypted_file = file_buffer
-            
+
         except Exception as e:
-            if "file has been corrupted" in str(e) or "Workbook is encrypted" in str(e):
+            if "corrupted" in str(e).lower() or "encrypted" in str(e).lower() or "ole2" in str(e).lower() or "bad magic" in str(e).lower():
                 is_encrypted = True
-                st.sidebar.warning("This file appears to be password protected.")
+                st.sidebar.warning("This file appears to be password protected or in an unsupported format.")
                 excel_password = st.sidebar.text_input("Enter Excel password", type="password")
-                
+
                 if not excel_password:
                     st.warning("Please enter the Excel file password.")
                     st.stop()
-                
+
                 try:
                     decrypted_file = io.BytesIO()
-                    office_file = msoffcrypto.OfficeFile(io.BytesIO(file_content))
+                    
+                    if isinstance(file_content, io.BytesIO):
+                        file_content.seek(0)
+                        office_file = msoffcrypto.OfficeFile(file_content)
+                    else:
+                        office_file = msoffcrypto.OfficeFile(io.BytesIO(file_content))
+                        
                     office_file.load_key(password=excel_password)
                     office_file.decrypt(decrypted_file)
                     decrypted_file.seek(0)
+
                     xlsx = pd.ExcelFile(decrypted_file)
                     sheet_names = xlsx.sheet_names
+                    
                 except Exception as decrypt_error:
                     st.sidebar.error(f"Decryption failed: {str(decrypt_error)}")
                     st.stop()
@@ -990,6 +1003,19 @@ def main():
                                 alloc_bal_b6=alloc_bal_b6
                             )
                             st.session_state['agency_daily_result'] = result
+                    
+                    elif campaign == "BDO Auto B5 & B6" and automation_type == "Endorsement":
+                        file_to_process = decrypted_file if is_encrypted else file_content
+                        result = processor.process_new_endorsement(
+                            file_to_process, 
+                            sheet_name=selected_sheet,
+                            preview_only=False,
+                            remove_duplicates=remove_duplicates, 
+                            remove_blanks=remove_blanks, 
+                            trim_spaces=trim_spaces,
+                            bucket=bucket,
+                        )
+                        st.session_state['new_endorsement'] = result
 
                     elif campaign == "ROB Bike" and automation_type == "Endorsement":
                         result = processor.process_new_endorsement(
@@ -1000,7 +1026,7 @@ def main():
                             remove_blanks=remove_blanks, 
                             trim_spaces=trim_spaces,
                         )
-                        st.session_state['rob_bike_new_endorsement'] = result
+                        st.session_state['new_endorsement'] = result
                     else:
                         if automation_type == "Data Clean":
                             result_df, output_binary, output_filename = getattr(processor, automation_map[automation_type])(
@@ -1099,19 +1125,19 @@ def main():
                     st.dataframe(result['b6_prod_df'], use_container_width=True)
                     st.download_button(label="Download Daily Productivity B6 Report File", data=result['b6_prod_binary'], file_name=result['b6_prod_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="b6_prod_download")
             
-        elif automation_type == "Endorsement" and 'rob_bike_new_endorsement' in st.session_state:
-            result = st.session_state['rob_bike_new_endorsement']
+        elif automation_type == "Endorsement" and 'new_endorsement' in st.session_state:
+            result = st.session_state['new_endorsement']
             if result != (None, None, None):
                 tabs = st.tabs(["ENDO Bot", "CMS"])
                 with tabs[0]:
                     st.subheader("ENDO Bot")
-                    st.dataframe(result['new_endo_df'], use_container_width=True)
-                    st.download_button(label="Download File", data=result['new_endo_binary'], file_name=result['new_endo_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="new_endo_download")
+                    st.dataframe(result['bcrm_endo_df'], use_container_width=True)
+                    st.download_button(label="Download File", data=result['bcrm_endo_binary'], file_name=result['bcrm_endo_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="new_endo_download")
                 with tabs[1]:
                     st.subheader("CMS")
                     st.dataframe(result['cms_endo_df'], use_container_width=True)
                     st.download_button(label="Download File", data=result['cms_endo_binary'], file_name=result['cms_endo_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="cms_endo_download")
-
+                    
         elif 'output_binary' in st.session_state and 'result_sheet_names' in st.session_state:
             excel_file = pd.ExcelFile(io.BytesIO(st.session_state['output_binary']))
             result_sheet_names = st.session_state['result_sheet_names']
