@@ -86,8 +86,6 @@ class BaseProcessor:
             xls = pd.ExcelFile(file_content)
             sheet_names = xls.sheet_names
             df = pd.read_excel(xls, sheet_name=sheet_names[0])
-            sanitized_headers = [re.sub(r'[^A-Za-z0-9_]', '_', str(col)) for col in df.columns]
-            df.columns = sanitized_headers
 
             cleaned_df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
 

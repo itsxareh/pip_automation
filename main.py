@@ -1,3 +1,4 @@
+#pip install streamlit pandas numpy openpyxl msoffcrypto-tool supabase python-dotenv
 import streamlit as st
 import pandas as pd
 import os
@@ -667,8 +668,8 @@ def main():
             enable_add_row = st.checkbox("Add Row", value=False)
             enable_row_removal = st.checkbox("Remove Row", value=False)
             
-            # st.markdown("#### Value Operations")
-            # enable_edit_values = st.checkbox("Edit Values", value=False)
+            st.markdown("#### Value Operations")
+            enable_edit_values = st.checkbox("Edit Values", value=False)
           
         file_content = uploaded_file.getvalue()
         file_buffer = io.BytesIO(file_content)
@@ -939,21 +940,21 @@ def main():
                         st.success(f"Removed {len(row_indices)} row(s)")
                         st.session_state["renamed_df"] = df
 
-            # if enable_edit_values:
-            #     st.subheader("Edit Values")
+            if enable_edit_values:
+                st.subheader("Edit Values")
                 
-            #     edited_df = st.data_editor(
-            #         df,
-            #         num_rows="dynamic",
-            #         use_container_width=True,
-            #         key="value_editor"
-            #     )
+                edited_df = st.data_editor(
+                    df,
+                    num_rows="dynamic",
+                    use_container_width=True,
+                    key="value_editor"
+                )
                 
                 if st.button("Apply Value Changes"):
                     st.session_state["renamed_df"] = edited_df
                     st.success("Value changes applied!")
                     
-            if enable_add_column or enable_column_removal or enable_column_renaming or enable_row_filtering or enable_add_row or enable_row_removal:
+            if enable_add_column or enable_column_removal or enable_column_renaming or enable_row_filtering or enable_add_row or enable_row_removal or enable_edit_values:
                 buffer = io.BytesIO()
                 df.to_excel(buffer, index=False, engine='openpyxl')
                 file_content = buffer.getvalue()
