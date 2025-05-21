@@ -510,8 +510,7 @@ class BDOAutoProcessor(BaseProcessor):
                 file_date_format = datetime.now().strftime('%Y-%m-%d')
 
                 bcrm_endo_filename = f"bdo_auto_loan-new-({file_date_format}) {split_bucket}.xlsx"
-                bcrm_endo_path = os.path.join(os.getcwd(), bcrm_endo_filename)
-                bcrm_endo_binary = self.create_excel_file(bcrm_endo_df, bcrm_endo_path, xls)  
+                bcrm_endo_binary = self.create_excel_in_memory(bcrm_endo_df)
                 
                 cms_endo_columns = ['Bucket/Placement', 'Ch Code', 'Account Number', "Borrower's Name", 'Endo date',
                     'Outstanding Balance', 'Overdue Balance', 'DPD', 'Monthly Amonization', 'Last Payment', 'Due Date',
@@ -558,8 +557,7 @@ class BDOAutoProcessor(BaseProcessor):
                     cms_endo_df['Address'] = df['ADDRESS']
 
                 cms_endo_filename = f"BDO Auto {split_bucket} New Endo {file_date_format}.xlsx"
-                cms_endo_path = os.path.join(os.getcwd(), cms_endo_filename)
-                cms_endo_binary = self.create_excel_file(cms_endo_df, cms_endo_path, xls)                
+                cms_endo_binary = self.create_excel_in_memory(cms_endo_df)
 
                 return {
                     'bcrm_endo_df': bcrm_endo_df,                
@@ -574,8 +572,10 @@ class BDOAutoProcessor(BaseProcessor):
             st.error(f"Error processing new endorsement: {str(e)}")
             return None, None, None
     
-    def create_excel_file(self, df, output_path, source_file=None):
-        with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
+    def create_excel_in_memory(self, df):
+        output = io.BytesIO()
+        
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
             df.to_excel(writer, index=False, sheet_name='Sheet1')
 
             workbook = writer.book
@@ -603,9 +603,7 @@ class BDOAutoProcessor(BaseProcessor):
                             except:
                                 pass
 
-        with open(output_path, 'rb') as f:
-            output_binary = f.read()
-
-        return output_binary
+        output.seek(0)
+        return output.getvalue()
 
 

@@ -29,9 +29,12 @@ class BPIAutoCuringProcessor(BaseProcessor):
             
         return created_dirs
         
+    
     def process_updates_or_uploads(self, file_content, sheet_name, automation_type, preview_only=False,
                                    remove_duplicates=False, remove_blanks=False, trim_spaces=False):
         try:
+            original_file_content = file_content
+            
             if isinstance(file_content, bytes):
                 file_content = io.BytesIO(file_content)
             xls = pd.ExcelFile(file_content)
@@ -70,7 +73,11 @@ class BPIAutoCuringProcessor(BaseProcessor):
             
             input_path = os.path.join(dirs[input_folder_key], input_filename)
             with open(input_path, 'wb') as f:
-                f.write(file_content)
+                if isinstance(original_file_content, bytes):
+                    f.write(original_file_content)
+                else:
+                    original_file_content.seek(0)
+                    f.write(original_file_content.read())
                 
             column_map = {
                 'EMAIL': 'EMAIL_ALS',
@@ -118,43 +125,52 @@ class BPIAutoCuringProcessor(BaseProcessor):
                     
             result_df = result_df[final_columns]
             
-            output_path = os.path.join(dirs[folder_key], output_filename)
-            with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
-                result_df.to_excel(writer, index=False, sheet_name='Sheet1')
-                
-                worksheet = writer.sheets['Sheet1']
-                for i, col in enumerate(final_columns):
-                    max_length = max(
-                        result_df[col].astype(str).map(len).max(),
-                        len(col)
-                    ) + 2
-                    col_letter = chr(65 + i) 
-                    worksheet.column_dimensions[col_letter].width = max_length
-                    
-                    if col in numeric_cols:
-                        for row in range(2, len(result_df) + 2):
-                            cell = worksheet[f"{col_letter}{row}"]
-                            cell.number_format = '0.00'
-                    
-                    if col == 'DATE REFERRED':
-                        for row in range(2, len(result_df) + 2):
-                            cell = worksheet[f"{col_letter}{row}"]
-                            value = cell.value
-                            if value:
-                                try: 
-                                    cell.value = pd.to_datetime(value).strftime("%m/%d/%Y")
-                                    cell.number_format = '@'
-                                except:
-                                    pass
+            output_binary = self.create_excel_in_memory(result_df, final_columns, numeric_cols)
             
-            with open(output_path, 'rb') as f:
-                output_binary = f.read()
-                
             return result_df, output_binary, output_filename
             
         except Exception as e:
             st.error(f"Error processing file: {str(e)}")
             raise
+
+    def create_excel_in_memory(self, df, columns=None, numeric_cols=None):
+        """
+        Create an Excel file in memory with proper formatting
+        """
+        output = io.BytesIO()
+        
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='Sheet1')
+            
+            worksheet = writer.sheets['Sheet1']
+            final_columns = columns if columns is not None else df.columns
+            
+            for i, col in enumerate(final_columns):
+                max_length = max(
+                    df[col].astype(str).map(len).max() if len(df) > 0 else 0,
+                    len(col)
+                ) + 2
+                col_letter = chr(65 + i) 
+                worksheet.column_dimensions[col_letter].width = max_length
+                
+                if numeric_cols and col in numeric_cols:
+                    for row in range(2, len(df) + 2):
+                        cell = worksheet[f"{col_letter}{row}"]
+                        cell.number_format = '0.00'
+                
+                if col == 'DATE REFERRED':
+                    for row in range(2, len(df) + 2):
+                        cell = worksheet[f"{col_letter}{row}"]
+                        value = cell.value
+                        if value:
+                            try: 
+                                cell.value = pd.to_datetime(value).strftime("%m/%d/%Y")
+                                cell.number_format = '@'
+                            except:
+                                pass
+        
+        output.seek(0)
+        return output.getvalue()
 
     def process_updates(self, file_content, sheet_name=None, preview_only=False,
                         remove_duplicates=False, remove_blanks=False, trim_spaces=False):
