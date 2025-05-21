@@ -575,7 +575,7 @@ class ROBBikeProcessor(BaseProcessor):
                     df = df.drop(columns='Account Number 1')
 
                 if 'Account Number' in df.columns:
-                    df['Account Number'] = df['Account Number'].astype(str)
+                    df['Account Number'] = df['Account Number'].astype(str).str.strip()
                     account_numbers_list = [str(int(acc)) for acc in df['Account Number'].dropna().unique().tolist()]
                     
                     batch_size = 100 
@@ -585,7 +585,7 @@ class ROBBikeProcessor(BaseProcessor):
                         response = supabase.table('rob_bike_dataset').select('*').in_('account_number', batch).execute()
 
                         if hasattr(response, 'data') and response.data:
-                            existing_accounts.extend(['00' + str(item['account_number']) for item in response.data])
+                            existing_accounts.extend([str(item['account_number']) for item in response.data])
 
                     initial_rows = len(df)
                     df = df[~df['Account Number'].astype(str).isin(existing_accounts)]
@@ -594,7 +594,7 @@ class ROBBikeProcessor(BaseProcessor):
                     if removed_rows > 0:
                         st.write(f"Removed {removed_rows} rows with existing account numbers")
                     
-                    if df.empty:
+                    if df.empty: 
                         st.warning("No new account numbers found (all account numbers exists)")
                         return None, None, None
                 
