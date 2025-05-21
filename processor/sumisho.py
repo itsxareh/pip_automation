@@ -11,8 +11,10 @@ class SumishoProcessor(BaseProcessor):
     template_content=None, template_sheet=None, target_column=None):
 
         try:
-            byte_stream = io.BytesIO(file_content)
-            xls = pd.ExcelFile(byte_stream)
+            if isinstance(file_content, bytes):
+                file_content = io.BytesIO(file_content)
+                
+            xls = pd.ExcelFile(file_content)
             df = pd.read_excel(xls, sheet_name=sheet_name)
             df = self.clean_data(df, remove_duplicates, remove_blanks, trim_spaces)
 

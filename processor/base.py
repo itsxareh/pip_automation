@@ -80,11 +80,12 @@ class BaseProcessor:
     def clean_only(self, file_content, sheet_name, preview_only=False, 
                    remove_duplicates=False, remove_blanks=False, trim_spaces=False, file_name=None):
         try:
-            byte_stream = io.BytesIO(file_content)
-            xls = pd.ExcelFile(byte_stream)
+            if isinstance(file_content, bytes):
+                file_content = io.BytesIO(file_content)
+                
+            xls = pd.ExcelFile(file_content)
             sheet_names = xls.sheet_names
             df = pd.read_excel(xls, sheet_name=sheet_names[0])
-
             sanitized_headers = [re.sub(r'[^A-Za-z0-9_]', '_', str(col)) for col in df.columns]
             df.columns = sanitized_headers
 

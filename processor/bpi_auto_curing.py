@@ -32,8 +32,9 @@ class BPIAutoCuringProcessor(BaseProcessor):
     def process_updates_or_uploads(self, file_content, sheet_name, automation_type, preview_only=False,
                                    remove_duplicates=False, remove_blanks=False, trim_spaces=False):
         try:
-            byte_stream = io.BytesIO(file_content)
-            xls = pd.ExcelFile(byte_stream)
+            if isinstance(file_content, bytes):
+                file_content = io.BytesIO(file_content)
+            xls = pd.ExcelFile(file_content)
             df = pd.read_excel(xls, sheet_name=sheet_name)
             
             required_columns = [

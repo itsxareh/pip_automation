@@ -667,8 +667,8 @@ def main():
             enable_add_row = st.checkbox("Add Row", value=False)
             enable_row_removal = st.checkbox("Remove Row", value=False)
             
-            st.markdown("#### Value Operations")
-            enable_edit_values = st.checkbox("Edit Values", value=False)
+            # st.markdown("#### Value Operations")
+            # enable_edit_values = st.checkbox("Edit Values", value=False)
           
         file_content = uploaded_file.getvalue()
         file_buffer = io.BytesIO(file_content)
@@ -939,21 +939,21 @@ def main():
                         st.success(f"Removed {len(row_indices)} row(s)")
                         st.session_state["renamed_df"] = df
 
-            if enable_edit_values:
-                st.subheader("Edit Values")
+            # if enable_edit_values:
+            #     st.subheader("Edit Values")
                 
-                edited_df = st.data_editor(
-                    df,
-                    num_rows="dynamic",
-                    use_container_width=True,
-                    key="value_editor"
-                )
+            #     edited_df = st.data_editor(
+            #         df,
+            #         num_rows="dynamic",
+            #         use_container_width=True,
+            #         key="value_editor"
+            #     )
                 
                 if st.button("Apply Value Changes"):
                     st.session_state["renamed_df"] = edited_df
                     st.success("Value changes applied!")
                     
-            if enable_add_column or enable_column_removal or enable_column_renaming or enable_row_filtering or enable_add_row or enable_row_removal or enable_edit_values:
+            if enable_add_column or enable_column_removal or enable_column_renaming or enable_row_filtering or enable_add_row or enable_row_removal:
                 buffer = io.BytesIO()
                 df.to_excel(buffer, index=False, engine='openpyxl')
                 file_content = buffer.getvalue()
@@ -973,9 +973,10 @@ def main():
         if process_button and selected_sheet:
             try:
                 with st.spinner("Processing file..."):
+                    file_to_process = decrypted_file if is_encrypted else file_content
                     if campaign == "BPI Auto Curing" and automation_type == "Cured List":
                         result = processor.process_cured_list(
-                            file_content, 
+                            file_to_process, 
                             sheet_name=selected_sheet,
                             preview_only=False,
                             remove_duplicates=remove_duplicates, 
@@ -987,9 +988,9 @@ def main():
                     elif campaign == "BDO Auto B5 & B6" and automation_type == "Agency Daily Report":
                         if None in [kept_count_b5, kept_bal_b5, alloc_bal_b5, kept_count_b6, kept_bal_b6, alloc_bal_b6]:
                             st.error("Please enter valid numbers for all B5 and B6 fields (numbers only, commas allowed).")
-                        else: 
+                        else:
                             result = processor.process_agency_daily_report(
-                                file_content, 
+                                file_to_process, 
                                 sheet_name=selected_sheet,
                                 preview_only=False,
                                 remove_duplicates=remove_duplicates, 
@@ -1005,7 +1006,6 @@ def main():
                             st.session_state['agency_daily_result'] = result
                     
                     elif campaign == "BDO Auto B5 & B6" and automation_type == "Endorsement":
-                        file_to_process = decrypted_file if is_encrypted else file_content
                         result = processor.process_new_endorsement(
                             file_to_process, 
                             sheet_name=selected_sheet,
@@ -1019,7 +1019,7 @@ def main():
 
                     elif campaign == "ROB Bike" and automation_type == "Endorsement":
                         result = processor.process_new_endorsement(
-                            file_content, 
+                            file_to_process, 
                             sheet_name=selected_sheet,
                             preview_only=False,
                             remove_duplicates=remove_duplicates, 
@@ -1030,7 +1030,7 @@ def main():
                     else:
                         if automation_type == "Data Clean":
                             result_df, output_binary, output_filename = getattr(processor, automation_map[automation_type])(
-                                file_content, 
+                                file_to_process, 
                                 sheet_name=selected_sheet,
                                 preview_only=False,
                                 remove_duplicates=remove_duplicates,
@@ -1040,7 +1040,7 @@ def main():
                             )
                         elif campaign == "ROB Bike" and automation_type == "Daily Remark Report":
                             result_df, output_binary, output_filename = getattr(processor, automation_map[automation_type])(
-                                file_content,  
+                                file_to_process,  
                                 sheet_name=selected_sheet,
                                 preview_only=False,
                                 remove_duplicates=remove_duplicates, 
@@ -1050,7 +1050,7 @@ def main():
                             )
                         elif campaign == "Sumisho" and automation_type == "Daily Remark Report":
                             result_df, output_binary, output_filename = getattr(processor, automation_map[automation_type])(
-                                file_content,  
+                                file_to_process,  
                                 sheet_name=selected_sheet,
                                 preview_only=False,
                                 remove_duplicates=remove_duplicates, 
@@ -1062,7 +1062,7 @@ def main():
                             )
                         else:
                             result_df, output_binary, output_filename = getattr(processor, automation_map[automation_type])(
-                                file_content, 
+                                file_to_process, 
                                 sheet_name=selected_sheet,
                                 preview_only=False,
                                 remove_duplicates=remove_duplicates,

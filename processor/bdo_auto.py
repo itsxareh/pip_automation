@@ -512,7 +512,7 @@ class BDOAutoProcessor(BaseProcessor):
                 bcrm_endo_filename = f"bdo_auto_loan-new-({file_date_format}) {split_bucket}.xlsx"
                 bcrm_endo_path = os.path.join(os.getcwd(), bcrm_endo_filename)
                 bcrm_endo_binary = self.create_excel_file(bcrm_endo_df, bcrm_endo_path, xls)  
-
+                
                 cms_endo_columns = ['Bucket/Placement', 'Ch Code', 'Account Number', "Borrower's Name", 'Endo date',
                     'Outstanding Balance', 'Overdue Balance', 'DPD', 'Monthly Amonization', 'Last Payment', 'Due Date',
                     'Contact Number', 'EMAIL', 'Address', 'Unit Model', 'Engine Number', 'Chassis Number', 'Plate Number'
