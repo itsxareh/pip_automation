@@ -647,15 +647,11 @@ def main():
                         st.subheader(f"Uploaded File: {upload_file.name}")
                         st.dataframe(df_clean)
                         df_clean.columns = df_clean.columns.str.strip().str.lower().str.replace(' ', '')
-
                         df_selected = df_clean[['accountnumber', 'chcode']].copy()
-                        
                         df_selected.columns = ['account_number', 'chcode']
                         
-                        
-                        
                         file_dataframes.append((upload_file.name, df_selected))
-
+    
                 except Exception as e:
                     st.error(f"Error processing file {upload_file.name}: {str(e)}")
 
