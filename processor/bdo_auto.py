@@ -562,8 +562,6 @@ class BDOAutoProcessor(base):
 
                 unique_account_numbers = list(dict.fromkeys(all_account_numbers))  
                 if unique_account_numbers:
-                    st.write("Fetching CH Code from database...")
-                    progress_bar = st.progress(0)
                     batch_size_for_query = 20
                     chcode_map = {}
                     
@@ -579,9 +577,6 @@ class BDOAutoProcessor(base):
                                         chcode_map[str(record['account_number']).strip()] = str(record['chcode']).strip()
                             except Exception as e:
                                 st.warning(f"Error fetching Ch Code batch {i}: {str(e)}. Continuing...")
-                        
-                        progress_value = min(1.0, (i + batch_size_for_query) / max(1, len(unique_account_numbers)))
-                        progress_bar.progress(progress_value)
                     
                     cms_endo_df['Ch Code'] = cms_endo_df['Account Number'].apply(lambda x: chcode_map.get(str(x).strip(), ""))
 
