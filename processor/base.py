@@ -8,9 +8,18 @@ import tempfile
 import shutil
 import re 
 
+#Supabase
+from supabase import create_client
+from dotenv import load_dotenv
+load_dotenv()
+
 class BaseProcessor:
     def __init__(self):
         self.temp_dir = tempfile.mkdtemp()
+
+        SUPABASE_URL = os.getenv("SUPABASE_URL")
+        SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+        self.supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
         
     def __del__(self):
         try:

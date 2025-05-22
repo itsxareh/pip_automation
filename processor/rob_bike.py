@@ -11,18 +11,9 @@ from openpyxl.styles import Border, Side
 from datetime import datetime
 import io
 import pytz
-from processor.base import BaseProcessor
+from processor.base import BaseProcessor as base
 
-from supabase import create_client
-from dotenv import load_dotenv
-load_dotenv()
-
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-
-
-class ROBBikeProcessor(BaseProcessor):
+class ROBBikeProcessor(base):
     def process_daily_remark(self, file_content, sheet_name=None, preview_only=False,
                     remove_duplicates=False, remove_blanks=False, trim_spaces=False, report_date=None):
         try:
@@ -57,7 +48,7 @@ class ROBBikeProcessor(BaseProcessor):
                 
                     df = df[~(dnc_mask | blank_mask)]
                     
-                    disposition = supabase.table('rob_bike_disposition').select("disposition").execute()
+                    disposition = self.supabase.table('rob_bike_disposition').select("disposition").execute()
                 
                     if disposition.data is None:
                         valid_dispo = []
@@ -179,7 +170,7 @@ class ROBBikeProcessor(BaseProcessor):
                                     
                 if 'Account No.' in df.columns:
                     account_numbers = [str(int(acc)) for acc in df['Account No.'].dropna().unique().tolist()]
-                    dataset_response = supabase.table('rob_bike_dataset').select('*').in_('account_number', account_numbers).execute()
+                    dataset_response = self.supabase.table('rob_bike_dataset').select('*').in_('account_number', account_numbers).execute()
                     
                     if hasattr(dataset_response, 'data') and dataset_response.data:
                         dataset_df = pd.DataFrame(dataset_response.data)
@@ -205,7 +196,7 @@ class ROBBikeProcessor(BaseProcessor):
                         
                         if chcode_list:
                             try:
-                                field_results_response = supabase.table('rob_bike_field_result').select('*').in_('chcode', chcode_list).execute()
+                                field_results_response = self.supabase.table('rob_bike_field_result').select('*').in_('chcode', chcode_list).execute()
                                 
                                 if hasattr(field_results_response, 'data') and field_results_response.data:
                                     field_results_df = pd.DataFrame(field_results_response.data)
@@ -582,7 +573,7 @@ class ROBBikeProcessor(BaseProcessor):
                     existing_accounts = []
                     for i in range(0, len(account_numbers_list), batch_size):
                         batch = account_numbers_list[i:i + batch_size]
-                        response = supabase.table('rob_bike_dataset').select('*').in_('account_number', batch).execute()
+                        response = self.supabase.table('rob_bike_dataset').select('*').in_('account_number', batch).execute()
 
                         if hasattr(response, 'data') and response.data:
                             existing_accounts.extend([str(item['account_number']) for item in response.data])

@@ -10,9 +10,13 @@ import pytz
 import io
 import re 
 import zipfile
-from processor.base import BaseProcessor
+from processor.base import BaseProcessor as base
+from supabase import create_client
+from dotenv import load_dotenv
+load_dotenv()
 
-class BDOAutoProcessor(BaseProcessor):
+
+class BDOAutoProcessor(base):
     def process_agency_daily_report(self, file_content, sheet_name=None, preview_only=False,
         remove_duplicates=False, remove_blanks=False, trim_spaces=False, report_date=None,
         kept_count_b5=None, kept_bal_b5=None, alloc_bal_b5=None,
@@ -434,8 +438,10 @@ class BDOAutoProcessor(BaseProcessor):
             return None, None, None
 
     def process_new_endorsement(self, file_content, sheet_name=None, preview_only=False,
-        remove_duplicates=False, remove_blanks=False, trim_spaces=False, bucket=None):
-
+                           remove_duplicates=False, remove_blanks=False, trim_spaces=False,
+                           endo_date=None, bucket=None):
+        TABLE_NAME = 'bdo_auto_loan_dataset'
+        all_account_numbers = []
         try:
             if isinstance(file_content, bytes):
                 file_content = io.BytesIO(file_content)
@@ -456,33 +462,32 @@ class BDOAutoProcessor(BaseProcessor):
             df = self.clean_data(original_df, remove_duplicates, remove_blanks, trim_spaces)
 
             required_columns = ['PN', 'COMPLETE_NAME', 'BALANCE', 'BUCKET', 'GROUP', 'Due Date',
-                'MO_Amort', 'LAST_DATE', 'ZIP_CODE', 'Model', 'OVERDUE AMOUNT', 'ADDRESS',
-                'Email Address', 'MOBILE NUMBER', 'REMARKS'
-            ]
+                            'MO_Amort', 'LAST_DATE', 'ZIP_CODE', 'Model', 'OVERDUE AMOUNT', 'ADDRESS',
+                            'Email Address', 'MOBILE NUMBER', 'REMARKS']
 
             missing_columns = [col for col in required_columns if col not in df.columns]
 
             if missing_columns:
-                st.error("Required columns not found in the uploaded file.")
+                st.error(f"Required columns not found in the uploaded file: {', '.join(missing_columns)}")
                 return None, None, None
             else:
                 manila_timezone = pytz.timezone('Asia/Manila')
                 current_datetime_manila = datetime.now(manila_timezone)
                 current_date = current_datetime_manila.strftime('%m/%d/%Y')
+                endo_date = endo_date.strftime('%m/%d/%Y') if endo_date else current_date
 
                 bcrm_endo_columns = ['AGENCY', 'PN', 'BALANCE', 'PORT DATE', 'STATUS', 
-                    'PTC/PB', 'ENDO DATE', 'STATUS DATE', 'Delq. Reason', 'Customer Name',
-                    'Mobile', 'Home address', 'Office address', 'OD Amount2', 'EMAIL',
-                    'COBORROWER_EMAIL', 'OD_DAYS', 'COBORROWER_NAME', 'COBORROWER_NUMBER', 
-                    'LAST_BUCKET_AMOUNT', 'NEXT_PAYMENT_DUE_AMOUNT', 'EMPLOYER', 'AGENT', 'BUCKET'
-                ]
+                                    'PTC/PB', 'ENDO DATE', 'STATUS DATE', 'Delq. Reason', 'Customer Name',
+                                    'Mobile', 'Home address', 'Office address', 'OD Amount2', 'EMAIL',
+                                    'COBORROWER_EMAIL', 'OD_DAYS', 'COBORROWER_NAME', 'COBORROWER_NUMBER', 
+                                    'LAST_BUCKET_AMOUNT', 'NEXT_PAYMENT_DUE_AMOUNT', 'EMPLOYER', 'AGENT', 'BUCKET']
                 num_rows = len(df)
                 bcrm_endo_df = pd.DataFrame(index=range(num_rows), columns=bcrm_endo_columns)
 
                 bcrm_endo_df['AGENCY'] = 'SPM'
                 bcrm_endo_df['STATUS'] = 'RETAINED'
-                bcrm_endo_df['ENDO DATE'] = current_date
-                bcrm_endo_df['AGENT'] = 'PJIO'  
+                bcrm_endo_df['ENDO DATE'] = endo_date
+                bcrm_endo_df['AGENT'] = 'PJIO'
                 bcrm_endo_df['BUCKET'] = bucket
 
                 if 'PN' in df.columns:
@@ -506,55 +511,79 @@ class BDOAutoProcessor(BaseProcessor):
                 if 'Email Address' in df.columns:
                     bcrm_endo_df['EMAIL'] = df['Email Address']
                 
-                split_bucket = bucket[0] + bucket[-1]
+                split_bucket = bucket[0] + bucket[-1] if bucket else 'NA'
                 file_date_format = datetime.now().strftime('%Y-%m-%d')
 
                 bcrm_endo_filename = f"bdo_auto_loan-new-({file_date_format}) {split_bucket}.xlsx"
                 bcrm_endo_binary = self.create_excel_in_memory(bcrm_endo_df)
                 
-                cms_endo_columns = ['Bucket/Placement', 'Ch Code', 'Account Number', "Borrower's Name", 'Endo date',
-                    'Outstanding Balance', 'Overdue Balance', 'DPD', 'Monthly Amonization', 'Last Payment', 'Due Date',
-                    'Contact Number', 'EMAIL', 'Address', 'Unit Model', 'Engine Number', 'Chassis Number', 'Plate Number'
-                ]
+                cms_endo_columns = ['Bucket/Placement', 'Ch Code', 'Account Number', "Borrower's Name", 'Endo Date',
+                                'Outstanding Balance', 'Overdue Balance', 'DPD', 'Monthly Amortization', 'Last Payment',
+                                'Due Date', 'Contact Number', 'EMAIL', 'Address', 'Unit Model', 'Engine Number',
+                                'Chassis Number', 'Plate Number']
                 cms_endo_df = pd.DataFrame(index=range(num_rows), columns=cms_endo_columns)
 
                 cms_endo_df['Bucket/Placement'] = bucket
-                cms_endo_df['Endo date'] = current_date
+                cms_endo_df['Endo Date'] = endo_date
 
                 if 'PN' in df.columns:
                     cms_endo_df['Account Number'] = df['PN'].astype(str)
+                elif 'ACCOUNT NUMBER' in df.columns:
+                    cms_endo_df['Account Number'] = df['ACCOUNT NUMBER'].astype(str)
+                else:
+                    st.error("Missing 'PN' or 'ACCOUNT NUMBER' column in the uploaded file.")
+                    return None, None, None
+
+                account_numbers = cms_endo_df['Account Number'].astype(str).str.strip()
+                all_account_numbers.extend(account_numbers.tolist())
 
                 if 'COMPLETE_NAME' in df.columns:
                     cms_endo_df["Borrower's Name"] = df['COMPLETE_NAME']
                 if 'BALANCE' in df.columns:
                     cms_endo_df['Outstanding Balance'] = df['BALANCE']
-
                 if 'OVERDUE AMOUNT' in df.columns:
                     cms_endo_df['Overdue Balance'] = df['OVERDUE AMOUNT']
-                
                 if 'BUCKET' in df.columns:
                     cms_endo_df['DPD'] = df['BUCKET']
-
                 if 'MO_Amort' in df.columns:
                     cms_endo_df['Monthly Amortization'] = df['MO_Amort']
-                
                 if 'LAST_DATE' in df.columns:
                     cms_endo_df['Last Payment'] = pd.to_datetime(df['LAST_DATE']).dt.strftime('%m/%d/%Y')
-
                 if 'Due Date' in df.columns:
                     cms_endo_df['Due Date'] = pd.to_datetime(df['Due Date']).dt.strftime('%m/%d/%Y')
-                
                 if 'MOBILE NUMBER' in df.columns:
                     cms_endo_df['Contact Number'] = df['MOBILE NUMBER'].apply(self.process_mobile_number)
-
                 if 'Email Address' in df.columns:
                     cms_endo_df['EMAIL'] = df['Email Address']
-                
                 if 'Model' in df.columns:
                     cms_endo_df['Unit Model'] = df['Model']
-                
                 if 'ADDRESS' in df.columns:
                     cms_endo_df['Address'] = df['ADDRESS']
+
+                unique_account_numbers = list(dict.fromkeys(all_account_numbers))  
+                if unique_account_numbers:
+                    st.write("Fetching CH Code from database...")
+                    progress_bar = st.progress(0)
+                    batch_size_for_query = 20
+                    chcode_map = {}
+                    
+                    for i in range(0, len(unique_account_numbers), batch_size_for_query):
+                        batch_ids = unique_account_numbers[i:i+batch_size_for_query]
+                        batch_ids = [id for id in batch_ids if id is not None and id != '']
+                        
+                        if batch_ids:
+                            try:
+                                batch_response = self.supabase.table(TABLE_NAME).select("account_number, chcode").in_("account_number", batch_ids).execute()
+                                if hasattr(batch_response, 'data') and batch_response.data:
+                                    for record in batch_response.data:
+                                        chcode_map[str(record['account_number']).strip()] = str(record['chcode']).strip()
+                            except Exception as e:
+                                st.warning(f"Error fetching Ch Code batch {i}: {str(e)}. Continuing...")
+                        
+                        progress_value = min(1.0, (i + batch_size_for_query) / max(1, len(unique_account_numbers)))
+                        progress_bar.progress(progress_value)
+                    
+                    cms_endo_df['Ch Code'] = cms_endo_df['Account Number'].apply(lambda x: chcode_map.get(str(x).strip(), ""))
 
                 cms_endo_filename = f"BDO Auto {split_bucket} New Endo {file_date_format}.xlsx"
                 cms_endo_binary = self.create_excel_in_memory(cms_endo_df)
@@ -571,7 +600,7 @@ class BDOAutoProcessor(BaseProcessor):
         except Exception as e:
             st.error(f"Error processing new endorsement: {str(e)}")
             return None, None, None
-    
+
     def create_excel_in_memory(self, df):
         output = io.BytesIO()
         
@@ -590,7 +619,7 @@ class BDOAutoProcessor(BaseProcessor):
             )
 
             for i, col in enumerate(final_columns):
-                if col == 'Due Date' or col == 'Last Payment' or col == 'ENDO DATE':
+                if col in ['Due Date', 'Last Payment', 'ENDO DATE']:
                     col_letter = get_column_letter(i + 1)
 
                     for row in range(2, len(df) + 2):
@@ -605,5 +634,4 @@ class BDOAutoProcessor(BaseProcessor):
 
         output.seek(0)
         return output.getvalue()
-
 
