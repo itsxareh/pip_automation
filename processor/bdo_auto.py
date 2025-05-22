@@ -229,6 +229,7 @@ class BDOAutoProcessor(base):
                 })
                 
                 filtered_df.reset_index(drop=True, inplace=True)
+                
                 for i in range(1, len(filtered_df)):
                     if filtered_df.loc[i, "HANDLING OFFICER2"] == "SYSTEM":
                         filtered_df.loc[i, "HANDLING OFFICER2"] = filtered_df.loc[i-1, "HANDLING OFFICER2"]
@@ -237,7 +238,14 @@ class BDOAutoProcessor(base):
                 filtered_df.loc[filtered_df["RFD5"].isna() & (filtered_df["STATUS4"] == "CALL NO PTP"), "RFD5"] = "NISV"
                 filtered_df.loc[filtered_df["RFD5"].isna() & (filtered_df["STATUS4"] == "UNCON"), "RFD5"] = "NABZ"
                 
-                filtered_df = filtered_df[~(filtered_df["STATUS4"].isna() | (filtered_df["STATUS4"] == "EXCLUDE"))]
+                filtered_df.loc[(filtered_df["STATUS4"] == "PTP") & (filtered_df["RFD5"] == "NISV"), "RFD5"] = "BUSY"
+                
+                filtered_df['STATUS4'] = filtered_df['STATUS4'].replace('nan', np.nan)
+                
+                filtered_df = filtered_df[~(
+                    filtered_df["STATUS4"].isna() | 
+                    (filtered_df["STATUS4"] == "EXCLUDE")
+                )]
                 
                 filtered_df.loc[filtered_df["STATUS4"] != "PTP", "PTP DATE"] = np.nan
                 filtered_df.loc[filtered_df["STATUS4"] != "PTP", "PTP AMOUNT"] = np.nan

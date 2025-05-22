@@ -5,6 +5,8 @@ import os
 import numpy as np
 import warnings
 from datetime import datetime, time, timedelta
+from openpyxl import load_workbook
+import tempfile
 import io
 import re 
 import msoffcrypto
@@ -651,7 +653,7 @@ def main():
                         df_selected.columns = ['account_number', 'chcode']
                         
                         file_dataframes.append((upload_file.name, df_selected))
-    
+
                 except Exception as e:
                     st.error(f"Error processing file {upload_file.name}: {str(e)}")
 
@@ -1262,57 +1264,171 @@ def main():
             except Exception as e:
                 st.error(f"Error processing file: {str(e)}")
 
+        def add_password_protection(file_data, password):
+            try:
+                with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as temp_input:
+                    temp_input.write(file_data)
+                    temp_input_path = temp_input.name
+                
+                with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as temp_output:
+                    temp_output_path = temp_output.name
+                
+                with open(temp_input_path, 'rb') as input_file:
+                    office_file = msoffcrypto.OfficeFile(input_file)
+                    
+                    with open(temp_output_path, 'wb') as output_file:
+                        office_file.encrypt(password, output_file)
+                
+                with open(temp_output_path, 'rb') as encrypted_file:
+                    encrypted_data = encrypted_file.read()
+                
+                os.unlink(temp_input_path)
+                os.unlink(temp_output_path)
+                
+                return encrypted_data
+                
+            except Exception as e:
+                st.error(f"Error adding password protection: {str(e)}")
+                st.error("Make sure 'msoffcrypto-tool' is installed: pip install msoffcrypto-tool")
+                return file_data
+
+        def create_download_section(label, data, filename, key, mime_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"):
+            
+            add_password = st.checkbox(f"Password Protection", value=False, key=f"{key}_password_check")
+            
+            password = st.text_input(
+                "Password", 
+                type="password", 
+                disabled=not add_password,
+                placeholder="Enter password" if add_password else "No password",
+                key=f"{key}_password_input"
+            )
+
+            if add_password and password:
+                if len(password) < 5:
+                    st.warning("Password should be at least 5 characters long for security")
+                    download_data = data
+                    is_actually_protected = False
+                else:
+                    with st.spinner("Encrypting file... This may take a moment"):
+                        download_data = add_password_protection(data, password)
+                        is_actually_protected = True
+                    
+                    st.success("File encrypted successfully!")
+            else:
+                download_data = data
+                is_actually_protected = False
+
+            base_name = filename.rsplit('.', 1)[0]
+            extension = filename.rsplit('.', 1)[1] if '.' in filename else 'xlsx'
+            final_filename = f"{base_name}.{extension}"
+
+            st.download_button(
+                label=f"{label}",
+                data=download_data,
+                file_name=final_filename,
+                mime=mime_type,
+                key=f"{key}_download"
+            )
+            
+            return is_actually_protected
+
         if automation_type == "Cured List" and 'cured_list_result' in st.session_state:
             result = st.session_state['cured_list_result']
             if result != (None, None, None):
                 tabs = st.tabs(["Remarks", "Reshuffle", "Payments"])
+                
                 with tabs[0]:
                     st.subheader("Remarks Data")
                     st.dataframe(result['remarks_df'], use_container_width=True)
-                    st.download_button(label="Download Remarks File", data=result['remarks_binary'], file_name=result['remarks_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="remarks_download")
+                    is_protected = create_download_section(
+                        "Download Remarks File", 
+                        result['remarks_binary'], 
+                        result['remarks_filename'], 
+                        "remarks"
+                    )
                 with tabs[1]:
                     st.subheader("Reshuffle Data")
                     st.dataframe(result['others_df'], use_container_width=True)
-                    st.download_button(label="Download Reshuffle File", data=result['others_binary'], file_name=result['others_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="reshuffle_download")
+                    is_protected = create_download_section(
+                        "Download Reshuffle File", 
+                        result['others_binary'], 
+                        result['others_filename'], 
+                        "reshuffle"
+                    )
                 with tabs[2]:
                     st.subheader("Payments Data")
                     st.dataframe(result['payments_df'], use_container_width=True)
-                    st.download_button(label="Download Payments File", data=result['payments_binary'], file_name=result['payments_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="payments_download")
-
+                    is_protected = create_download_section(
+                        "Download Payments File", 
+                        result['payments_binary'], 
+                        result['payments_filename'], 
+                        "payments"
+                    )
         elif automation_type == "Agency Daily Report" and 'agency_daily_result' in st.session_state:
             result = st.session_state['agency_daily_result']
             if result != (None, None, None):
                 tabs = st.tabs(["Daily Report B5", "Daily Report B6", "B5 Prod", "B6 Prod"])
+                
                 with tabs[0]:
                     st.subheader("Daily Report B5")
                     st.dataframe(result['b5_df'], use_container_width=True)
-                    st.download_button(label="Download Agency Daily Report B5 File", data=result['b5_binary'], file_name=result['b5_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="b5_download")
+                    is_protected = create_download_section(
+                        "Download Agency Daily Report B5 File", 
+                        result['b5_binary'], 
+                        result['b5_filename'], 
+                        "b5"
+                    )
                 with tabs[1]:
                     st.subheader("Daily Report B6")
                     st.dataframe(result['b6_df'], use_container_width=True)
-                    st.download_button(label="Download Agency Daily Report B6 File", data=result['b6_binary'], file_name=result['b6_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="b6_download")
+                    is_protected = create_download_section(
+                        "Download Agency Daily Report B6 File", 
+                        result['b6_binary'], 
+                        result['b6_filename'], 
+                        "b6"
+                    )
                 with tabs[2]:
                     st.subheader("B5 Prod")
                     st.dataframe(result['b5_prod_df'], use_container_width=True)
-                    st.download_button(label="Download Daily Productivity B5 Report File", data=result['b5_prod_binary'], file_name=result['b5_prod_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="b5_prod_download")
+                    is_protected = create_download_section(
+                        "Download Daily Productivity B5 Report File", 
+                        result['b5_prod_binary'], 
+                        result['b5_prod_filename'], 
+                        "b5_prod"
+                    )
                 with tabs[3]:
                     st.subheader("B6 Prod")
                     st.dataframe(result['b6_prod_df'], use_container_width=True)
-                    st.download_button(label="Download Daily Productivity B6 Report File", data=result['b6_prod_binary'], file_name=result['b6_prod_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="b6_prod_download")
-            
+                    is_protected = create_download_section(
+                        "Download Daily Productivity B6 Report File", 
+                        result['b6_prod_binary'], 
+                        result['b6_prod_filename'], 
+                        "b6_prod"
+                    )
         elif automation_type == "Endorsement" and 'new_endorsement' in st.session_state:
             result = st.session_state['new_endorsement']
             if result != (None, None, None):
                 tabs = st.tabs(["ENDO Bot", "CMS"])
+                
                 with tabs[0]:
                     st.subheader("ENDO Bot")
                     st.dataframe(result['bcrm_endo_df'], use_container_width=True)
-                    st.download_button(label="Download File", data=result['bcrm_endo_binary'], file_name=result['bcrm_endo_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="new_endo_download")
+                    is_protected = create_download_section(
+                        "Download ENDO Bot File", 
+                        result['bcrm_endo_binary'], 
+                        result['bcrm_endo_filename'], 
+                        "endo_bot"
+                    )
                 with tabs[1]:
                     st.subheader("CMS")
                     st.dataframe(result['cms_endo_df'], use_container_width=True)
-                    st.download_button(label="Download File", data=result['cms_endo_binary'], file_name=result['cms_endo_filename'], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="cms_endo_download")
-                    
+                    is_protected = create_download_section(
+                        "Download CMS File", 
+                        result['cms_endo_binary'], 
+                        result['cms_endo_filename'], 
+                        "cms"
+                    )
         elif 'output_binary' in st.session_state and 'result_sheet_names' in st.session_state:
             excel_file = pd.ExcelFile(io.BytesIO(st.session_state['output_binary']))
             result_sheet_names = st.session_state['result_sheet_names']
@@ -1328,17 +1444,17 @@ def main():
                 result_sheet = result_sheet_names[0]
             
             selected_df = pd.read_excel(io.BytesIO(st.session_state['output_binary']), sheet_name=result_sheet)
-            
+
             st.subheader("Processed Preview")
             st.dataframe(selected_df, use_container_width=True)
-            
-            st.download_button(
-                label="Download File", 
-                data=st.session_state['output_binary'], 
-                file_name=st.session_state['output_filename'], 
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+            is_protected = create_download_section(
+                "Download File", 
+                st.session_state['output_binary'], 
+                st.session_state['output_filename'], 
+                "main_output"
             )
-            st.success(f"File processed successfully! Download '{st.session_state['output_filename']}'")
+            
 
 if __name__ == "__main__":
     main()
