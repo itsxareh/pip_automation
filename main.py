@@ -7,11 +7,12 @@ import warnings
 from datetime import datetime, time, timedelta
 from openpyxl import load_workbook
 import tempfile
-import win32com.client as win32
 import xlwt
 import io
 import re 
 import msoffcrypto
+if not st.runtime.exists():
+    import win32com.client as win32
 
 #Processors
 from processor.base import BaseProcessor as base_process
