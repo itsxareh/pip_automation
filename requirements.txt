@@ -7,6 +7,5 @@ msoffcrypto-tool
 python-dotenv
 xlrd
 pyminizip
-xlwt
 pytz
 pywin32

@@ -7,7 +7,6 @@ import warnings
 from datetime import datetime, time, timedelta
 from openpyxl import load_workbook
 import tempfile
-import xlwt
 import io
 import re 
 import msoffcrypto
