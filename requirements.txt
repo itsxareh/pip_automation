@@ -8,4 +8,3 @@ python-dotenv
 xlrd
 pyminizip
 pytz
-pywin32
