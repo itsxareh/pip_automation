@@ -7,6 +7,7 @@ import warnings
 from datetime import datetime, time, timedelta
 from openpyxl import load_workbook
 import tempfile
+import xlwt
 import io
 import re 
 import msoffcrypto
@@ -1291,45 +1292,118 @@ def main():
                 st.error(f"Error adding password protection: {str(e)}")
                 st.error("Make sure 'msoffcrypto-tool' is installed: pip install msoffcrypto-tool")
                 return file_data
-
+            
+        def convert_to_excel_97_2003(data, filename):
+            """Convert xlsx data to Excel 97-2003 (.xls) format"""
+            try:
+                excel_file = pd.ExcelFile(io.BytesIO(data))
+                
+                output = io.BytesIO()
+                
+                if len(excel_file.sheet_names) == 1:
+                    df = pd.read_excel(io.BytesIO(data))
+                    df.to_excel(output, index=False, engine='xlwt')
+                else:
+                    workbook = xlwt.Workbook()
+                    
+                    for sheet_name in excel_file.sheet_names:
+                        df = pd.read_excel(io.BytesIO(data), sheet_name=sheet_name)
+                        worksheet = workbook.add_sheet(sheet_name[:31]) 
+                        
+                        for col_idx, col_name in enumerate(df.columns):
+                            worksheet.write(0, col_idx, str(col_name))
+                        
+                        for row_idx, row in df.iterrows():
+                            for col_idx, value in enumerate(row):
+                                if pd.isna(value):
+                                    worksheet.write(row_idx + 1, col_idx, "")
+                                else:
+                                    worksheet.write(row_idx + 1, col_idx, str(value))
+                    
+                    workbook.save(output)
+                
+                output.seek(0)
+                return output.getvalue()
+                
+            except Exception as e:
+                st.error(f"Error converting to Excel 97-2003 format: {str(e)}")
+                return data
+            
         def create_download_section(label, data, filename, key, mime_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"):
+    
+            st.subheader("File Options")
+            col1, col2 = st.columns(2)
             
-            add_password = st.checkbox(f"Password Protection", value=False, key=f"{key}_password_check")
+            with col1:
+                convert_to_xls = st.checkbox(
+                    "Convert to Excel 97-2003 (.xls)", 
+                    value=False, 
+                    key=f"{key}_convert_xls",
+                    help="Convert to older Excel format for compatibility with legacy systems"
+                )
             
-            password = st.text_input(
-                "Password", 
-                type="password", 
-                disabled=not add_password,
-                placeholder="Enter password" if add_password else "No password",
-                key=f"{key}_password_input"
-            )
-
+            with col2:
+                add_password = st.checkbox(
+                    "Password Protection", 
+                    value=False, 
+                    key=f"{key}_password_check"
+                )
+            
+            if add_password:
+                password = st.text_input(
+                    "Password", 
+                    type="password", 
+                    placeholder="Enter password (min 5 characters)",
+                    key=f"{key}_password_input"
+                )
+            else:
+                password = ""
+            
+            processed_data = data
+            final_extension = "xlsx"
+            final_mime_type = mime_type
+            
+            if convert_to_xls:
+                with st.spinner("Converting to Excel 97-2003 format..."):
+                    processed_data = convert_to_excel_97_2003(processed_data, filename)
+                    final_extension = "xls"
+                    final_mime_type = "application/vnd.ms-excel"
+                st.success("Converted to Excel 97-2003 format!")
+            
             if add_password and password:
                 if len(password) < 5:
                     st.warning("Password should be at least 5 characters long for security")
-                    download_data = data
                     is_actually_protected = False
                 else:
-                    with st.spinner("Encrypting file... This may take a moment"):
-                        download_data = add_password_protection(data, password)
-                        is_actually_protected = True
-                    
-                    st.success("File encrypted successfully!")
+                    if convert_to_xls:
+                        st.warning("Password protection not available for .xls format. File will be unprotected.")
+                        is_actually_protected = False
+                    else:
+                        with st.spinner("Encrypting file... This may take a moment"):
+                            processed_data = add_password_protection(processed_data, password)
+                            is_actually_protected = True
+                        st.success("File encrypted successfully!")
             else:
-                download_data = data
                 is_actually_protected = False
-
+            
             base_name = filename.rsplit('.', 1)[0]
-            extension = filename.rsplit('.', 1)[1] if '.' in filename else 'xlsx'
-            final_filename = f"{base_name}.{extension}"
+            final_filename = f"{base_name}.{final_extension}"
+            download_label = f"📥 {label}"
 
             st.download_button(
-                label=f"{label}",
-                data=download_data,
+                label=download_label,
+                data=processed_data,
                 file_name=final_filename,
-                mime=mime_type,
+                mime=final_mime_type,
                 key=f"{key}_download"
             )
+            
+            if convert_to_xls and add_password and password and len(password) >= 5:
+                st.info("Note: .xls format doesn't support encryption. File converted but not password protected.")
+            elif is_actually_protected:
+                st.info(" **IMPORTANT:** This file is encrypted. You MUST enter the password to open it!")
+            elif convert_to_xls:
+                st.info("File converted to Excel 97-2003 format for legacy compatibility.")
             
             return is_actually_protected
 
@@ -1449,7 +1523,7 @@ def main():
             st.dataframe(selected_df, use_container_width=True)
 
             is_protected = create_download_section(
-                "Download Filee", 
+                "Download File", 
                 st.session_state['output_binary'], 
                 st.session_state['output_filename'], 
                 "main_output"
