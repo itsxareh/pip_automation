@@ -1392,11 +1392,10 @@ def main():
                         "Convert to Excel 97-2003 (.xls)", 
                         value=False, 
                         key=f"{key}_convert_xls_disabled",
-                        help="XLS conversion disabled (not supported in this environment)",
+                        help="XLS conversion is disabled because the current environment doesn't support it.",
                         disabled=True
                     )
                     convert_to_xls = False
-                    st.info("XLS conversion is disabled because the current environment doesn't support it.")
             else:
                 with col1:
                     convert_to_xls = st.checkbox(
