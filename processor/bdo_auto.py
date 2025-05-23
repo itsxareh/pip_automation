@@ -238,7 +238,7 @@ class BDOAutoProcessor(base):
                 filtered_df.loc[filtered_df["RFD5"].isna() & (filtered_df["STATUS4"] == "CALL NO PTP"), "RFD5"] = "NISV"
                 filtered_df.loc[filtered_df["RFD5"].isna() & (filtered_df["STATUS4"] == "UNCON"), "RFD5"] = "NABZ"
                 
-                filtered_df.loc[(filtered_df["STATUS4"] == "PTP") & (filtered_df["RFD5"] == "NISV"), "RFD5"] = "BUSY"
+                filtered_df.loc[(filtered_df["STATUS4"] == "PTP") & ((filtered_df["RFD5"] == "NISV") | (filtered_df["RFD5"] == "NABZ")), "RFD5"] = "BUSY"
                 
                 filtered_df['STATUS4'] = filtered_df['STATUS4'].replace('nan', np.nan)
                 
