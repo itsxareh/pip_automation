@@ -1314,7 +1314,6 @@ def main():
                 
                 try:
                     wb = excel.Workbooks.Open(temp_input_path)
-                    # Save with password protection
                     wb.SaveAs(temp_output_path, FileFormat=56, Password=password)
                     wb.Close()
                     
@@ -1382,13 +1381,17 @@ def main():
             st.subheader("File Options")
             col1, col2 = st.columns(2)
             
-            with col1:
-                convert_to_xls = st.checkbox(
-                    "Convert to Excel 97-2003 (.xls)", 
-                    value=False, 
-                    key=f"{key}_convert_xls",
-                    help="Convert to older Excel format for compatibility with legacy systems"
-                )
+            if st.runtime.exists():
+                convert_to_xls = False
+                st.info("XLS conversion disabled")
+            else:
+                with col1:
+                    convert_to_xls = st.checkbox(
+                        "Convert to Excel 97-2003 (.xls)", 
+                        value=False, 
+                        key=f"{key}_convert_xls",
+                        help="Convert to older Excel format for compatibility with legacy systems"
+                    )
             
             with col2:
                 add_password = st.checkbox(
@@ -1444,14 +1447,6 @@ def main():
                 mime=final_mime_type,
                 key=f"{key}_download"
             )
-            
-            # Status messages
-            # if is_actually_protected and convert_to_xls:
-            #     st.info("**IMPORTANT:** This .xls file is password protected. You MUST enter the password to open it!")
-            # elif is_actually_protected:
-            #     st.info("**IMPORTANT:** This file is encrypted. You MUST enter the password to open it!")
-            # elif convert_to_xls:
-            #     st.info("File converted to Excel 97-2003 format for legacy compatibility.")
             
             return is_actually_protected
 
