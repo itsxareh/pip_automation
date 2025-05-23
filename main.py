@@ -1449,7 +1449,7 @@ def main():
             st.dataframe(selected_df, use_container_width=True)
 
             is_protected = create_download_section(
-                "Download File", 
+                "Download Filee", 
                 st.session_state['output_binary'], 
                 st.session_state['output_filename'], 
                 "main_output"
