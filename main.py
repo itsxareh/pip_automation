@@ -12,8 +12,16 @@ import importlib.util
 import io
 import re 
 import msoffcrypto
-if not st.runtime.exists():
-    import win32com.client as win32
+
+win32_available = False
+if platform.system() == "Windows" and importlib.util.find_spec("win32com.client") is not None:
+    try:
+        import win32com.client as win32
+        win32_available = True
+    except ImportError:
+        win32_available = False
+else:
+    win32_available = False
 
 #Processors
 from processor.base import BaseProcessor as base_process
@@ -1378,15 +1386,12 @@ def main():
                 st.error(f"Method 4 (COM) conversion error: {str(e)}")
                 st.info("COM method requires Windows with Excel installed")
                 return data
-        def is_win32com_available():
-            return platform.system() == "Windows" and importlib.util.find_spec("win32com") is not None
-
 
         def create_download_section(label, data, filename, key, mime_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"):
             st.subheader("File Options")
             col1, col2 = st.columns(2)
 
-            if not is_win32com_available():
+            if not win32_available:
                 with col1:
                     st.checkbox(
                         "Convert to Excel 97-2003 (.xls)", 
