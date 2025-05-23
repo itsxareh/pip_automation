@@ -399,6 +399,23 @@ class BDOAutoProcessor(base):
                     wb6_prod.save(output_b6_prod)
                     output_b6_prod.seek(0)
                     productivity_files["B6"] = output_b6_prod.getvalue()
+                                        
+                    vs_report_wb = load_workbook(vs_report_template)
+                    vs_report_ws = vs_report_wb.active
+
+                    data = list(vs_report_ws.values)
+                    if data:
+                        headers = data[0]
+                        rows = data[1:]
+                        vs_df = pd.DataFrame(rows, columns=headers)
+                    else:
+                        vs_df = pd.DataFrame()
+
+                    output_vs_report = io.BytesIO()
+                    vs_report_wb.save(output_vs_report)
+                    output_vs_report.seek(0)
+                    vs_binary = output_vs_report
+                    
                 
                 combined_output = io.BytesIO()
                 with pd.ExcelWriter(combined_output, engine='openpyxl') as writer:
@@ -413,16 +430,20 @@ class BDOAutoProcessor(base):
                 b6_filename = f"AGENCY DAILY REPORT B6 AS OF {current_date}.xlsx"
                 b5_prod_filename = f"B5 Daily Productivity AS OF {current_date}.xlsx"
                 b6_prod_filename = f"B6 Daily Productivity AS OF {current_date}.xlsx"
+                vs_filename = f"SP MADRID VS AS OF {current_date}"
                 
                 return {
                     "b5_df": bucket5_df,
                     "b6_df": bucket6_df,
+                    "vs_df": vs_df,
                     "b5_prod_df": b5_prod_df,
                     "b6_prod_df": b6_prod_df,
                     "b5_binary": b5_binary.getvalue() if not bucket5_df.empty else None,
                     "b6_binary": b6_binary.getvalue() if not bucket6_df.empty else None,
+                    "vs_binary": vs_binary.getvalue() if not vs_df.empty else None,
                     "b5_filename": b5_filename,
                     "b6_filename": b6_filename,
+                    "vs_filename": vs_filename,
                     "b5_prod_binary": productivity_files.get("B5"),
                     "b6_prod_binary": productivity_files.get("B6"),
                     "b5_prod_filename": b5_prod_filename,

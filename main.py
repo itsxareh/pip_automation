@@ -1437,7 +1437,7 @@ def main():
                     processed_data = convert_to_excel_97_2003(processed_data, filename)
                     final_extension = "xls"  
                     final_mime_type = "application/vnd.ms-excel"
-                st.success("Converted to Excel 97-2003 format!")
+                st.success("Converted to Excel 97-2003 format")
             
             if add_password and password:
                 if len(password) < 5:
@@ -1451,7 +1451,7 @@ def main():
                         else:
                             processed_data = add_password_protection(processed_data, password)
                             is_actually_protected = True
-                    st.success("File encrypted successfully!")
+                    st.success("File encrypted successfully")
             
             base_name = filename.rsplit('.', 1)[0]
             final_filename = f"{base_name}.{final_extension}"
@@ -1502,7 +1502,7 @@ def main():
         elif automation_type == "Agency Daily Report" and 'agency_daily_result' in st.session_state:
             result = st.session_state['agency_daily_result']
             if result != (None, None, None):
-                tabs = st.tabs(["Daily Report B5", "Daily Report B6", "B5 Prod", "B6 Prod"])
+                tabs = st.tabs(["Daily Report B5", "Daily Report B6", "B5 Prod", "B6 Prod", "VS"])
                 
                 with tabs[0]:
                     st.subheader("Daily Report B5")
@@ -1540,6 +1540,16 @@ def main():
                         result['b6_prod_filename'], 
                         "b6_prod"
                     )
+                with tabs[4]:
+                    st.subheader("VS")
+                    st.dataframe(result['vs_df'], use_container_width=True)
+                    is_protected = create_download_section(
+                        "Download VS File", 
+                        result['vs_binary'], 
+                        result['vs_filename'], 
+                        "vs_report"
+                    )
+                    
         elif automation_type == "Endorsement" and 'new_endorsement' in st.session_state:
             result = st.session_state['new_endorsement']
             if result != (None, None, None):
