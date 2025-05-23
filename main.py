@@ -10,9 +10,9 @@ import tempfile
 import io
 import re 
 import msoffcrypto
-if st.runtime.exists():
+if not st.runtime.exists():
     import win32com.client as win32
-
+    
 #Processors
 from processor.base import BaseProcessor as base_process
 from processor.bdo_auto import BDOAutoProcessor as bdo_auto
