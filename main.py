@@ -10,7 +10,7 @@ import tempfile
 import io
 import re 
 import msoffcrypto
-if not st.runtime.exists():
+if st.runtime.exists():
     import win32com.client as win32
 
 #Processors
