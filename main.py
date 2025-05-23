@@ -1,4 +1,4 @@
-#pip install streamlit pandas numpy openpyxl msoffcrypto-tool supabase python-dotenv xlrd
+#pip install streamlit pandas numpy openpyxl msoffcrypto-tool supabase python-dotenv xlrd xlwt
 import streamlit as st
 import pandas as pd
 import os
@@ -7,6 +7,7 @@ import warnings
 from datetime import datetime, time, timedelta
 from openpyxl import load_workbook
 import tempfile
+import win32com.client as win32
 import xlwt
 import io
 import re 
@@ -1296,37 +1297,42 @@ def main():
         def convert_to_excel_97_2003(data, filename):
             """Convert xlsx data to Excel 97-2003 (.xls) format"""
             try:
-                excel_file = pd.ExcelFile(io.BytesIO(data))
                 
-                output = io.BytesIO()
                 
-                if len(excel_file.sheet_names) == 1:
-                    df = pd.read_excel(io.BytesIO(data))
-                    df.to_excel(output, index=False, engine='xlwt')
-                else:
-                    workbook = xlwt.Workbook()
+                # Create temporary files
+                with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as temp_xlsx:
+                    temp_xlsx.write(data)
+                    temp_xlsx_path = temp_xlsx.name
+                
+                temp_xls_path = temp_xlsx_path.replace('.xlsx', '.xls')
+                
+                # Use Excel COM to convert
+                excel = win32.Dispatch('Excel.Application')
+                excel.Visible = False
+                excel.DisplayAlerts = False
+                
+                try:
+                    wb = excel.Workbooks.Open(temp_xlsx_path)
+                    wb.SaveAs(temp_xls_path, FileFormat=56)  # 56 = Excel 97-2003 format
+                    wb.Close()
                     
-                    for sheet_name in excel_file.sheet_names:
-                        df = pd.read_excel(io.BytesIO(data), sheet_name=sheet_name)
-                        worksheet = workbook.add_sheet(sheet_name[:31]) 
-                        
-                        for col_idx, col_name in enumerate(df.columns):
-                            worksheet.write(0, col_idx, str(col_name))
-                        
-                        for row_idx, row in df.iterrows():
-                            for col_idx, value in enumerate(row):
-                                if pd.isna(value):
-                                    worksheet.write(row_idx + 1, col_idx, "")
-                                else:
-                                    worksheet.write(row_idx + 1, col_idx, str(value))
+                    # Read converted file
+                    with open(temp_xls_path, 'rb') as f:
+                        converted_data = f.read()
                     
-                    workbook.save(output)
-                
-                output.seek(0)
-                return output.getvalue()
-                
+                    return converted_data
+                    
+                finally:
+                    excel.Quit()
+                    # Cleanup
+                    if os.path.exists(temp_xlsx_path):
+                        os.unlink(temp_xlsx_path)
+                    if os.path.exists(temp_xls_path):
+                        os.unlink(temp_xls_path)
+                        
             except Exception as e:
-                st.error(f"Error converting to Excel 97-2003 format: {str(e)}")
+                st.error(f"Method 4 (COM) conversion error: {str(e)}")
+                st.info("COM method requires Windows with Excel installed")
                 return data
             
         def create_download_section(label, data, filename, key, mime_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"):

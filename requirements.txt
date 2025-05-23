@@ -9,3 +9,4 @@ xlrd
 pyminizip
 xlwt
 pytz
+pywin32
