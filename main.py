@@ -1267,6 +1267,7 @@ def main():
                 st.error(f"Error processing file: {str(e)}")
 
         def add_password_protection(file_data, password):
+            """Add password protection to XLSX files"""
             try:
                 with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as temp_input:
                     temp_input.write(file_data)
@@ -1294,29 +1295,70 @@ def main():
                 st.error("Make sure 'msoffcrypto-tool' is installed: pip install msoffcrypto-tool")
                 return file_data
             
+        def add_password_protection_xls(file_data, password):
+            """Add password protection to XLS files using Excel COM"""
+            try:
+                import pythoncom
+                
+                pythoncom.CoInitialize()
+                
+                with tempfile.NamedTemporaryFile(delete=False, suffix='.xls') as temp_input:
+                    temp_input.write(file_data)
+                    temp_input_path = temp_input.name
+                
+                temp_output_path = temp_input_path.replace('.xls', '_protected.xls')
+                
+                excel = win32.Dispatch('Excel.Application')
+                excel.Visible = False
+                excel.DisplayAlerts = False
+                
+                try:
+                    wb = excel.Workbooks.Open(temp_input_path)
+                    # Save with password protection
+                    wb.SaveAs(temp_output_path, FileFormat=56, Password=password)
+                    wb.Close()
+                    
+                    with open(temp_output_path, 'rb') as f:
+                        protected_data = f.read()
+                    
+                    return protected_data
+                    
+                finally:
+                    excel.Quit()
+                    pythoncom.CoUninitialize()
+                    
+                    if os.path.exists(temp_input_path):
+                        os.unlink(temp_input_path)
+                    if os.path.exists(temp_output_path):
+                        os.unlink(temp_output_path)
+                        
+            except Exception as e:
+                st.error(f"Error adding XLS password protection: {str(e)}")
+                st.info("XLS password protection requires Windows with Excel installed")
+                return file_data
+            
         def convert_to_excel_97_2003(data, filename):
             """Convert xlsx data to Excel 97-2003 (.xls) format"""
             try:
+                import pythoncom  
                 
+                pythoncom.CoInitialize()
                 
-                # Create temporary files
                 with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as temp_xlsx:
                     temp_xlsx.write(data)
                     temp_xlsx_path = temp_xlsx.name
                 
                 temp_xls_path = temp_xlsx_path.replace('.xlsx', '.xls')
                 
-                # Use Excel COM to convert
                 excel = win32.Dispatch('Excel.Application')
                 excel.Visible = False
                 excel.DisplayAlerts = False
                 
                 try:
                     wb = excel.Workbooks.Open(temp_xlsx_path)
-                    wb.SaveAs(temp_xls_path, FileFormat=56)  # 56 = Excel 97-2003 format
+                    wb.SaveAs(temp_xls_path, FileFormat=56) 
                     wb.Close()
                     
-                    # Read converted file
                     with open(temp_xls_path, 'rb') as f:
                         converted_data = f.read()
                     
@@ -1324,7 +1366,8 @@ def main():
                     
                 finally:
                     excel.Quit()
-                    # Cleanup
+                    pythoncom.CoUninitialize()
+                    
                     if os.path.exists(temp_xlsx_path):
                         os.unlink(temp_xlsx_path)
                     if os.path.exists(temp_xls_path):
@@ -1336,7 +1379,6 @@ def main():
                 return data
             
         def create_download_section(label, data, filename, key, mime_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"):
-    
             st.subheader("File Options")
             col1, col2 = st.columns(2)
             
@@ -1366,13 +1408,14 @@ def main():
                 password = ""
             
             processed_data = data
-            final_extension = "xlsx"
+            final_extension = "xlsx" 
             final_mime_type = mime_type
+            is_actually_protected = False
             
             if convert_to_xls:
                 with st.spinner("Converting to Excel 97-2003 format..."):
                     processed_data = convert_to_excel_97_2003(processed_data, filename)
-                    final_extension = "xls"
+                    final_extension = "xls"  
                     final_mime_type = "application/vnd.ms-excel"
                 st.success("Converted to Excel 97-2003 format!")
             
@@ -1381,20 +1424,18 @@ def main():
                     st.warning("Password should be at least 5 characters long for security")
                     is_actually_protected = False
                 else:
-                    if convert_to_xls:
-                        st.warning("Password protection not available for .xls format. File will be unprotected.")
-                        is_actually_protected = False
-                    else:
-                        with st.spinner("Encrypting file... This may take a moment"):
+                    with st.spinner("Encrypting file... This may take a moment"):
+                        if convert_to_xls:
+                            processed_data = add_password_protection_xls(processed_data, password)
+                            is_actually_protected = True
+                        else:
                             processed_data = add_password_protection(processed_data, password)
                             is_actually_protected = True
-                        st.success("File encrypted successfully!")
-            else:
-                is_actually_protected = False
+                    st.success("File encrypted successfully!")
             
             base_name = filename.rsplit('.', 1)[0]
             final_filename = f"{base_name}.{final_extension}"
-            download_label = f"📥 {label}"
+            download_label = f"{label}"
 
             st.download_button(
                 label=download_label,
@@ -1404,12 +1445,13 @@ def main():
                 key=f"{key}_download"
             )
             
-            if convert_to_xls and add_password and password and len(password) >= 5:
-                st.info("Note: .xls format doesn't support encryption. File converted but not password protected.")
-            elif is_actually_protected:
-                st.info(" **IMPORTANT:** This file is encrypted. You MUST enter the password to open it!")
-            elif convert_to_xls:
-                st.info("File converted to Excel 97-2003 format for legacy compatibility.")
+            # Status messages
+            # if is_actually_protected and convert_to_xls:
+            #     st.info("**IMPORTANT:** This .xls file is password protected. You MUST enter the password to open it!")
+            # elif is_actually_protected:
+            #     st.info("**IMPORTANT:** This file is encrypted. You MUST enter the password to open it!")
+            # elif convert_to_xls:
+            #     st.info("File converted to Excel 97-2003 format for legacy compatibility.")
             
             return is_actually_protected
 
