@@ -10,6 +10,7 @@ from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.styles import Border, Side
 from datetime import datetime
 import io
+import re
 import pytz
 from processor.base import BaseProcessor as base
 
@@ -600,6 +601,12 @@ class ROBBikeProcessor(base):
                     if not zero_ob_rows.empty:
                         st.warning(f"Found {len(zero_ob_rows)} rows with 0 in Endorsement OB")
                 
+                if 'ENGINE NUMBER' in df.columns:
+                    df['ENGINE NUMBER'] = df['ENGINE NUMBER'].apply(lambda x: np.nan if str(x).strip() == '0' else x)
+
+                if 'CHASSIS NUMBER' in df.columns:
+                    df['CHASSIS NUMBER'] = df['CHASSIS NUMBER'].apply(lambda x: np.nan if str(x).strip() == '0' else x)
+
                 if preview_only:
                     return df, None, None
                 
@@ -633,9 +640,9 @@ class ROBBikeProcessor(base):
                     first_name = name_parts[1] if name_parts.shape[1] > 1 else ''
                     middle_name = name_parts[2] if name_parts.shape[1] > 2 else ''
                     
-                    cms_endo_df.insert(4, 'FIRST NAME', first_name)
-                    cms_endo_df.insert(5, 'MIDDLE NAME', middle_name)
-                    cms_endo_df.insert(6, 'LAST NAME', last_name)
+                    cms_endo_df.insert(3, 'FIRST NAME', first_name)
+                    cms_endo_df.insert(4, 'MIDDLE NAME', middle_name)
+                    cms_endo_df.insert(5, 'LAST NAME', last_name)
 
                 unique_account_numbers = list(dict.fromkeys(all_account_numbers))
                 if unique_account_numbers:
@@ -655,7 +662,7 @@ class ROBBikeProcessor(base):
                                         chcode_map[key] = str(record['chcode']).strip()
                             except Exception as e:
                                 st.warning(f"Error fetching Ch Code batch {i}: {str(e)}. Continuing...")
-                    st.write(chcode_map)
+                                
                     normalized_account_numbers = cms_endo_df['Account Number'].astype(str).str.lstrip('0').str.strip()
                     
                     cms_endo_df['CHCODE'] = normalized_account_numbers.map(chcode_map)
@@ -687,7 +694,7 @@ class ROBBikeProcessor(base):
     def clean_phone_number(self, phone):
         if pd.isna(phone) or str(phone).lower() == 'nan':
             return ''
-        
+
         phone = str(phone)
 
         if '/' in phone:
@@ -695,24 +702,11 @@ class ROBBikeProcessor(base):
 
         digits = ''.join(c for c in phone if c.isdigit())
 
-        if digits.startswith('63') and len(digits) >= 11:
-            digits = '0' + digits[2:] 
-
-        elif digits.startswith('9') and len(digits) == 10:
-            digits = '0' + digits
-
-        elif digits.startswith('0') and not digits.startswith('09'):
-            digits = '09' + digits[-8:] 
-
-        if len(digits) > 11:
-            digits = digits[:11]
-        elif len(digits) < 11 and digits.startswith('09'):
-            digits = digits.ljust(11, '0')
-
-        if digits.startswith('09') and len(digits) == 11:
-            return digits
+        match = re.search(r'9\d{9}$', digits)
+        if match:
+            return '0' + match.group() 
         else:
-            return ''
+            return digits
         
     def create_excel_file(self, df):
         output = io.BytesIO()
