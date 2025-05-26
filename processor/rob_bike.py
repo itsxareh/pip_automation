@@ -530,6 +530,8 @@ class ROBBikeProcessor(base):
 
     def process_new_endorsement(self, file_content, sheet_name=None, preview_only=False,
                          remove_duplicates=False, remove_blanks=False, trim_spaces=False, endo_date=None, preserve_colors=True):
+        TABLE_NAME = 'rob_bike_dataset'
+        all_account_numbers = []
         try:
             if isinstance(file_content, bytes):
                 file_content = io.BytesIO(file_content)
@@ -591,7 +593,7 @@ class ROBBikeProcessor(base):
                 
                 endo_date = endo_date.strftime('%m/%d/%Y')
                 df.insert(0, 'ENDO DATE', endo_date)
-                
+
                 if 'Endrosement OB' in df.columns:
                     df['Endrosement OB'] = pd.to_numeric(df['Endrosement OB'], errors='coerce')
                     zero_ob_rows = df[df['Endrosement OB'] == 0]
@@ -605,6 +607,9 @@ class ROBBikeProcessor(base):
                 bcrm_endo_filename = f"rob_bike-new-{datetime.now().strftime('%Y-%m-%d')}.xlsx"
                 
                 cms_endo_df = df.copy()
+                account_numbers = cms_endo_df['Account Number']
+                all_account_numbers.extend(account_numbers.tolist())
+
                 if 'Contact No.' in cms_endo_df.columns:
                     cms_endo_df['Contact No.'] = cms_endo_df['Contact No.'].apply(self.clean_phone_number)
 
@@ -620,7 +625,47 @@ class ROBBikeProcessor(base):
                     cols.remove('DESCRIP')
                     cols.append('DESCRIP')
                     cms_endo_df = cms_endo_df[cols]
+
+                if 'ACCT NAME' in cms_endo_df.columns:
+                    name_parts = cms_endo_df['ACCT NAME'].str.split(', ', expand=True)
+
+                    last_name = name_parts[0] 
+                    first_name = name_parts[1] if name_parts.shape[1] > 1 else ''
+                    middle_name = name_parts[2] if name_parts.shape[1] > 2 else ''
                     
+                    cms_endo_df.insert(4, 'FIRST NAME', first_name)
+                    cms_endo_df.insert(5, 'MIDDLE NAME', middle_name)
+                    cms_endo_df.insert(6, 'LAST NAME', last_name)
+
+                unique_account_numbers = list(dict.fromkeys(all_account_numbers))
+                if unique_account_numbers:
+                    batch_size_for_query = 20
+                    chcode_map = {}
+                    
+                    for i in range(0, len(unique_account_numbers), batch_size_for_query):
+                        batch_ids = unique_account_numbers[i:i+batch_size_for_query]
+                        batch_ids = [str(id).lstrip('0').strip() for id in batch_ids if id is not None and str(id).strip() != '']
+
+                        if batch_ids:
+                            try:
+                                batch_response = self.supabase.table(TABLE_NAME).select("account_number, chcode").in_("account_number", batch_ids).execute()
+                                if hasattr(batch_response, 'data') and batch_response.data:
+                                    for record in batch_response.data:
+                                        key = str(record['account_number']).strip()
+                                        chcode_map[key] = str(record['chcode']).strip()
+                            except Exception as e:
+                                st.warning(f"Error fetching Ch Code batch {i}: {str(e)}. Continuing...")
+                    st.write(chcode_map)
+                    normalized_account_numbers = cms_endo_df['Account Number'].astype(str).str.lstrip('0').str.strip()
+                    
+                    cms_endo_df['CHCODE'] = normalized_account_numbers.map(chcode_map)
+
+                    chcode_col = cms_endo_df.pop('CHCODE')
+                    cms_endo_df.insert(2, 'CHCODE', chcode_col)
+
+                cms_endo_df['AGENT FIRSTNAME'] = ''
+                cms_endo_df['AGENT LASTNAME'] = ''
+
                 cms_endo_filename = f"ROBBike-CMS-NewEndo-{datetime.now().strftime('%m-%d-%Y')}.xlsx"
                 
                 bcrm_endo_binary = self.create_excel_file(bcrm_endo_df)
@@ -644,24 +689,26 @@ class ROBBikeProcessor(base):
             return ''
         
         phone = str(phone)
-        
+
         if '/' in phone:
             phone = phone.split('/')[0]
 
         digits = ''.join(c for c in phone if c.isdigit())
 
-        if digits.startswith('63') and len(digits) >= 12:
-            digits = digits[2:]
+        if digits.startswith('63') and len(digits) >= 11:
+            digits = '0' + digits[2:] 
+
         elif digits.startswith('9') and len(digits) == 10:
             digits = '0' + digits
+
         elif digits.startswith('0') and not digits.startswith('09'):
-            digits = '09' + digits[-8:]
+            digits = '09' + digits[-8:] 
 
         if len(digits) > 11:
             digits = digits[:11]
         elif len(digits) < 11 and digits.startswith('09'):
             digits = digits.ljust(11, '0')
-        
+
         if digits.startswith('09') and len(digits) == 11:
             return digits
         else:
