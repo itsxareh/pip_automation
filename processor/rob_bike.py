@@ -640,38 +640,32 @@ class ROBBikeProcessor(base):
             return None, None, None
         
     def clean_phone_number(self, phone):
-        if pd.isna(phone) or phone == 'nan':
-                return ''
-                
+        if pd.isna(phone) or str(phone).lower() == 'nan':
+            return ''
+        
         phone = str(phone)
         
         if '/' in phone:
             phone = phone.split('/')[0]
-            
+
         digits = ''.join(c for c in phone if c.isdigit())
-        
-        if len(digits) >= 10:
-            if digits.startswith('63'):
-                digits = '0' + digits[2:]
-            elif digits.startswith('0') and not digits.startswith('09'):
-                if len(digits) >= 10:  
-                    digits = '09' + digits[-8:]
-                else:
-                    digits = '09' + digits[1:]
-            elif digits.startswith('9') and not digits.startswith('09'):
-                digits = '0' + digits
-        
+
+        if digits.startswith('63') and len(digits) >= 12:
+            digits = digits[2:]
+        elif digits.startswith('9') and len(digits) == 10:
+            digits = '0' + digits
+        elif digits.startswith('0') and not digits.startswith('09'):
+            digits = '09' + digits[-8:]
+
         if len(digits) > 11:
             digits = digits[:11]
-        elif len(digits) < 11 and len(digits) > 0:
-            if digits.startswith('09'):
-                digits = digits.ljust(11, '0')
-            elif len(digits) >= 9:
-                digits = '09' + digits[-9:].ljust(9, '0')
-            else:
-                digits = '09' + digits.ljust(9, '0')
+        elif len(digits) < 11 and digits.startswith('09'):
+            digits = digits.ljust(11, '0')
         
-        return digits
+        if digits.startswith('09') and len(digits) == 11:
+            return digits
+        else:
+            return ''
         
     def create_excel_file(self, df):
         output = io.BytesIO()
