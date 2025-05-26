@@ -633,12 +633,18 @@ class ROBBikeProcessor(base):
                     cols.append('DESCRIP')
                     cms_endo_df = cms_endo_df[cols]
 
-                if 'ACCT NAME' in cms_endo_df.columns:
-                    name_parts = cms_endo_df['ACCT NAME'].str.split(', ', expand=True)
+                def proper_case(name):
+                    if pd.isna(name):
+                        return ''
+                    name = str(name).strip()
+                    return ' '.join([part.capitalize() for part in name.split()])
 
-                    last_name = name_parts[0] 
-                    first_name = name_parts[1] if name_parts.shape[1] > 1 else ''
-                    middle_name = name_parts[2] if name_parts.shape[1] > 2 else ''
+                if 'ACCT NAME' in cms_endo_df.columns:
+                    name_parts = cms_endo_df['ACCT NAME'].str.upper().str.split(', ', expand=True)
+
+                    last_name = name_parts[0].apply(proper_case)
+                    first_name = name_parts[1].apply(proper_case) if name_parts.shape[1] > 1 else ''
+                    middle_name = name_parts[2].apply(proper_case) if name_parts.shape[1] > 2 else ''
                     
                     cms_endo_df.insert(3, 'FIRST NAME', first_name)
                     cms_endo_df.insert(4, 'MIDDLE NAME', middle_name)

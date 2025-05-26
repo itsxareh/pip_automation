@@ -250,6 +250,21 @@ class BDOAutoProcessor(base):
                 filtered_df.loc[filtered_df["STATUS4"] != "PTP", "PTP DATE"] = np.nan
                 filtered_df.loc[filtered_df["STATUS4"] != "PTP", "PTP AMOUNT"] = np.nan
                 
+                ptp_complete_mask = (filtered_df["STATUS4"] == "PTP") & \
+                    (filtered_df["PTP AMOUNT"].notna()) & \
+                    (filtered_df["PTP DATE"].notna())
+
+                if ptp_complete_mask.any():
+                    ptp_complete_df = filtered_df[ptp_complete_mask].copy()
+
+                    indices_to_drop = []
+                    for pn in ptp_complete_df['PN'].unique():
+                        pn_indices = ptp_complete_df[ptp_complete_df['PN'] == pn].index.tolist()
+                        if len(pn_indices) > 1:
+                            indices_to_drop.extend(pn_indices[:-1])
+
+                    filtered_df = filtered_df.drop(indices_to_drop).reset_index(drop=True)
+                
                 processed_dfs[bucket_name] = filtered_df
             
             if preview_only:
