@@ -1,4 +1,4 @@
-#pip install streamlit pandas numpy openpyxl msoffcrypto-tool supabase python-dotenv xlrd xlwt
+#pip install streamlit pandas numpy openpyxl msoffcrypto-tool supabase python-dotenv pywin32
 import streamlit as st
 import pandas as pd
 import os
@@ -596,6 +596,9 @@ def main():
             except Exception as e:
                 st.error(f"An error occurred: {str(e)}")
 
+    if campaign == "ROB Bike" and automation_type == "Endorsement":
+        endo_date = st.sidebar.date_input('Endo Date', format="MM/DD/YYYY") 
+    
     if campaign == "BDO Auto B5 & B6" and automation_type == "Agency Daily Report":
         def clean_number_input(label):
             raw_input = st.sidebar.text_input(label)
@@ -1214,6 +1217,7 @@ def main():
                             remove_duplicates=remove_duplicates, 
                             remove_blanks=remove_blanks, 
                             trim_spaces=trim_spaces,
+                            endo_date=endo_date,
                         )
                         st.session_state['new_endorsement'] = result
                     else:

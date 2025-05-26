@@ -491,7 +491,7 @@ class BDOAutoProcessor(base):
             df = self.clean_data(original_df, remove_duplicates, remove_blanks, trim_spaces)
 
             required_columns = ['PN', 'COMPLETE_NAME', 'BALANCE', 'BUCKET', 'GROUP', 'Due Date',
-                            'MO_Amort', 'LAST_DATE', 'ZIP_CODE', 'Model', 'OVERDUE AMOUNT', 'ADDRESS',
+                            'MO_Amort', 'LAST_DATE', 'ZIP_CODE', 'OVERDUE AMOUNT', 'ADDRESS',
                             'Email Address', 'MOBILE NUMBER', 'REMARKS']
 
             missing_columns = [col for col in required_columns if col not in df.columns]
