@@ -529,7 +529,7 @@ class ROBBikeProcessor(base):
             return None, None, None
 
     def process_new_endorsement(self, file_content, sheet_name=None, preview_only=False,
-                         remove_duplicates=False, remove_blanks=False, trim_spaces=False, preserve_colors=True):
+                         remove_duplicates=False, remove_blanks=False, trim_spaces=False, endo_date=None, preserve_colors=True):
         try:
             if isinstance(file_content, bytes):
                 file_content = io.BytesIO(file_content)
@@ -589,10 +589,8 @@ class ROBBikeProcessor(base):
                         st.warning("No new account numbers found (all account numbers exists)")
                         return None, None, None
                 
-                manila_timezone = pytz.timezone('Asia/Manila')
-                current_datetime_manila = datetime.now(manila_timezone)
-                current_date = current_datetime_manila.strftime('%m/%d/%Y')
-                df.insert(0, 'ENDO DATE', current_date)
+                endo_date = endo_date.strftime('%m/%d/%Y')
+                df.insert(0, 'ENDO DATE', endo_date)
                 
                 if 'Endrosement OB' in df.columns:
                     df['Endrosement OB'] = pd.to_numeric(df['Endrosement OB'], errors='coerce')
