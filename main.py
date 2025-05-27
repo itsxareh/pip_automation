@@ -1412,8 +1412,15 @@ def main():
                 
                 col1, col2 = st.columns(2)
                 
+                with col1:
+                    global_add_password = st.checkbox(
+                        "Password protect all files", 
+                        value=False, 
+                        key=f"{automation_type}_global_password_check"
+                    )
+
                 if not win32_available:
-                    with col1:
+                    with col2:
                         st.checkbox(
                             "Convert all to Excel 97-2003 (.xls)", 
                             value=False, 
@@ -1423,20 +1430,13 @@ def main():
                         )
                         global_convert_to_xls = False
                 else:
-                    with col1:
+                    with col2:
                         global_convert_to_xls = st.checkbox(
                             "Convert all to Excel 97-2003 (.xls)", 
                             value=False, 
                             key=f"{automation_type}_global_convert_xls",
                             help="Convert all files to older Excel format for compatibility"
                         )
-                
-                with col2:
-                    global_add_password = st.checkbox(
-                        "Password protect all files", 
-                        value=False, 
-                        key=f"{automation_type}_global_password_check"
-                    )
                 
                 if global_add_password:
                     global_password = st.text_input(
