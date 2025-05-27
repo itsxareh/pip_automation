@@ -36,8 +36,14 @@ from dotenv import load_dotenv
 load_dotenv()
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
+supabase = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+response = supabase.auth.sign_up({
+    "email": "rcraytos@spmadridlaw.com",
+    "password": "$PMadr!d1234"
+})
+st.write(response)
 
 warnings.filterwarnings('ignore', category=UserWarning, 
                         message="Cell .* is marked as a date but the serial value .* is outside the limits for dates.*")
@@ -1390,76 +1396,6 @@ def main():
                 st.error(f"Method 4 (COM) conversion error: {str(e)}")
                 st.info("COM method requires Windows with Excel installed")
                 return data
-
-        def create_global_password_section(automation_type):
-            """Create global password protection section for all files"""
-            st.subheader("Global File Settings")
-            
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                apply_to_all = st.checkbox(
-                    "Apply same settings to all files", 
-                    value=False, 
-                    key=f"{automation_type}_apply_to_all",
-                    help="Use the same password and format settings for all generated files"
-                )
-            
-            global_settings = {}
-            
-            if apply_to_all:
-                st.info("These settings will be applied to all files.")
-                
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    global_add_password = st.checkbox(
-                        "Password protect all files", 
-                        value=False, 
-                        key=f"{automation_type}_global_password_check"
-                    )
-
-                if not win32_available:
-                    with col2:
-                        st.checkbox(
-                            "Convert all to Excel 97-2003 (.xls)", 
-                            value=False, 
-                            key=f"{automation_type}_global_convert_xls_disabled",
-                            help="XLS conversion is disabled because the current environment doesn't support it.",
-                            disabled=True
-                        )
-                        global_convert_to_xls = False
-                else:
-                    with col2:
-                        global_convert_to_xls = st.checkbox(
-                            "Convert all to Excel 97-2003 (.xls)", 
-                            value=False, 
-                            key=f"{automation_type}_global_convert_xls",
-                            help="Convert all files to older Excel format for compatibility"
-                        )
-                
-                if global_add_password:
-                    global_password = st.text_input(
-                        "Password for all files", 
-                        type="password", 
-                        placeholder="Enter password (min 5 characters)",
-                        key=f"{automation_type}_global_password_input",
-                        help="This password will be applied to all files"
-                    )
-                    
-                    if global_password and len(global_password) < 5:
-                        st.warning("Password should be at least 5 characters long for security")
-                else:
-                    global_password = ""
-                
-                global_settings = {
-                    "apply_to_all": apply_to_all,
-                    "convert_to_xls": global_convert_to_xls,
-                    "add_password": global_add_password,
-                    "password": global_password
-                }
-            
-            return global_settings
 
         def create_download_section(label, data, filename, key, mime_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", default_password=""):
             """Create download section with optional default password"""
