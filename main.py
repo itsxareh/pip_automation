@@ -1472,7 +1472,17 @@ def main():
                     value=bool(default_password),
                     key=f"{key}_password_check"
                 )
-            if win32_available:
+            if not win32_available:
+                with col2:
+                    st.checkbox(
+                        "Convert to Excel 97-2003 (.xls)", 
+                        value=False, 
+                        key=f"{key}_convert_xls_disabled",
+                        help="XLS conversion is disabled because the current environment doesn't support it.",
+                        disabled=True
+                    )
+                    convert_to_xls = False
+            else:
                 with col2:
                     convert_to_xls = st.checkbox(
                         "Convert to Excel 97-2003 (.xls)", 
