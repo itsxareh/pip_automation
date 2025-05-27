@@ -90,7 +90,7 @@ class ROBBikeProcessor(base):
                     system_remarks = df['Remark By'].str.contains('SYSTEM', case=False, na=False)
                     system_remarks_count = system_remarks.sum()
                     df = df[~system_remarks]
-                    
+
                 if 'Account No.' in df.columns and 'Status' in df.columns:
                     initial_duplicates = df.duplicated(subset=['Account No.', 'Status']).sum()
                     df['COMBINED_KEY'] = df['Account No.'].astype(str) + '_' + df['Status'].astype(str)
@@ -134,7 +134,7 @@ class ROBBikeProcessor(base):
                     messages.append(f"{initial_duplicates} duplicates")
 
                 if messages:
-                    st.write("Removed: " + ", ".join(messages))
+                    st.info("Removed: " + ", ".join(messages))
                 if preview_only:
                     return df, None, None
                 

@@ -1391,22 +1391,89 @@ def main():
                 st.info("COM method requires Windows with Excel installed")
                 return data
 
-        def create_download_section(label, data, filename, key, mime_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"):
+        def create_global_password_section(automation_type):
+            """Create global password protection section for all files"""
+            st.subheader("Global File Settings")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                apply_to_all = st.checkbox(
+                    "Apply same settings to all files", 
+                    value=False, 
+                    key=f"{automation_type}_apply_to_all",
+                    help="Use the same password and format settings for all generated files"
+                )
+            
+            global_settings = {}
+            
+            if apply_to_all:
+                st.info("These settings will be applied to all files.")
+                
+                col1, col2 = st.columns(2)
+                
+                if not win32_available:
+                    with col1:
+                        st.checkbox(
+                            "Convert all to Excel 97-2003 (.xls)", 
+                            value=False, 
+                            key=f"{automation_type}_global_convert_xls_disabled",
+                            help="XLS conversion is disabled because the current environment doesn't support it.",
+                            disabled=True
+                        )
+                        global_convert_to_xls = False
+                else:
+                    with col1:
+                        global_convert_to_xls = st.checkbox(
+                            "Convert all to Excel 97-2003 (.xls)", 
+                            value=False, 
+                            key=f"{automation_type}_global_convert_xls",
+                            help="Convert all files to older Excel format for compatibility"
+                        )
+                
+                with col2:
+                    global_add_password = st.checkbox(
+                        "Password protect all files", 
+                        value=False, 
+                        key=f"{automation_type}_global_password_check"
+                    )
+                
+                if global_add_password:
+                    global_password = st.text_input(
+                        "Password for all files", 
+                        type="password", 
+                        placeholder="Enter password (min 5 characters)",
+                        key=f"{automation_type}_global_password_input",
+                        help="This password will be applied to all files"
+                    )
+                    
+                    if global_password and len(global_password) < 5:
+                        st.warning("Password should be at least 5 characters long for security")
+                else:
+                    global_password = ""
+                
+                global_settings = {
+                    "apply_to_all": apply_to_all,
+                    "convert_to_xls": global_convert_to_xls,
+                    "add_password": global_add_password,
+                    "password": global_password
+                }
+            
+            return global_settings
+
+        def create_download_section(label, data, filename, key, mime_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", default_password=""):
+            """Create download section with optional default password"""
             st.subheader("File Options")
             col1, col2 = st.columns(2)
 
-            if not win32_available:
-                with col1:
-                    st.checkbox(
-                        "Convert to Excel 97-2003 (.xls)", 
-                        value=False, 
-                        key=f"{key}_convert_xls_disabled",
-                        help="XLS conversion is disabled because the current environment doesn't support it.",
-                        disabled=True
-                    )
-                    convert_to_xls = False
-            else:
-                with col1:
+            with col1:
+                add_password = st.checkbox(
+                    "Password Protection", 
+                    value=bool(default_password),
+                    key=f"{key}_password_check"
+                )
+            if win32_available:
+                with col2:
                     convert_to_xls = st.checkbox(
                         "Convert to Excel 97-2003 (.xls)", 
                         value=False, 
@@ -1414,20 +1481,17 @@ def main():
                         help="Convert to older Excel format for compatibility with legacy systems"
                     )
             
-            with col2:
-                add_password = st.checkbox(
-                    "Password Protection", 
-                    value=False, 
-                    key=f"{key}_password_check"
-                )
-            
             if add_password:
                 password = st.text_input(
                     "Password", 
                     type="password", 
+                    value=default_password,  
                     placeholder="Enter password (min 5 characters)",
                     key=f"{key}_password_input"
                 )
+                
+                if default_password and password == default_password:
+                    st.caption("🔄 Using global password")
             else:
                 password = ""
             
@@ -1459,10 +1523,9 @@ def main():
             
             base_name = filename.rsplit('.', 1)[0]
             final_filename = f"{base_name}.{final_extension}"
-            download_label = f"{label}"
 
             st.download_button(
-                label=download_label,
+                label=label,
                 data=processed_data,
                 file_name=final_filename,
                 mime=final_mime_type,
@@ -1474,6 +1537,16 @@ def main():
         if automation_type == "Cured List" and 'cured_list_result' in st.session_state:
             result = st.session_state['cured_list_result']
             if result != (None, None, None):
+                global_password = st.text_input(
+                    "Set password for all files (optional)", 
+                    type="password",
+                    help="This password will be pre-filled for all files. You can still modify individual passwords.",
+                    key="global_password_cured_list"
+                )
+                
+                if global_password:
+                    st.info(f"Password will be applied to all files. You can still modify individual settings below.")
+                
                 tabs = st.tabs(["Remarks", "Reshuffle", "Payments"])
                 
                 with tabs[0]:
@@ -1483,7 +1556,8 @@ def main():
                         "Download Remarks File", 
                         result['remarks_binary'], 
                         result['remarks_filename'], 
-                        "remarks"
+                        "remarks",
+                        default_password=global_password
                     )
                 with tabs[1]:
                     st.subheader("Reshuffle Data")
@@ -1492,7 +1566,8 @@ def main():
                         "Download Reshuffle File", 
                         result['others_binary'], 
                         result['others_filename'], 
-                        "reshuffle"
+                        "reshuffle",
+                        default_password=global_password
                     )
                 with tabs[2]:
                     st.subheader("Payments Data")
@@ -1501,11 +1576,23 @@ def main():
                         "Download Payments File", 
                         result['payments_binary'], 
                         result['payments_filename'], 
-                        "payments"
+                        "payments",
+                        default_password=global_password
                     )
+
         elif automation_type == "Agency Daily Report" and 'agency_daily_result' in st.session_state:
             result = st.session_state['agency_daily_result']
             if result != (None, None, None):
+                global_password = st.text_input(
+                    "Set password for all files (optional)", 
+                    type="password",
+                    help="This password will be pre-filled for all files. You can still modify individual passwords.",
+                    key="global_password_cured_list"
+                )
+                
+                if global_password:
+                    st.info(f"Password will be applied to all files. You can still modify individual settings below.")
+                
                 tabs = st.tabs(["Daily Report B5", "Daily Report B6", "B5 Prod", "B6 Prod", "VS"])
                 
                 with tabs[0]:
@@ -1515,7 +1602,8 @@ def main():
                         "Download Agency Daily Report B5 File", 
                         result['b5_binary'], 
                         result['b5_filename'], 
-                        "b5"
+                        "b5",
+                        default_password=global_password
                     )
                 with tabs[1]:
                     st.subheader("Daily Report B6")
@@ -1524,7 +1612,8 @@ def main():
                         "Download Agency Daily Report B6 File", 
                         result['b6_binary'], 
                         result['b6_filename'], 
-                        "b6"
+                        "b6",
+                        default_password=global_password
                     )
                 with tabs[2]:
                     st.subheader("B5 Prod")
@@ -1533,7 +1622,8 @@ def main():
                         "Download Daily Productivity B5 Report File", 
                         result['b5_prod_binary'], 
                         result['b5_prod_filename'], 
-                        "b5_prod"
+                        "b5_prod",
+                        default_password=global_password
                     )
                 with tabs[3]:
                     st.subheader("B6 Prod")
@@ -1542,7 +1632,8 @@ def main():
                         "Download Daily Productivity B6 Report File", 
                         result['b6_prod_binary'], 
                         result['b6_prod_filename'], 
-                        "b6_prod"
+                        "b6_prod",
+                        default_password=global_password
                     )
                 with tabs[4]:
                     st.subheader("VS")
@@ -1551,12 +1642,23 @@ def main():
                         "Download VS File", 
                         result['vs_binary'], 
                         result['vs_filename'], 
-                        "vs_report"
+                        "vs_report",
+                        default_password=global_password
                     )
                     
         elif automation_type == "Endorsement" and 'new_endorsement' in st.session_state:
             result = st.session_state['new_endorsement']
             if result != (None, None, None):
+                global_password = st.text_input(
+                    "Set password for all files (optional)", 
+                    type="password",
+                    help="This password will be pre-filled for all files. You can still modify individual passwords.",
+                    key="global_password_cured_list"
+                )
+                
+                if global_password:
+                    st.info(f"Password will be applied to all files. You can still modify individual settings below.")
+                
                 tabs = st.tabs(["ENDO Bot", "CMS"])
                 
                 with tabs[0]:
@@ -1566,7 +1668,8 @@ def main():
                         "Download ENDO Bot File", 
                         result['bcrm_endo_binary'], 
                         result['bcrm_endo_filename'], 
-                        "endo_bot"
+                        "endo_bot",
+                        default_password=global_password
                     )
                 with tabs[1]:
                     st.subheader("CMS")
@@ -1575,8 +1678,10 @@ def main():
                         "Download CMS File", 
                         result['cms_endo_binary'], 
                         result['cms_endo_filename'], 
-                        "cms"
+                        "cms",
+                        default_password=global_password
                     )
+
         elif 'output_binary' in st.session_state and 'result_sheet_names' in st.session_state:
             excel_file = pd.ExcelFile(io.BytesIO(st.session_state['output_binary']))
             result_sheet_names = st.session_state['result_sheet_names']
