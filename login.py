@@ -1,3 +1,4 @@
+# main.py
 #pip install streamlit pandas numpy openpyxl msoffcrypto-tool supabase python-dotenv pywin32
 import streamlit as st
 import pandas as pd
@@ -12,6 +13,9 @@ import importlib.util
 import io
 import re 
 import msoffcrypto
+import hashlib
+import jwt
+import secrets
 
 win32_available = False
 if platform.system() == "Windows" and importlib.util.find_spec("win32com.client") is not None:
@@ -30,14 +34,15 @@ from processor.bpi_auto_curing import BPIAutoCuringProcessor as bpi_auto_curing
 from processor.rob_bike import ROBBikeProcessor as rob_bike
 from processor.sumisho import SumishoProcessor as sumisho
 
-#Supabase
-from supabase import create_client
+from supabase import create_client, Client
 from dotenv import load_dotenv
 load_dotenv()
-
+# Supabase configuration
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
-supabase = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+JWT_SECRET = os.getenv("JWT_SECRET")
+JWT_EXPIRY_HOURS = 24
 
 warnings.filterwarnings('ignore', category=UserWarning, 
                         message="Cell .* is marked as a date but the serial value .* is outside the limits for dates.*")
@@ -84,10 +89,268 @@ CAMPAIGN_CONFIG = {
     },
 }
 
-def main():
-    st.set_page_config(
-        page_title="Automation Tool",
-        layout="wide")
+@st.cache_resource
+def init_supabase():
+    """Initialize Supabase client"""
+    try:
+        supabase: Client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
+        return supabase
+    except Exception as e:
+        st.error(f"Failed to connect to Supabase: {str(e)}")
+        return None
+def create_session_token(user_data):
+    """Create a JWT token for session persistence"""
+    try:
+        payload = {
+            'user_id': user_data['id'],
+            'username': user_data['username'],
+            'exp': datetime.utcnow() + timedelta(hours=JWT_EXPIRY_HOURS)
+        }
+        token = jwt.encode(payload, JWT_SECRET, algorithm='HS256')
+        return token
+    except Exception as e:
+        st.error(f"Error creating session token: {str(e)}")
+        return None
+
+def verify_session_token(token):
+    """Verify and decode JWT token"""
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=['HS256'])
+        return payload
+    except jwt.ExpiredSignatureError:
+        return None 
+    except jwt.InvalidTokenError:
+        return None
+
+def save_session_to_url(token):
+    """Save session token to URL parameters"""
+    st.query_params["session"] = token
+
+def get_session_from_url():
+    """Get session token from URL parameters"""
+    return st.query_params.get("session", None)
+
+def create_remember_me_token(user_data):
+    """Create a long-term remember me token"""
+    supabase = init_supabase()
+    if not supabase:
+        return None
+    
+    try:
+        remember_token = secrets.token_urlsafe(32)
+        expiry_date = datetime.now() + timedelta(days=30)  
+        
+        token_data = {
+            'user_id': user_data['id'],
+            'token': remember_token,
+            'expires_at': expiry_date.isoformat(),
+            'created_at': datetime.now().isoformat()
+        }
+        
+        existing = supabase.table('remember_tokens').select('*').eq('user_id', user_data['id']).execute()
+        
+        if existing.data:
+            supabase.table('remember_tokens').update(token_data).eq('user_id', user_data['id']).execute()
+        else:
+            supabase.table('remember_tokens').insert(token_data).execute()
+        
+        return remember_token
+    except Exception as e:
+        st.error(f"Error creating remember token: {str(e)}")
+        return None
+
+def verify_remember_me_token(token):
+    supabase = init_supabase()
+    if not supabase:
+        return None
+    
+    try:
+        result = supabase.table('remember_tokens').select('*, users(*)').eq('token', token).execute()
+        
+        if not result.data:
+            return None
+        
+        token_data = result.data[0]
+        
+        expiry_date = datetime.fromisoformat(token_data['expires_at'].replace('Z', '+00:00'))
+        if datetime.now(expiry_date.tzinfo) > expiry_date:
+            supabase.table('remember_tokens').delete().eq('token', token).execute()
+            return None
+        
+        return token_data['users']
+    except Exception as e:
+        st.error(f"Error verifying remember token: {str(e)}")
+        return None
+
+def clear_remember_me_token(user_id):
+    """Clear remember me token for user"""
+    supabase = init_supabase()
+    if not supabase:
+        return
+    
+    try:
+        supabase.table('remember_tokens').delete().eq('user_id', user_id).execute()
+    except Exception as e:
+        st.error(f"Error clearing remember token: {str(e)}")
+
+def initialize_session():
+    """Initialize session state and check for existing sessions"""
+    if 'authenticated' not in st.session_state:
+        st.session_state.authenticated = False
+        st.session_state.user_data = None
+        st.session_state.username = None
+    
+    if st.session_state.authenticated:
+        return
+    
+    session_token = get_session_from_url()
+    if session_token:
+        payload = verify_session_token(session_token)
+        if payload:
+            supabase = init_supabase()
+            if supabase:
+                try:
+                    result = supabase.table('users').select('*').eq('id', payload['user_id']).eq('is_active', True).execute()
+                    if result.data:
+                        user_data = result.data[0]
+                        st.session_state.authenticated = True
+                        st.session_state.user_data = user_data
+                        st.session_state.username = user_data['username']
+                        return
+                except Exception:
+                    pass
+    
+    remember_token = st.query_params.get("remember", None)
+    if remember_token:
+        user_data = verify_remember_me_token(remember_token)
+        if user_data:
+            st.session_state.authenticated = True
+            st.session_state.user_data = user_data
+            st.session_state.username = user_data['username']
+            
+            session_token = create_session_token(user_data)
+            if session_token:
+                save_session_to_url(session_token)
+                st.query_params.clear()
+                st.query_params["session"] = session_token
+                st.rerun()
+
+def hash_password(password):
+    """Hash password using SHA-256"""
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def create_user_table():
+    """Create users table if it doesn't exist"""
+    supabase = init_supabase()
+    if not supabase:
+        return False
+    
+    try:
+        return True
+    except Exception as e:
+        st.error(f"Error creating table: {str(e)}")
+        return False
+
+def authenticate_user(username, password):
+    """Authenticate user against Supabase database"""
+    supabase = init_supabase()
+    if not supabase:
+        return False, None
+    
+    try:
+        result = supabase.table('users').select('*').eq('username', username).eq('is_active', True).execute()
+        
+        if not result.data:
+            return False, None
+        
+        user = result.data[0]
+        hashed_password = hash_password(password)
+        
+        if user['password_hash'] == hashed_password:
+            supabase.table('users').update({
+                'last_login': datetime.now().isoformat()
+            }).eq('id', user['id']).execute()
+            
+            return True, user
+        else:
+            return False, None
+    except Exception as e:
+        st.error(f"Authentication error: {str(e)}")
+        return False, None
+
+def get_user_profile(user_id):
+    """Get user profile information"""
+    supabase = init_supabase()
+    if not supabase:
+        return None
+    
+    try:
+        result = supabase.table('users').select('*').eq('id', user_id).execute()
+        return result.data[0] if result.data else None
+    except Exception as e:
+        st.error(f"Error fetching profile: {str(e)}")
+        return None
+
+def login_page():
+    """Display login and registration forms"""
+    col1, col2, col3 = st.columns([1, 2, 1])
+    
+    with col2:
+        st.divider()
+        st.markdown("### Login")
+        with st.form("login_form"):
+            username = st.text_input("Username", placeholder="Enter your username")
+            password = st.text_input("Password", type="password", placeholder="Enter your password")
+            remember_me = st.checkbox("Remember me for 30 days")
+            
+            col_a, col_b = st.columns([1, 1])
+            with col_a:
+                login_button = st.form_submit_button("Sign In", use_container_width=True)
+            
+            if login_button:
+                if username and password:
+                    is_authenticated, user_data = authenticate_user(username, password)
+                    if is_authenticated:
+                        st.session_state.authenticated = True
+                        st.session_state.user_data = user_data
+                        st.session_state.username = username
+                        
+                        session_token = create_session_token(user_data)
+                        if session_token:
+                            save_session_to_url(session_token)
+                        
+                        if remember_me:
+                            remember_token = create_remember_me_token(user_data)
+                            if remember_token:
+                                st.query_params["remember"] = remember_token
+                        
+                        st.success("Authentication successful")
+                        st.rerun()
+                    else:
+                        st.error("Invalid credentials")
+                else:
+                    st.error("Please provide both username and password")
+        
+def logout():
+    if st.session_state.get('user_data'):
+        clear_remember_me_token(st.session_state.user_data.get('id'))
+    
+    for key in list(st.session_state.keys()):
+        del st.session_state[key]
+    
+    st.query_params.clear()
+    st.rerun()
+
+def main_app():
+    user_data = st.session_state.get('user_data', {})
+    display_name = user_data.get('full_name') or st.session_state.username
+    
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        st.title(f"Welcome, {display_name}")
+    with col2:
+        if st.button("Sign Out", type="secondary"):
+            logout()
     
     st.markdown("""
         <style>
@@ -1647,7 +1910,104 @@ def main():
                 st.session_state['output_filename'], 
                 "main_output"
             )
-            
+
+def check_database_connection():
+    """Check if Supabase connection is working"""
+    if not SUPABASE_URL or not SUPABASE_ANON_KEY:
+        print("Supabase credentials not found in environment variables.")
+        return False
+    
+    supabase = init_supabase()
+    if not supabase:
+        return False
+    
+    try:
+        supabase.table('users').select('id').limit(1).execute()
+        return True
+    except Exception as e:
+        st.error(f"Database connection failed: {str(e)}")
+        st.info("Ensure the 'users' table exists in your Supabase database")
+        return False
+
+def main():
+    """Main application controller"""
+    if 'authenticated' not in st.session_state:
+        st.session_state.authenticated = False
+    
+    if not check_database_connection():
+        st.stop()
+    
+    if st.session_state.authenticated:
+        main_app()
+    else:
+        login_page()
 
 if __name__ == "__main__":
+    st.set_page_config(
+        page_title="Automation Tool",
+        layout="wide",
+        initial_sidebar_state="expanded"
+    )
+    
+    st.markdown("""
+    <style>
+    /* Remove default padding */
+    .main > div {
+        padding-top: 1rem;
+    }
+    
+    /* Clean tab styling */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+        justify-content: center;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        height: 45px;
+        padding: 0 24px;
+        background-color: transparent;
+        border-radius: 4px;
+        color: #666;
+        font-weight: 500;
+    }
+    
+    .stTabs [aria-selected="true"] {
+        color: #fff;
+    }
+    
+    /* Form styling */
+    .stForm {
+        padding: 2rem;
+        border-radius: 8px;
+    }
+    
+    /* Button styling */
+    .stButton > button {
+        border-radius: 4px;
+        font-weight: 500;
+        letter-spacing: 0.02em;
+    }
+    
+    /* Metrics styling */
+    [data-testid="metric-container"] {
+        background-color: #fafafa;
+        border: 1px solid #e0e0e0;
+        padding: 1rem;
+        border-radius: 4px;
+    }
+    
+    /* Hide streamlit branding */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    
+    /* Clean divider */
+    hr {
+        margin: 2rem 0;
+        border: none;
+        border-top: 1px solid #e0e0e0;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
     main()

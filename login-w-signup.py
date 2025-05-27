@@ -1,3 +1,4 @@
+# main.py
 #pip install streamlit pandas numpy openpyxl msoffcrypto-tool supabase python-dotenv pywin32
 import streamlit as st
 import pandas as pd
@@ -12,6 +13,7 @@ import importlib.util
 import io
 import re 
 import msoffcrypto
+import hashlib
 
 win32_available = False
 if platform.system() == "Windows" and importlib.util.find_spec("win32com.client") is not None:
@@ -30,14 +32,12 @@ from processor.bpi_auto_curing import BPIAutoCuringProcessor as bpi_auto_curing
 from processor.rob_bike import ROBBikeProcessor as rob_bike
 from processor.sumisho import SumishoProcessor as sumisho
 
-#Supabase
-from supabase import create_client
+from supabase import create_client, Client
 from dotenv import load_dotenv
 load_dotenv()
-
+# Supabase configuration
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
-supabase = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
 
 warnings.filterwarnings('ignore', category=UserWarning, 
                         message="Cell .* is marked as a date but the serial value .* is outside the limits for dates.*")
@@ -84,10 +84,171 @@ CAMPAIGN_CONFIG = {
     },
 }
 
-def main():
-    st.set_page_config(
-        page_title="Automation Tool",
-        layout="wide")
+@st.cache_resource
+def init_supabase():
+    """Initialize Supabase client"""
+    try:
+        supabase: Client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
+        return supabase
+    except Exception as e:
+        st.error(f"Failed to connect to Supabase: {str(e)}")
+        return None
+
+def hash_password(password):
+    """Hash password using SHA-256"""
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def create_user_table():
+    """Create users table if it doesn't exist"""
+    supabase = init_supabase()
+    if not supabase:
+        return False
+    
+    try:
+        return True
+    except Exception as e:
+        st.error(f"Error creating table: {str(e)}")
+        return False
+
+def register_user(username, password, email=None):
+    """Register a new user in Supabase"""
+    supabase = init_supabase()
+    if not supabase:
+        return False, "Database connection failed"
+    
+    try:
+        # Check if user already exists
+        existing_user = supabase.table('users').select('username').eq('username', username).execute()
+        if existing_user.data:
+            return False, "Username already exists"
+        
+        # Hash password and insert user
+        hashed_password = hash_password(password)
+        user_data = {
+            'username': username,
+            'password_hash': hashed_password,
+            'email': email,
+            'created_at': datetime.now().isoformat(),
+            'is_active': True
+        }
+        
+        result = supabase.table('users').insert(user_data).execute()
+        return True, "User registered successfully"
+    except Exception as e:
+        return False, f"Registration failed: {str(e)}"
+
+def authenticate_user(username, password):
+    """Authenticate user against Supabase database"""
+    supabase = init_supabase()
+    if not supabase:
+        return False, None
+    
+    try:
+        # Get user from database
+        result = supabase.table('users').select('*').eq('username', username).eq('is_active', True).execute()
+        
+        if not result.data:
+            return False, None
+        
+        user = result.data[0]
+        hashed_password = hash_password(password)
+        
+        if user['password_hash'] == hashed_password:
+            supabase.table('users').update({
+                'last_login': datetime.now().isoformat()
+            }).eq('id', user['id']).execute()
+            
+            return True, user
+        else:
+            return False, None
+    except Exception as e:
+        st.error(f"Authentication error: {str(e)}")
+        return False, None
+
+def get_user_profile(user_id):
+    """Get user profile information"""
+    supabase = init_supabase()
+    if not supabase:
+        return None
+    
+    try:
+        result = supabase.table('users').select('*').eq('id', user_id).execute()
+        return result.data[0] if result.data else None
+    except Exception as e:
+        st.error(f"Error fetching profile: {str(e)}")
+        return None
+
+def login_page():
+    """Display login and registration forms"""
+    col1, col2, col3 = st.columns([1, 2, 1])
+    
+    with col2:
+        st.divider()
+        
+        tab1, tab2 = st.tabs(["Sign In", "Sign Up"])
+        
+        with tab1:
+            with st.form("login_form"):
+                username = st.text_input("Username")
+                password = st.text_input("Password", type="password")
+                
+                login_button = st.form_submit_button("Sign In", use_container_width=True)
+                
+                if login_button:
+                    if username and password:
+                        is_authenticated, user_data = authenticate_user(username, password)
+                        if is_authenticated:
+                            st.session_state.authenticated = True
+                            st.session_state.user_data = user_data
+                            st.session_state.username = username
+                            st.success("Authentication successful")
+                            st.rerun()
+                        else:
+                            st.error("Invalid credentials")
+                    else:
+                        st.error("Please provide both username and password")
+        
+        with tab2:
+            with st.form("register_form"):
+                new_username = st.text_input("Username")
+                new_password = st.text_input("Password", type="password")
+                confirm_password = st.text_input("Confirm Password", type="password")
+                email = st.text_input("Email")
+                
+                register_button = st.form_submit_button("Create Account", use_container_width=True)
+                
+                if register_button:
+                    if new_username and new_password:
+                        if new_password != confirm_password:
+                            st.error("Passwords do not match")
+                        elif len(new_password) < 6:
+                            st.error("Password must be at least 6 characters")
+                        else:
+                            success, message = register_user(new_username, new_password, email)
+                            if success:
+                                st.success(message)
+                                st.info("Please sign in with your new credentials")
+                            else:
+                                st.error(message)
+                    else:
+                        st.error("Username and password are required")
+
+def logout():
+    """Clear session state to logout"""
+    for key in list(st.session_state.keys()):
+        del st.session_state[key]
+    st.rerun()
+
+def main_app():
+    user_data = st.session_state.get('user_data', {})
+    display_name = user_data.get('full_name') or st.session_state.username
+    
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        st.title(f"Welcome, {display_name}")
+    with col2:
+        if st.button("Sign Out", type="secondary"):
+            logout()
     
     st.markdown("""
         <style>
@@ -1647,7 +1808,104 @@ def main():
                 st.session_state['output_filename'], 
                 "main_output"
             )
-            
+
+def check_database_connection():
+    """Check if Supabase connection is working"""
+    if not SUPABASE_URL or not SUPABASE_ANON_KEY:
+        print("Supabase credentials not found in environment variables.")
+        return False
+    
+    supabase = init_supabase()
+    if not supabase:
+        return False
+    
+    try:
+        supabase.table('users').select('id').limit(1).execute()
+        return True
+    except Exception as e:
+        st.error(f"Database connection failed: {str(e)}")
+        st.info("Ensure the 'users' table exists in your Supabase database")
+        return False
+
+def main():
+    """Main application controller"""
+    if 'authenticated' not in st.session_state:
+        st.session_state.authenticated = False
+    
+    if not check_database_connection():
+        st.stop()
+    
+    if st.session_state.authenticated:
+        main_app()
+    else:
+        login_page()
 
 if __name__ == "__main__":
+    st.set_page_config(
+        page_title="Automation Tool",
+        layout="wide",
+        initial_sidebar_state="expanded"
+    )
+    
+    st.markdown("""
+    <style>
+    /* Remove default padding */
+    .main > div {
+        padding-top: 1rem;
+    }
+    
+    /* Clean tab styling */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+        justify-content: center;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        height: 45px;
+        padding: 0 24px;
+        background-color: transparent;
+        border-radius: 4px;
+        color: #666;
+        font-weight: 500;
+    }
+    
+    .stTabs [aria-selected="true"] {
+        color: #fff;
+    }
+    
+    /* Form styling */
+    .stForm {
+        padding: 2rem;
+        border-radius: 8px;
+    }
+    
+    /* Button styling */
+    .stButton > button {
+        border-radius: 4px;
+        font-weight: 500;
+        letter-spacing: 0.02em;
+    }
+    
+    /* Metrics styling */
+    [data-testid="metric-container"] {
+        background-color: #fafafa;
+        border: 1px solid #e0e0e0;
+        padding: 1rem;
+        border-radius: 4px;
+    }
+    
+    /* Hide streamlit branding */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    
+    /* Clean divider */
+    hr {
+        margin: 2rem 0;
+        border: none;
+        border-top: 1px solid #e0e0e0;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
     main()
