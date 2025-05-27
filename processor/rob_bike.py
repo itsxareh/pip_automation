@@ -30,6 +30,18 @@ class ROBBikeProcessor(base):
                 st.error("Required columns not found in the uploaded file.")
                 return None, None, None
             else: 
+                if 'Date' in df.columns:
+                    df['Date'] = pd.to_datetime(df['Date']).dt.strftime('%m/%d/%Y')
+
+                if report_date:
+                    report_date_formatted = pd.to_datetime(report_date).strftime('%m/%d/%Y')
+
+                    original_row_count = len(df)
+
+                    df = df[df['Date'] == report_date_formatted]
+
+                    removed_date_mismatch_count = original_row_count - len(df)
+
                 if 'Time' in df.columns:
                     if pd.api.types.is_object_dtype(df['Time']):
                         try:
@@ -59,6 +71,25 @@ class ROBBikeProcessor(base):
                     not_in_valid_dispo = ~df['Status'].isin(valid_dispo)
                     removed_invalid_dispo_count = not_in_valid_dispo.sum()
                     df = df[~not_in_valid_dispo]
+                
+                if 'Remark' in df.columns:
+                    system_auto_update_remarks = df['Remark'].str.contains('System Auto Update Remarks For PD', case=False, na=False)
+                    system_auto_update_remarks_count = system_auto_update_remarks.sum()
+                    df = df[~system_auto_update_remarks]
+                    new_assignment_os_updated_remarks = df['Remark'].str.contains('New Assignment - OS updated from', case=False, na=False)
+                    system_auto_update_remarks_count = new_assignment_os_updated_remarks.sum()
+                    df = df[~new_assignment_os_updated_remarks]
+                
+                if 'Remark By' in df.columns:
+                    jerivera_remarks = df['Remark By'].str.contains('JERIVERA', case=False, na=False)
+                    system_remarks_count = jerivera_remarks.sum()
+                    df = df[~jerivera_remarks]
+                    rcraytos_remarks = df['Remark By'].str.contains('RCRAYTOS', case=False, na=False)
+                    system_remarks_count = rcraytos_remarks.sum()
+                    df = df[~rcraytos_remarks]
+                    system_remarks = df['Remark By'].str.contains('SYSTEM', case=False, na=False)
+                    system_remarks_count = system_remarks.sum()
+                    df = df[~system_remarks]
                     
                 if 'Account No.' in df.columns and 'Status' in df.columns:
                     initial_duplicates = df.duplicated(subset=['Account No.', 'Status']).sum()
@@ -66,19 +97,7 @@ class ROBBikeProcessor(base):
                     #remaining_duplicates = df.duplicated(subset=['COMBINED_KEY']).sum()
                     df = df.drop_duplicates(subset=['COMBINED_KEY'])
                     df = df.drop(columns=['COMBINED_KEY'])
-                
-                if 'Remark' in df.columns:
-                    system_auto_update_remarks = df['Remark'].str.contains('System Auto Update Remarks For PD', case=False, na=False)
-                    system_auto_update_remarks_count = system_auto_update_remarks.sum()
-                    df = df[~system_auto_update_remarks]
-                
-                if 'Remark By' in df.columns:
-                    jerivera_remarks = df['Remark By'].str.contains('JERIVERA', case=False, na=False)
-                    system_remarks_count = jerivera_remarks.sum()
-                    df = df[~jerivera_remarks]
-                    system_remarks = df['Remark By'].str.contains('SYSTEM', case=False, na=False)
-                    system_remarks_count = system_remarks.sum()
-                    df = df[~system_remarks]
+
                     
                 if 'PTP Amount' in df.columns and 'Balance' in df.columns and 'Claim Paid Amount' in df.columns:
                     df['PTP Amount'] = pd.to_numeric(df['PTP Amount'].replace({',': ''}, regex=True), errors='coerce')
@@ -97,8 +116,25 @@ class ROBBikeProcessor(base):
                         st.warning(f"Found {len(invalid_amount_rows)} row(s) with 'PTP - VOLUNTARY SURRENDER' but 0 or missing 'PTP Amount'.")
                         st.dataframe(invalid_amount_rows, use_container_width=True)
                         
-                st.write(f"Removed: {removed_dnc_count} DNC, {removed_blank_count} blank status, {removed_invalid_dispo_count} invalid disposition, {system_auto_update_remarks_count} system auto update remarks, {system_remarks_count} system remarks, {initial_duplicates} duplicates.")
+                messages = []
 
+                if removed_date_mismatch_count:
+                    messages.append(f"{removed_date_mismatch_count} mismatched report date")
+                if removed_dnc_count:
+                    messages.append(f"{removed_dnc_count} DNC")
+                if removed_blank_count:
+                    messages.append(f"{removed_blank_count} blank status")
+                if removed_invalid_dispo_count:
+                    messages.append(f"{removed_invalid_dispo_count} invalid disposition")
+                if system_auto_update_remarks_count:
+                    messages.append(f"{system_auto_update_remarks_count} system auto update remarks")
+                if system_remarks_count:
+                    messages.append(f"{system_remarks_count} system remarks")
+                if initial_duplicates:
+                    messages.append(f"{initial_duplicates} duplicates")
+
+                if messages:
+                    st.write("Removed: " + ", ".join(messages))
                 if preview_only:
                     return df, None, None
                 
