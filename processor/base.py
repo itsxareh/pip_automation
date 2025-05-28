@@ -18,7 +18,7 @@ class BaseProcessor:
         self.temp_dir = tempfile.mkdtemp()
 
         SUPABASE_URL = os.getenv("SUPABASE_URL")
-        SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+        SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY")
         self.supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
         
     def __del__(self):
