@@ -126,7 +126,7 @@ def register_user(username, password, email=None):
         hashed_password = hash_password(password)
         user_data = {
             'username': username,
-            'password_hash': hashed_password,
+            'password': hashed_password,
             'email': email,
             'created_at': datetime.now().isoformat(),
             'is_active': True
@@ -144,7 +144,6 @@ def authenticate_user(username, password):
         return False, None
     
     try:
-        # Get user from database
         result = supabase.table('users').select('*').eq('username', username).eq('is_active', True).execute()
         
         if not result.data:
@@ -153,7 +152,7 @@ def authenticate_user(username, password):
         user = result.data[0]
         hashed_password = hash_password(password)
         
-        if user['password_hash'] == hashed_password:
+        if user['password'] == hashed_password:
             supabase.table('users').update({
                 'last_login': datetime.now().isoformat()
             }).eq('id', user['id']).execute()

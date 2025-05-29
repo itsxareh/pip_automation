@@ -16,6 +16,8 @@ import msoffcrypto
 import hashlib
 import jwt
 import secrets
+from typing import Optional, Tuple, Dict, Any
+
 
 win32_available = False
 if platform.system() == "Windows" and importlib.util.find_spec("win32com.client") is not None:
@@ -37,12 +39,16 @@ from processor.sumisho import SumishoProcessor as sumisho
 from supabase import create_client, Client
 from dotenv import load_dotenv
 load_dotenv()
+
 # Supabase configuration
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
 
 JWT_SECRET = os.getenv("JWT_SECRET")
 JWT_EXPIRY_HOURS = 24
+REMEMBER_ME_DAYS = 30
+MAX_LOGIN_ATTEMPTS = 5
+LOCKOUT_DURATION_MINUTES = 15
 
 warnings.filterwarnings('ignore', category=UserWarning, 
                         message="Cell .* is marked as a date but the serial value .* is outside the limits for dates.*")
@@ -93,11 +99,12 @@ CAMPAIGN_CONFIG = {
 def init_supabase():
     """Initialize Supabase client"""
     try:
-        supabase: Client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
-        return supabase
+        return create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
+
     except Exception as e:
         st.error(f"Failed to connect to Supabase: {str(e)}")
         return None
+
 def create_session_token(user_data):
     """Create a JWT token for session persistence"""
     try:
@@ -130,6 +137,45 @@ def get_session_from_url():
     """Get session token from URL parameters"""
     return st.query_params.get("session", None)
 
+def save_session_locally(user_data, remember_me=False):
+    """Save session data in Streamlit's session state with persistence flags"""
+    st.session_state.authenticated = True
+    st.session_state.user_data = user_data
+    st.session_state.username = user_data['username']
+    st.session_state.session_created = datetime.now().isoformat()
+    st.session_state.remember_me = remember_me
+    
+    session_token = create_session_token(user_data)
+    if session_token:
+        st.session_state.session_token = session_token
+        st.query_params["session"] = session_token
+    
+    if remember_me:
+        remember_token = create_remember_me_token(user_data)
+        if remember_token:
+            st.session_state.remember_token = remember_token
+            st.query_params["remember"] = remember_token
+
+def is_session_valid():
+    """Check if current session is still valid"""
+    if not st.session_state.get('authenticated', False):
+        return False
+    
+    session_token = st.session_state.get('session_token')
+    if session_token:
+        payload = verify_session_token(session_token)
+        if payload:
+            return True
+    
+    remember_token = st.session_state.get('remember_token')
+    if remember_token:
+        user_data = verify_remember_me_token(remember_token)
+        if user_data:
+            save_session_locally(user_data, remember_me=True)
+            return True
+    
+    return False
+
 def create_remember_me_token(user_data):
     """Create a long-term remember me token"""
     supabase = init_supabase()
@@ -138,7 +184,7 @@ def create_remember_me_token(user_data):
     
     try:
         remember_token = secrets.token_urlsafe(32)
-        expiry_date = datetime.now() + timedelta(days=30)  
+        expiry_date = datetime.now() + timedelta(days=30) 
         
         token_data = {
             'user_id': user_data['id'],
@@ -160,6 +206,7 @@ def create_remember_me_token(user_data):
         return None
 
 def verify_remember_me_token(token):
+    """Verify remember me token and get user data"""
     supabase = init_supabase()
     if not supabase:
         return None
@@ -195,16 +242,17 @@ def clear_remember_me_token(user_id):
 
 def initialize_session():
     """Initialize session state and check for existing sessions"""
-    if 'authenticated' not in st.session_state:
-        st.session_state.authenticated = False
-        st.session_state.user_data = None
-        st.session_state.username = None
+    if st.session_state.get('authenticated') and is_session_valid():
+        return  
     
-    if st.session_state.authenticated:
-        return
+    st.session_state.authenticated = False
+    st.session_state.user_data = None
+    st.session_state.username = None
+    
+    session_restored = False
     
     session_token = get_session_from_url()
-    if session_token:
+    if session_token and not session_restored:
         payload = verify_session_token(session_token)
         if payload:
             supabase = init_supabase()
@@ -213,27 +261,28 @@ def initialize_session():
                     result = supabase.table('users').select('*').eq('id', payload['user_id']).eq('is_active', True).execute()
                     if result.data:
                         user_data = result.data[0]
-                        st.session_state.authenticated = True
-                        st.session_state.user_data = user_data
-                        st.session_state.username = user_data['username']
-                        return
-                except Exception:
-                    pass
+                        save_session_locally(user_data, remember_me=False)
+                        session_restored = True
+                except Exception as e:
+                    st.error(f"Error restoring session: {str(e)}")
     
     remember_token = st.query_params.get("remember", None)
-    if remember_token:
+    if remember_token and not session_restored:
         user_data = verify_remember_me_token(remember_token)
         if user_data:
-            st.session_state.authenticated = True
-            st.session_state.user_data = user_data
-            st.session_state.username = user_data['username']
-            
-            session_token = create_session_token(user_data)
-            if session_token:
-                save_session_to_url(session_token)
-                st.query_params.clear()
-                st.query_params["session"] = session_token
-                st.rerun()
+            save_session_locally(user_data, remember_me=True)
+            session_restored = True
+    
+    if not session_restored and st.session_state.get('remember_token'):
+        remember_token = st.session_state.get('remember_token')
+        user_data = verify_remember_me_token(remember_token)
+        if user_data:
+            save_session_locally(user_data, remember_me=True)
+            session_restored = True
+    
+    if not session_restored:
+        st.session_state.authenticated = False
+        st.query_params.clear()
 
 def hash_password(password):
     """Hash password using SHA-256"""
@@ -265,13 +314,16 @@ def authenticate_user(username, password):
         
         user = result.data[0]
         hashed_password = hash_password(password)
-        
-        if user['password_hash'] == hashed_password:
-            supabase.table('users').update({
-                'last_login': datetime.now().isoformat()
-            }).eq('id', user['id']).execute()
-            
-            return True, user
+        if user['password']  == hashed_password:
+            try:
+                supabase.table('users').update({
+                    'last_login': datetime.now().isoformat()
+                }).eq('id', user['id']).execute()
+
+                return True, user
+            except Exception as e:
+                st.error(f"Login failed: {e}")
+                return False
         else:
             return False, None
     except Exception as e:
@@ -293,24 +345,26 @@ def get_user_profile(user_id):
 
 def login_page():
     """Display login and registration forms"""
-    col1, col2, col3 = st.columns([1, 2, 1])
+    col1, col2, col3 = st.columns([1, 1, 1])
     
     with col2:
         st.divider()
         st.markdown("### Login")
         with st.form("login_form"):
-            username = st.text_input("Username", placeholder="Enter your username")
-            password = st.text_input("Password", type="password", placeholder="Enter your password")
+            username = st.text_input("Username")
+            password = st.text_input("Password", type="password")
             remember_me = st.checkbox("Remember me for 30 days")
-            
-            col_a, col_b = st.columns([1, 1])
-            with col_a:
+
+            col_a, col_b, col_c = st.columns([1, 1, 1])
+            with col_b:
                 login_button = st.form_submit_button("Sign In", use_container_width=True)
             
             if login_button:
                 if username and password:
                     is_authenticated, user_data = authenticate_user(username, password)
                     if is_authenticated:
+                        init_supabase()
+                        
                         st.session_state.authenticated = True
                         st.session_state.user_data = user_data
                         st.session_state.username = username
@@ -323,7 +377,7 @@ def login_page():
                             remember_token = create_remember_me_token(user_data)
                             if remember_token:
                                 st.query_params["remember"] = remember_token
-                        
+
                         st.success("Authentication successful")
                         st.rerun()
                     else:
@@ -342,15 +396,8 @@ def logout():
     st.rerun()
 
 def main_app():
-    user_data = st.session_state.get('user_data', {})
-    display_name = user_data.get('full_name') or st.session_state.username
-    
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        st.title(f"Welcome, {display_name}")
-    with col2:
-        if st.button("Sign Out", type="secondary"):
-            logout()
+    if st.sidebar.button("Sign Out", type="secondary"):
+        logout()
     
     st.markdown("""
         <style>
@@ -1931,13 +1978,16 @@ def check_database_connection():
 
 def main():
     """Main application controller"""
-    if 'authenticated' not in st.session_state:
-        st.session_state.authenticated = False
+    initialize_session()
     
     if not check_database_connection():
         st.stop()
     
-    if st.session_state.authenticated:
+    if st.session_state.get('authenticated'):
+        if st.session_state.get('remember_me'):
+            st.sidebar.info("Remember me is active")
+    
+    if st.session_state.get('authenticated', False):
         main_app()
     else:
         login_page()

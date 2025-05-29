@@ -647,7 +647,7 @@ class ROBBikeProcessor(base):
                     return df, None, None
                 
                 bcrm_endo_df = df.copy()
-                bcrm_endo_filename = f"rob_bike-new-{datetime.now().strftime('%Y-%m-%d')}.xlsx"
+                bcrm_endo_filename = f"rob_bike-new-({datetime.now().strftime('%Y-%m-%d')}).xlsx"
                 
                 cms_endo_df = df.copy()
                 account_numbers = cms_endo_df['Account Number']
