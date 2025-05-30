@@ -2048,6 +2048,9 @@ if __name__ == "__main__":
         padding: 1rem;
         border-radius: 4px;
     }
+    [data-testid="stMarkdownContainer"] {
+        font-size: .875rem
+    }
     
     /* Hide streamlit branding */
     #MainMenu {visibility: hidden;}
