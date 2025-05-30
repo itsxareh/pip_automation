@@ -18,7 +18,6 @@ import jwt
 import secrets
 from typing import Optional, Tuple, Dict, Any
 
-
 win32_available = False
 if platform.system() == "Windows" and importlib.util.find_spec("win32com.client") is not None:
     try:
@@ -109,7 +108,7 @@ def create_session_token(user_data):
     """Create a JWT token for session persistence"""
     try:
         payload = {
-            'user_id': user_data['id'],
+            'user_id': user_data['user_id'],
             'username': user_data['username'],
             'exp': datetime.utcnow() + timedelta(hours=JWT_EXPIRY_HOURS)
         }
@@ -193,10 +192,10 @@ def create_remember_me_token(user_data):
             'created_at': datetime.now().isoformat()
         }
         
-        existing = supabase.table('remember_tokens').select('*').eq('user_id', user_data['id']).execute()
+        existing = supabase.table('remember_tokens').select('*').eq('user_id', user_data['user_id']).execute()
         
         if existing.data:
-            supabase.table('remember_tokens').update(token_data).eq('user_id', user_data['id']).execute()
+            supabase.table('remember_tokens').update(token_data).eq('user_id', user_data['user_id']).execute()
         else:
             supabase.table('remember_tokens').insert(token_data).execute()
         
@@ -258,7 +257,7 @@ def initialize_session():
             supabase = init_supabase()
             if supabase:
                 try:
-                    result = supabase.table('users').select('*').eq('id', payload['user_id']).eq('is_active', True).execute()
+                    result = supabase.table('users').select('*').eq('user_id', payload['user_id']).eq('is_active', True).execute()
                     if result.data:
                         user_data = result.data[0]
                         save_session_locally(user_data, remember_me=False)
@@ -318,7 +317,7 @@ def authenticate_user(username, password):
             try:
                 supabase.table('users').update({
                     'last_login': datetime.now().isoformat()
-                }).eq('id', user['id']).execute()
+                }).eq('user_id', user['user_id']).execute()
 
                 return True, user
             except Exception as e:
@@ -337,7 +336,7 @@ def get_user_profile(user_id):
         return None
     
     try:
-        result = supabase.table('users').select('*').eq('id', user_id).execute()
+        result = supabase.table('users').select('*').eq('user_id', user_id).execute()
         return result.data[0] if result.data else None
     except Exception as e:
         st.error(f"Error fetching profile: {str(e)}")
@@ -387,7 +386,7 @@ def login_page():
         
 def logout():
     if st.session_state.get('user_data'):
-        clear_remember_me_token(st.session_state.user_data.get('id'))
+        clear_remember_me_token(st.session_state.user_data.get('user_id'))
     
     for key in list(st.session_state.keys()):
         del st.session_state[key]
@@ -396,6 +395,10 @@ def logout():
     st.rerun()
 
 def main_app():
+    supabase = init_supabase()
+    user_data = st.session_state.get('user_data')
+    supabase.rpc("set_user_id", {"user_id": user_data.get('user_id')})
+
     if st.sidebar.button("Sign Out", type="secondary"):
         logout()
     
@@ -1969,7 +1972,7 @@ def check_database_connection():
         return False
     
     try:
-        supabase.table('users').select('id').limit(1).execute()
+        supabase.table('users').select('user_id').limit(1).execute()
         return True
     except Exception as e:
         st.error(f"Database connection failed: {str(e)}")

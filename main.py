@@ -212,10 +212,10 @@ def main():
                     st.dataframe(df_extracted)
                     
                     button_placeholder = st.empty()
-                    upload_button = button_placeholder.button("Upload Records to Database", key="upload_button")
+                    upload_button = button_placeholder.button("Upload Records", key="upload_button")
                     
                     if upload_button:
-                        with st.spinner("Checking for existing records in database..."):
+                        with st.spinner("Checking for existing records..."):
                             df_to_check = df_extracted.copy()
                             
                             unique_combinations = df_to_check[['chcode', 'status', 'date', 'time', 'inserted_date']].drop_duplicates()
@@ -328,7 +328,7 @@ def main():
                                 import traceback
                                 st.code(traceback.format_exc())
                         else:
-                            st.warning("No new records to upload. All records already exist in the database.")
+                            st.warning("No new records to upload. All records already exists.")
 
                 else:
                     st.error("Required columns not found in the uploaded file.")
@@ -394,7 +394,7 @@ def main():
                     button_placeholder = st.empty()
                     status_placeholder = st.empty()
                     
-                    upload_button = button_placeholder.button("Upload to Database", key="upload_dataset_button")
+                    upload_button = button_placeholder.button("Upload", key="upload_dataset_button")
                     
                     if upload_button:
                         button_placeholder.button("Processing...", disabled=True, key="processing_dataset_button")
@@ -560,7 +560,7 @@ def main():
                 st.dataframe(df_filtered)
 
                 button_placeholder = st.empty()
-                upload_button = button_placeholder.button("Upload to Database", key="upload_disposition_button")
+                upload_button = button_placeholder.button("Upload", key="upload_disposition_button")
 
                 if upload_button:
                     button_placeholder.button("Processing...", disabled=True, key="processing_disposition_button")
@@ -644,7 +644,7 @@ def main():
 
             button_placeholder = st.empty()
             status_placeholder = st.empty()
-            upload_button = button_placeholder.button("Upload All Files to Database", key="upload_all_datasets_button")
+            upload_button = button_placeholder.button("Upload All Files", key="upload_all_datasets_button")
 
             if upload_button:
                 button_placeholder.button("Processing...", disabled=True, key="processing_all_datasets_button")
@@ -847,7 +847,7 @@ def main():
 
             button_placeholder = st.empty()
             status_placeholder = st.empty()
-            upload_button = button_placeholder.button("Upload All Files to Database", key="upload_all_datasets_button")
+            upload_button = button_placeholder.button("Upload All Files", key="upload_all_datasets_button")
 
             if upload_button:
                 button_placeholder.button("Processing...", disabled=True, key="processing_all_datasets_button")
