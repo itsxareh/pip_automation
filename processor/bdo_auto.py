@@ -571,9 +571,9 @@ class BDOAutoProcessor(base):
                 cms_endo_df['Endo Date'] = endo_date
 
                 if 'PN' in df.columns:
-                    cms_endo_df["Account Number"] = df['PN'].astype(str)
-                elif "ACCOUNT NUMBER" in df.columns:
-                    cms_endo_df["Account Number"] = df["ACCOUNT NUMBER"].astype(str)
+                    cms_endo_df['Account Number'] = df['PN'].astype(str)
+                elif 'ACCOUNT NUMBER' in df.columns:
+                    cms_endo_df['Account Number'] = df['ACCOUNT NUMBER'].astype(str)
                 else:
                     st.error("Missing 'PN' or 'ACCOUNT NUMBER' column in the uploaded file.")
                     return None, None, None
