@@ -550,7 +550,7 @@ class BDOAutoProcessor(base):
                     bcrm_endo_df['Home address'] = df['ADDRESS']
 
                 if "OVERDUE AMOUNT" in df.columns:
-                    bcrm_endo_df['OD Amount2'] = df["OVERDUE AMOUNT"]   
+                    bcrm_endo_df['OD Amount2'] = df["OVERDUE AMOUNT"]
                 
                 if 'Email Address' in df.columns:
                     bcrm_endo_df['EMAIL'] = df['Email Address']
@@ -578,7 +578,7 @@ class BDOAutoProcessor(base):
                     st.error("Missing 'PN' or 'ACCOUNT NUMBER' column in the uploaded file.")
                     return None, None, None
 
-                account_numbers = cms_endo_df["Account Number"].astype(str).str.strip()
+                account_numbers = cms_endo_df['Account Number'].astype(str).str.strip()
                 all_account_numbers.extend(account_numbers.tolist())
 
                 if 'COMPLETE_NAME' in df.columns:
