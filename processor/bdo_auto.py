@@ -545,13 +545,14 @@ class BDOAutoProcessor(base):
                 
                 if "MOBILE NUMBER" in df.columns:
                     st.write("mobile exists")
+                    st.write(df["MOBILE NUMBER"])
                     bcrm_endo_df['Mobile'] = df["MOBILE NUMBER"].apply(self.process_mobile_number)
 
                 if 'ADDRESS' in df.columns:
                     bcrm_endo_df['Home address'] = df['ADDRESS']
 
                 if "OVERDUE AMOUNT" in df.columns:
-                    bcrm_endo_df['OD Amount2'] = df["OVERDUE AMOUNT"]
+                    bcrm_endo_df['OD Amount2'] = df["OVERDUE AMOUNT"]   
                 
                 if 'Email Address' in df.columns:
                     bcrm_endo_df['EMAIL'] = df['Email Address']
