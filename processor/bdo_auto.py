@@ -545,7 +545,6 @@ class BDOAutoProcessor(base):
                 
                 if "MOBILE NUMBER" in df.columns:
                     st.write("mobile exists")
-                    st.write(df["MOBILE NUMBER"])
                     bcrm_endo_df['Mobile'] = df["MOBILE NUMBER"].apply(self.process_mobile_number)
 
                 if 'ADDRESS' in df.columns:

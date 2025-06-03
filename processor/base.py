@@ -38,7 +38,8 @@ class BaseProcessor:
         if len(mobile_num) >= 10:
             last_10 = mobile_num[-10:]
             if last_10[0] == '9':
-                mobile_num = '0' + last_10
+                result = '0' + last_10
+                return result
 
         if mobile_num.startswith('639') and len(mobile_num) == 12:
             result = '09' + mobile_num[3:]
