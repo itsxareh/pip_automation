@@ -28,7 +28,7 @@ class BaseProcessor:
         except:
             pass
           
-    def process_mobile_number(mobile_num):
+    def process_mobile_number(self, mobile_num):
         if pd.isna(mobile_num) or not str(mobile_num).strip():
             return ""
 
