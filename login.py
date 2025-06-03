@@ -96,7 +96,6 @@ CAMPAIGN_CONFIG = {
 
 @st.cache_resource
 def init_supabase():
-    """Initialize Supabase client"""
     try:
         return create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
 
@@ -105,7 +104,6 @@ def init_supabase():
         return None
 
 def create_session_token(user_data):
-    """Create a JWT token for session persistence"""
     try:
         payload = {
             'user_id': user_data['user_id'],
@@ -119,7 +117,6 @@ def create_session_token(user_data):
         return None
 
 def verify_session_token(token):
-    """Verify and decode JWT token"""
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=['HS256'])
         return payload
@@ -129,15 +126,12 @@ def verify_session_token(token):
         return None
 
 def save_session_to_url(token):
-    """Save session token to URL parameters"""
     st.query_params["session"] = token
 
 def get_session_from_url():
-    """Get session token from URL parameters"""
     return st.query_params.get("session", None)
 
 def save_session_locally(user_data, remember_me=False):
-    """Save session data in Streamlit's session state with persistence flags"""
     st.session_state.authenticated = True
     st.session_state.user_data = user_data
     st.session_state.username = user_data['username']
@@ -156,7 +150,6 @@ def save_session_locally(user_data, remember_me=False):
             st.query_params["remember"] = remember_token
 
 def is_session_valid():
-    """Check if current session is still valid"""
     if not st.session_state.get('authenticated', False):
         return False
     
@@ -176,7 +169,6 @@ def is_session_valid():
     return False
 
 def create_remember_me_token(user_data):
-    """Create a long-term remember me token"""
     supabase = init_supabase()
     if not supabase:
         return None
@@ -205,7 +197,6 @@ def create_remember_me_token(user_data):
         return None
 
 def verify_remember_me_token(token):
-    """Verify remember me token and get user data"""
     supabase = init_supabase()
     if not supabase:
         return None
@@ -229,7 +220,6 @@ def verify_remember_me_token(token):
         return None
 
 def clear_remember_me_token(user_id):
-    """Clear remember me token for user"""
     supabase = init_supabase()
     if not supabase:
         return
@@ -240,7 +230,6 @@ def clear_remember_me_token(user_id):
         st.error(f"Error clearing remember token: {str(e)}")
 
 def initialize_session():
-    """Initialize session state and check for existing sessions"""
     if st.session_state.get('authenticated') and is_session_valid():
         return  
     
@@ -284,11 +273,9 @@ def initialize_session():
         st.query_params.clear()
 
 def hash_password(password):
-    """Hash password using SHA-256"""
     return hashlib.sha256(password.encode()).hexdigest()
 
 def create_user_table():
-    """Create users table if it doesn't exist"""
     supabase = init_supabase()
     if not supabase:
         return False
@@ -299,38 +286,7 @@ def create_user_table():
         st.error(f"Error creating table: {str(e)}")
         return False
 
-def authenticate_user(username, password):
-    """Authenticate user against Supabase database"""
-    supabase = init_supabase()
-    if not supabase:
-        return False, None
-    
-    try:
-        result = supabase.table('users').select('*').eq('username', username).eq('is_active', True).execute()
-        
-        if not result.data:
-            return False, None
-        
-        user = result.data[0]
-        hashed_password = hash_password(password)
-        if user['password']  == hashed_password:
-            try:
-                supabase.table('users').update({
-                    'last_login': datetime.now().isoformat()
-                }).eq('user_id', user['user_id']).execute()
-
-                return True, user
-            except Exception as e:
-                st.error(f"Login failed: {e}")
-                return False
-        else:
-            return False, None
-    except Exception as e:
-        st.error(f"Authentication error: {str(e)}")
-        return False, None
-
 def get_user_profile(user_id):
-    """Get user profile information"""
     supabase = init_supabase()
     if not supabase:
         return None
@@ -342,9 +298,83 @@ def get_user_profile(user_id):
         st.error(f"Error fetching profile: {str(e)}")
         return None
 
+
+def is_account_locked(user):
+    if not user.get('account_locked_until'):
+        return False
+    
+    locked_until = datetime.fromisoformat(user['account_locked_until'].replace('Z', '+00:00'))
+    return datetime.now() < locked_until
+
+def update_failed_attempts(supabase, user_id, failed_attempts):
+    new_attempts = failed_attempts + 1
+    
+    if new_attempts >= MAX_LOGIN_ATTEMPTS:
+        lockout_until = (datetime.now() + timedelta(minutes=LOCKOUT_DURATION_MINUTES)).isoformat()
+        supabase.table('users').update({
+            'failed_login_attempts': new_attempts,
+            'account_locked_until': lockout_until
+        }).eq('user_id', user_id).execute()
+        return True, new_attempts  
+    else:
+        supabase.table('users').update({
+            'failed_login_attempts': new_attempts
+        }).eq('user_id', user_id).execute()
+        return False, new_attempts  
+
+def reset_failed_attempts(supabase, user_id):
+    supabase.table('users').update({
+        'failed_login_attempts': 0,
+        'account_locked_until': None
+    }).eq('user_id', user_id).execute()
+
+def authenticate_user(username, password):
+    supabase = init_supabase()
+    if not supabase:
+        return False, None, "Database connection failed"
+    
+    try:
+        result = supabase.table('users').select('*').eq('username', username).eq('is_active', True).execute()
+        
+        if not result.data:
+            return False, None, "Invalid credentials"
+        
+        user = result.data[0]
+        
+        if is_account_locked(user):
+            locked_until = datetime.fromisoformat(user['account_locked_until'].replace('Z', '+00:00'))
+            remaining_time = locked_until - datetime.now()
+            minutes_remaining = int(remaining_time.total_seconds() / 60)
+            return False, None, f"Account is locked. Try again in {minutes_remaining} minutes."
+        
+        hashed_password = hash_password(password)
+        if user['password'] == hashed_password:
+            try:
+                reset_failed_attempts(supabase, user['user_id'])
+                supabase.table('users').update({
+                    'last_login': datetime.now().isoformat()
+                }).eq('user_id', user['user_id']).execute()
+
+                return True, user, "Login successful"
+            except Exception as e:
+                st.error(f"Login update failed: {e}")
+                return False, None, "Login processing error"
+        else:
+            failed_attempts = user.get('failed_login_attempts', 0)
+            is_locked, new_attempts = update_failed_attempts(supabase, user['user_id'], failed_attempts)
+            
+            if is_locked:
+                return False, None, "Too many failed attempts. Account locked for 15 minutes."
+            else:
+                remaining_attempts = 5 - new_attempts
+                return False, None, f"Invalid credentials."
+                
+    except Exception as e:
+        st.error(f"Authentication error: {str(e)}")
+        return False, None, "Authentication system error"
+
 def login_page():
-    """Display login and registration forms"""
-    col1, col2, col3 = st.columns([1, 1, 1])
+    col1, col2, col3 = st.columns([1, 2, 1])
     
     with col2:
         st.divider()
@@ -360,7 +390,8 @@ def login_page():
             
             if login_button:
                 if username and password:
-                    is_authenticated, user_data = authenticate_user(username, password)
+                    is_authenticated, user_data, message = authenticate_user(username, password)
+                    
                     if is_authenticated:
                         init_supabase()
                         
@@ -377,12 +408,54 @@ def login_page():
                             if remember_token:
                                 st.query_params["remember"] = remember_token
 
-                        st.success("Authentication successful")
+                        st.success(message)
                         st.rerun()
                     else:
-                        st.error("Invalid credentials")
+                        st.error(message)
                 else:
                     st.error("Please provide both username and password")
+
+def unlock_account_admin(username):
+    supabase = init_supabase()
+    if not supabase:
+        return False, "Database connection failed"
+    
+    try:
+        result = supabase.table('users').select('user_id').eq('username', username).execute()
+        if not result.data:
+            return False, "User not found"
+        
+        user_id = result.data[0]['user_id']
+        reset_failed_attempts(supabase, user_id)    
+        return True, "Account unlocked successfully"
+    except Exception as e:
+        return False, f"Error unlocking account: {str(e)}"
+
+def get_account_status(username):
+    """Get current account status including lockout info"""
+    supabase = init_supabase()
+    if not supabase:
+        return None
+    
+    try:
+        result = supabase.table('users').select(
+            'username', 'failed_login_attempts', 'account_locked_until', 'last_login'
+        ).eq('username', username).execute()
+        
+        if result.data:
+            user = result.data[0]
+            status = {
+                'username': user['username'],
+                'failed_attempts': user.get('failed_login_attempts', 0),
+                'is_locked': is_account_locked(user),
+                'locked_until': user.get('account_locked_until'),
+                'last_login': user.get('last_login')
+            }
+            return status
+    except Exception as e:
+        st.error(f"Error getting account status: {str(e)}")
+    
+    return None
         
 def logout():
     if st.session_state.get('user_data'):

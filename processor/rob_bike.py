@@ -213,6 +213,16 @@ class ROBBikeProcessor(base):
                         dataset_df = pd.DataFrame(dataset_response.data)
                         monitoring_df['Account Number'] = monitoring_df['Account Number'].apply(lambda x: str(int(float(x))) if pd.notnull(x) else '')
                         
+                        existing_accounts = set(str(row['account_number']).strip() for _, row in dataset_df.iterrows())
+                        missing_accounts = set(account_numbers) - existing_accounts
+
+                        if missing_accounts:
+                            missing_list = sorted(list(missing_accounts))
+                            print(f"The following account numbers were not found in the database")
+                            for acc in missing_list:
+                                print(f" - {acc}")
+                            print(f"Total missing accounts: {len(missing_list)}")
+                        
                         account_data_map = {}
                         chcode_list = []
                         

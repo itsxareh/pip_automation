@@ -505,9 +505,9 @@ class BDOAutoProcessor(base):
 
             df = self.clean_data(original_df, remove_duplicates, remove_blanks, trim_spaces)
 
-            required_columns = ['PN', 'COMPLETE_NAME', 'BALANCE', 'BUCKET', 'GROUP', 'Due Date',
-                            'MO_Amort', 'LAST_DATE', 'ZIP_CODE', 'OVERDUE AMOUNT', 'ADDRESS',
-                            'Email Address', 'MOBILE NUMBER', 'REMARKS']
+            required_columns = ['PN', 'COMPLETE_NAME', 'BALANCE', 'BUCKET', 'GROUP', "Due Date",
+                            'MO_Amort', 'LAST_DATE', 'ZIP_CODE', "OVERDUE AMOUNT", 'ADDRESS',
+                            'Email Address', "MOBILE NUMBER", 'REMARKS']
 
             missing_columns = [col for col in required_columns if col not in df.columns]
 
@@ -543,14 +543,15 @@ class BDOAutoProcessor(base):
                 if 'COMPLETE_NAME' in df.columns:
                     bcrm_endo_df['Customer Name'] = df['COMPLETE_NAME']
                 
-                if 'MOBILE NUMBER' in df.columns:
-                    bcrm_endo_df['Mobile'] = df['MOBILE NUMBER'].apply(self.process_mobile_number)
+                if "MOBILE NUMBER" in df.columns:
+                    st.write("mobile exists")
+                    bcrm_endo_df['Mobile'] = df["MOBILE NUMBER"].apply(self.process_mobile_number)
 
                 if 'ADDRESS' in df.columns:
                     bcrm_endo_df['Home address'] = df['ADDRESS']
 
-                if 'OVERDUE AMOUNT' in df.columns:
-                    bcrm_endo_df['OD Amount2'] = df['OVERDUE AMOUNT']
+                if "OVERDUE AMOUNT" in df.columns:
+                    bcrm_endo_df['OD Amount2'] = df["OVERDUE AMOUNT"]
                 
                 if 'Email Address' in df.columns:
                     bcrm_endo_df['EMAIL'] = df['Email Address']
@@ -571,14 +572,14 @@ class BDOAutoProcessor(base):
                 cms_endo_df['Endo Date'] = endo_date
 
                 if 'PN' in df.columns:
-                    cms_endo_df['Account Number'] = df['PN'].astype(str)
-                elif 'ACCOUNT NUMBER' in df.columns:
-                    cms_endo_df['Account Number'] = df['ACCOUNT NUMBER'].astype(str)
+                    cms_endo_df["Account Number"] = df['PN'].astype(str)
+                elif "ACCOUNT NUMBER" in df.columns:
+                    cms_endo_df["Account Number"] = df["ACCOUNT NUMBER"].astype(str)
                 else:
                     st.error("Missing 'PN' or 'ACCOUNT NUMBER' column in the uploaded file.")
                     return None, None, None
 
-                account_numbers = cms_endo_df['Account Number'].astype(str).str.strip()
+                account_numbers = cms_endo_df["Account Number"].astype(str).str.strip()
                 all_account_numbers.extend(account_numbers.tolist())
 
                 if 'COMPLETE_NAME' in df.columns:
