@@ -507,7 +507,7 @@ class BDOAutoProcessor(base):
 
             required_columns = ['PN', 'COMPLETE_NAME', 'BALANCE', 'BUCKET', 'GROUP', "Due Date",
                             'MO_Amort', 'LAST_DATE', 'ZIP_CODE', "OVERDUE AMOUNT", 'ADDRESS',
-                            'Email Address', "MOBILE NUMBER", 'REMARKS']
+                            'Email Address', 'MOBILE NUMBER', 'REMARKS']
 
             missing_columns = [col for col in required_columns if col not in df.columns]
 
@@ -543,8 +543,8 @@ class BDOAutoProcessor(base):
                 if 'COMPLETE_NAME' in df.columns:
                     bcrm_endo_df['Customer Name'] = df['COMPLETE_NAME']
                 
-                if "MOBILE NUMBER" in df.columns:
-                    bcrm_endo_df['Mobile'] = df["MOBILE NUMBER"].apply(self.process_mobile_number)
+                if 'MOBILE NUMBER' in df.columns:
+                    bcrm_endo_df['Mobile'] = df['MOBILE NUMBER'].apply(self.process_mobile_number)
 
                 if 'ADDRESS' in df.columns:
                     bcrm_endo_df['Home address'] = df['ADDRESS']
