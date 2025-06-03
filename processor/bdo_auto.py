@@ -495,7 +495,7 @@ class BDOAutoProcessor(base):
             df = pd.read_excel(
                 xls,
                 sheet_name=sheet_name,
-                dtype={'PN': str}
+                dtype={'PN': str, 'MOBILE NUMBER' : str}
             )
             df = df.replace('', pd.NA)
             df = df.dropna(how='all')
