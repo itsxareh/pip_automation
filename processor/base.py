@@ -28,34 +28,28 @@ class BaseProcessor:
         except:
             pass
           
-    def process_mobile_number(self, mobile_num):
-        if pd.isna(mobile_num) or mobile_num is None or str(mobile_num).strip() == "":
+    def process_mobile_number(mobile_num):
+        if pd.isna(mobile_num) or not str(mobile_num).strip():
             return ""
 
-        mobile_num = str(mobile_num).strip()
-        mobile_num = re.sub(r'\D', '', mobile_num)
-        
-        if len(mobile_num) >= 10:
-            last_10 = mobile_num[-10:]
-            if last_10[0] == '9':
-                mobile_num = '0' + last_10
-
-        if mobile_num.startswith('639') and len(mobile_num) == 12:
-            result = '09' + mobile_num[3:]
-            return result
-
-        if mobile_num.startswith('9') and len(mobile_num) == 10:
-            result = '0' + mobile_num
-            return result
+        mobile_num = re.sub(r'\D', '', str(mobile_num).strip())
 
         if mobile_num.startswith('09') and len(mobile_num) == 11:
             return mobile_num
 
-        if mobile_num.startswith('+639') and len(mobile_num) == 13:
-            result = '09' + mobile_num[4:]
-            return result
+        if mobile_num.startswith('9') and len(mobile_num) == 10:
+            return '0' + mobile_num
 
-        return mobile_num
+        if mobile_num.startswith('639') and len(mobile_num) == 12:
+            return '0' + mobile_num[2:]
+
+        if mobile_num.startswith('+639') and len(mobile_num) == 13:
+            return '0' + mobile_num[3:]
+
+        if len(mobile_num) > 11 and mobile_num[-10:].startswith('9'):
+            return '0' + mobile_num[-10:]
+
+        return ""
 
     def format_date(self, date_value):
         if pd.isna(date_value) or date_value is None:
