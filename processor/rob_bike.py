@@ -643,9 +643,15 @@ class ROBBikeProcessor(base):
 
                 if 'Endrosement OB' in df.columns:
                     df['Endrosement OB'] = pd.to_numeric(df['Endrosement OB'], errors='coerce')
-                    zero_ob_rows = df[df['Endrosement OB'] == 0]
-                    if not zero_ob_rows.empty:
-                        st.warning(f"Found {len(zero_ob_rows)} rows with 0 in Endorsement OB")
+                    df.loc[df['Endrosement OB'] == 0, 'Endrosement OB'] = 1
+                    
+                    zero_ob_count = (df['Endrosement OB'] == 1).sum()
+                    if zero_ob_count > 0:
+                        st.warning(f"Updated {zero_ob_count} rows where Endrosement OB was 0 to 1.")
+
+                if 'Endorsement DPD' in df.columns:
+                    df['Endorsement DPD'] = pd.to_numeric(df['Endorsement DPD'], errors='coerce')
+                    df['Endorsement DPD'] = df['Endorsement DPD'].fillna(0)
                 
                 if 'ENGINE NUMBER' in df.columns:
                     df['ENGINE NUMBER'] = df['ENGINE NUMBER'].apply(lambda x: np.nan if str(x).strip() == '0' else x)

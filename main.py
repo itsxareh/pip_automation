@@ -1604,7 +1604,7 @@ def main():
                 )
                 
                 if default_password and password == default_password:
-                    st.caption("🔄 Using global password")
+                    st.caption("Using global password")
             else:
                 password = ""
             
@@ -1805,7 +1805,7 @@ def main():
                             "Download Reshuffle File", 
                             result['reshuffle_binary'], 
                             result['reshuffle_filename'], 
-                            "cms",
+                            "reshuffle_cms",
                             default_password=global_password
                         )
 
