@@ -729,7 +729,19 @@ class ROBBikeProcessor(base):
                 
                 bcrm_endo_binary = self.create_excel_file(bcrm_endo_df)
                 cms_endo_binary = self.create_excel_file(cms_endo_df)
+
+                reshuffle_df = df[['Account Number', 'Endrosement OB']].copy()
+                reshuffle_df = reshuffle_df.sort_values('Endrosement OB', ascending=True).reset_index(drop=True)
+                reshuffle_df.rename(columns={'Account Number': 'Account No.'}, inplace=True)
                 
+                taggings = ['JDGANIAL', 'JAAGUILAR', 'NFMUANA']
+
+                reshuffle_df['TAGGING'] = [taggings[i % len(taggings)] for i in range(len(reshuffle_df))]
+                reshuffle_df = reshuffle_df.drop(columns=['Endrosement OB'])
+                
+                reshuffle_filename = f"ROBBike-CMS-Reshuffle-{datetime.now().strftime('%m-%d-%Y')}.xlsx"
+                reshuffle_binary = self.create_excel_file(reshuffle_df)
+
                 return {
                     'bcrm_endo_df': bcrm_endo_df,                
                     'bcrm_endo_binary': bcrm_endo_binary,                 
@@ -737,6 +749,9 @@ class ROBBikeProcessor(base):
                     'cms_endo_df': cms_endo_df, 
                     'cms_endo_binary': cms_endo_binary,                 
                     'cms_endo_filename': cms_endo_filename,
+                    'reshuffle_df': reshuffle_df, 
+                    'reshuffle_binary': reshuffle_binary,                 
+                    'reshuffle_filename': reshuffle_filename,
                 }
             
         except Exception as e:
