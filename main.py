@@ -1773,6 +1773,11 @@ def main():
                     st.info(f"Password will be applied to all files. You can still modify individual settings below.")
                 
                 tabs = st.tabs(["ENDO Bot", "CMS"])
+
+                if campaign == "ROB Bike":
+                    tabs = st.tabs(["ENDO Bot", "CMS", "Reshuffle"])
+                else: 
+                    tabs = st.tabs(["ENDO Bot", "CMS"])
                 
                 with tabs[0]:
                     st.subheader("ENDO Bot")
