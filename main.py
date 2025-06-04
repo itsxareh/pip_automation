@@ -633,9 +633,42 @@ def main():
 
                         st.subheader(f"Uploaded File: {upload_file.name}")
                         st.dataframe(df_clean)
+                        
                         df_clean.columns = df_clean.columns.str.strip().str.lower().str.replace(' ', '')
-                        df_selected = df_clean[['accountnumber', 'chcode']].copy()
-                        df_selected.columns = ['account_number', 'chcode']
+                        
+                        required_columns = ['accountnumber', 'chcode']
+                        optional_columns = ['acctname', 'endodate', 'endrosementdpd', 'store', 'cluster']
+                        
+                        available_columns = []
+                        column_mapping = {
+                            'accountnumber': 'account_number',
+                            'chcode': 'chcode',
+                            'acctname': 'client_name',
+                            'endodate': 'endo_date',
+                            'endrosementdpd': 'endo_dpd',
+                            'store': 'stores',
+                            'cluster': 'cluster'
+                        }
+                        
+                        for col in required_columns + optional_columns:
+                            if col in df_clean.columns:
+                                available_columns.append(col)
+                        
+                        if not all(col in available_columns for col in required_columns):
+                            st.error(f"Required columns missing in {upload_file.name}. Required: {required_columns}")
+                            continue
+                        
+                        df_selected = df_clean[available_columns].copy()
+                        
+                        rename_dict = {col: column_mapping[col] for col in available_columns if col in column_mapping}
+                        df_selected = df_selected.rename(columns=rename_dict)
+                        
+                        if 'endo_date' in df_selected.columns:
+                            df_selected['endo_date'] = pd.to_datetime(df_selected['endo_date'], errors='coerce').dt.strftime('%Y-%m-%d')
+                        
+                        df_selected = df_selected.fillna('')
+                        df_selected['account_number'] = df_selected['account_number'].astype(str).str.strip()
+                        df_selected['chcode'] = df_selected['chcode'].astype(str).str.strip()
                         
                         file_dataframes.append((upload_file.name, df_selected))
 
