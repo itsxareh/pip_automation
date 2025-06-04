@@ -1772,8 +1772,6 @@ def main():
                 if global_password:
                     st.info(f"Password will be applied to all files. You can still modify individual settings below.")
                 
-                tabs = st.tabs(["ENDO Bot", "CMS"])
-
                 if campaign == "ROB Bike":
                     tabs = st.tabs(["ENDO Bot", "CMS", "Reshuffle"])
                 else: 
