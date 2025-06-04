@@ -1772,7 +1772,7 @@ def main():
                 if global_password:
                     st.info(f"Password will be applied to all files. You can still modify individual settings below.")
                 
-                if campaign == "ROB Bike":
+                if campaign == "ROB Bike" and result.get('reshuffle_df') is not None and not result.get('reshuffle_df').empty:
                     tabs = st.tabs(["ENDO Bot", "CMS", "Reshuffle"])
                 else: 
                     tabs = st.tabs(["ENDO Bot", "CMS"])
@@ -1797,17 +1797,18 @@ def main():
                         "cms",
                         default_password=global_password
                     )
-                if campaign == "ROB Bike": 
-                    with tabs[2]:
-                        st.subheader("Reshuffle")
-                        st.dataframe(result['reshuffle_df'], use_container_width=True)
-                        is_protected = create_download_section(
-                            "Download Reshuffle File", 
-                            result['reshuffle_binary'], 
-                            result['reshuffle_filename'], 
-                            "reshuffle_cms",
-                            default_password=global_password
-                        )
+                if campaign == "ROB Bike":
+                    if result.get('reshuffle_df') is not None and not result.get('reshuffle_df').empty:
+                        with tabs[2]:
+                            st.subheader("Reshuffle")
+                            st.dataframe(result['reshuffle_df'], use_container_width=True)
+                            is_protected = create_download_section(
+                                "Download Reshuffle File", 
+                                result['reshuffle_binary'], 
+                                result['reshuffle_filename'], 
+                                "reshuffle_cms",
+                                default_password=global_password
+                            )
 
         elif 'output_binary' in st.session_state and 'result_sheet_names' in st.session_state:
             excel_file = pd.ExcelFile(io.BytesIO(st.session_state['output_binary']))

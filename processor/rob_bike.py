@@ -643,15 +643,20 @@ class ROBBikeProcessor(base):
 
                 if 'Endrosement OB' in df.columns:
                     df['Endrosement OB'] = pd.to_numeric(df['Endrosement OB'], errors='coerce')
+                    df.loc[df['Endrosement OB'].isna(), 'Endrosement OB'] = 1
                     df.loc[df['Endrosement OB'] == 0, 'Endrosement OB'] = 1
-                    
-                    zero_ob_count = (df['Endrosement OB'] == 1).sum()
-                    if zero_ob_count > 0:
-                        st.warning(f"Updated {zero_ob_count} rows where Endrosement OB was 0 to 1.")
 
-                if 'Endorsement DPD' in df.columns:
-                    df['Endorsement DPD'] = pd.to_numeric(df['Endorsement DPD'], errors='coerce')
-                    df['Endorsement DPD'] = df['Endorsement DPD'].fillna(0)
+                    updated_ob_count = (df['Endrosement OB'] == 1).sum()
+                    if updated_ob_count > 0:
+                        st.warning(f"Updated {updated_ob_count} rows in 'Endrosement OB' (NaN or 0 → 1).")
+
+                if 'Endrosement DPD' in df.columns:
+                    df['Endrosement DPD'] = pd.to_numeric(df['Endrosement DPD'], errors='coerce')
+                    df.loc[df['Endrosement DPD'].isna(), 'Endrosement DPD'] = 0
+
+                    updated_dpd_count = (df['Endrosement DPD'] == 1).sum()
+                    if updated_dpd_count > 0:
+                        st.warning(f"Updated {updated_dpd_count} rows in 'Endrosement DPD' (NaN or 0 → 1).")
                 
                 if 'ENGINE NUMBER' in df.columns:
                     df['ENGINE NUMBER'] = df['ENGINE NUMBER'].apply(lambda x: np.nan if str(x).strip() == '0' else x)
