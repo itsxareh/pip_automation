@@ -218,10 +218,10 @@ class ROBBikeProcessor(base):
 
                         if missing_accounts:
                             missing_list = sorted(list(missing_accounts))
-                            print(f"The following account numbers were not found in the database")
+                            st.write(f"The following account numbers were not found in the database")
                             for acc in missing_list:
-                                print(f" - {acc}")
-                            print(f"Total missing accounts: {len(missing_list)}")
+                                st.write(f" - {acc}")
+                            st.write(f"Total missing accounts: {len(missing_list)}")
                         
                         account_data_map = {}
                         chcode_list = []
