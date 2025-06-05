@@ -1388,36 +1388,95 @@ class App():
                     st.info("COM method requires Windows with Excel installed")
                     return data
 
-            def create_download_section(label, data, filename, key, mime_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", default_password=""):
-                """Create download section with optional default password"""
+            def convert_to_excel_97_2003_xlwt(xlsx_data, filename):
+                try:
+                    excel_file = pd.ExcelFile(io.BytesIO(xlsx_data))
+                    
+                    output_buffer = io.BytesIO()
+                    
+                    with pd.ExcelWriter(output_buffer, engine='xlwt') as writer:
+                        for sheet_name in excel_file.sheet_names:
+                            df = pd.read_excel(io.BytesIO(xlsx_data), sheet_name=sheet_name)
+                            
+                            df.to_excel(writer, sheet_name=sheet_name, index=False)
+                    
+                    output_buffer.seek(0)
+                    xls_data = output_buffer.getvalue()
+                    output_buffer.close()
+                    
+                    return xls_data
+                    
+                except Exception as e:
+                    st.error(f"xlwt conversion error: {str(e)}")
+                    return xlsx_data
+            
+            def convert_dataframe_to_xls(df, sheet_name='Sheet1'):
+                try:
+                    output_buffer = io.BytesIO()
+                    
+                    with pd.ExcelWriter(output_buffer, engine='xlwt') as writer:
+                        df.to_excel(writer, sheet_name=sheet_name, index=False)
+                        
+                        workbook = writer.book
+                        worksheet = writer.sheets[sheet_name]
+                        
+                        for i, col in enumerate(df.columns):
+                            max_len = max(
+                                len(str(col)),
+                                df[col].astype(str).str.len().max() if not df.empty else 0
+                            )
+                            worksheet.col(i).width = min(max_len * 300, 15000)
+                    
+                    output_buffer.seek(0)
+                    xls_data = output_buffer.getvalue()
+                    output_buffer.close()
+                    
+                    return xls_data
+                    
+                except Exception as e:
+                    st.error(f"DataFrame XLS conversion error: {str(e)}")
+                    return None
+
+            def create_download_section(label, data, filename, key, mime_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", default_password="", force_xls=False, dataframe=None):
                 st.subheader("File Options")
                 col1, col2 = st.columns(2)
 
                 with col1:
-                    add_password = st.checkbox(
-                        "Password Protection", 
-                        value=bool(default_password),
-                        key=f"{key}_password_check"
-                    )
-                if not win32_available:
-                    with col2:
-                        st.checkbox(
-                            "Convert to Excel 97-2003 (.xls)", 
-                            value=False, 
-                            key=f"{key}_convert_xls_disabled",
-                            help="XLS conversion is disabled because the current environment doesn't support it.",
-                            disabled=True
+                    if not force_xls:
+                        add_password = st.checkbox(
+                            "Password Protection", 
+                            value=bool(default_password),
+                            key=f"{key}_password_check"
                         )
-                        convert_to_xls = False
+                    else:
+                        add_password = st.checkbox(
+                            "Password Protection", 
+                            value=False,
+                            key=f"{key}_password_check_disabled"
+                        )
+
+                if force_xls:
+                    convert_to_xls = True
                 else:
-                    with col2:
-                        convert_to_xls = st.checkbox(
-                            "Convert to Excel 97-2003 (.xls)", 
-                            value=False, 
-                            key=f"{key}_convert_xls",
-                            help="Convert to older Excel format for compatibility with legacy systems"
-                        )
-                
+                    if not win32_available:
+                        with col2:
+                            st.checkbox(
+                                "Convert to Excel 97-2003 (.xls)", 
+                                value=False, 
+                                key=f"{key}_convert_xls_disabled",
+                                help="XLS conversion is disabled because the current environment doesn't support it.",
+                                disabled=True
+                            )
+                            convert_to_xls = False
+                    else:
+                        with col2:
+                            convert_to_xls = st.checkbox(
+                                "Convert to Excel 97-2003 (.xls)", 
+                                value=False, 
+                                key=f"{key}_convert_xls",
+                                help="Convert to older Excel format for compatibility with legacy systems"
+                            )
+                    
                 if add_password:
                     password = st.text_input(
                         "Password", 
@@ -1439,7 +1498,11 @@ class App():
                 
                 if convert_to_xls:
                     with st.spinner("Converting to Excel 97-2003 format..."):
-                        processed_data = convert_to_excel_97_2003(processed_data, filename)
+                        if dataframe is not None and force_xls and not win32_available:
+                            processed_data = convert_dataframe_to_xls(dataframe)
+                        else:
+                            processed_data = convert_to_excel_97_2003(processed_data, filename)
+                            
                         final_extension = "xls"  
                         final_mime_type = "application/vnd.ms-excel"
                     st.success("Converted to Excel 97-2003 format")
@@ -1606,7 +1669,9 @@ class App():
                             result['bcrm_endo_binary'], 
                             result['bcrm_endo_filename'], 
                             "endo_bot",
-                            default_password=global_password
+                            default_password=global_password,
+                            force_xls=True,
+                            dataframe=result['bcrm_endo_df'],
                         )
                     with tabs[1]:
                         st.subheader("CMS")
@@ -1616,7 +1681,7 @@ class App():
                             result['cms_endo_binary'], 
                             result['cms_endo_filename'], 
                             "cms",
-                            default_password=global_password
+                            default_password=global_password,
                         )
 
             elif 'output_binary' in st.session_state and 'result_sheet_names' in st.session_state:
