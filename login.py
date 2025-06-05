@@ -29,6 +29,7 @@ else:
     win32_available = False
 
 from app import App
+
 #Processors
 from processor.base import BaseProcessor as base_process
 from processor.bdo_auto import BDOAutoProcessor as bdo_auto
