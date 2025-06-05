@@ -8,3 +8,4 @@ python-dotenv
 xlrd
 pyminizip
 pytz
+xlwt

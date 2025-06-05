@@ -1794,7 +1794,6 @@ def main():
                     
         elif automation_type == "Endorsement" and 'new_endorsement' in st.session_state:
             result = st.session_state['new_endorsement']
-            st.write(result)
             if result != (None, None, None):
                 global_password = st.text_input(
                     "Set password for all files (optional)", 
