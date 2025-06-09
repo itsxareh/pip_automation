@@ -1556,6 +1556,28 @@ def main():
                 st.info("XLS password protection requires Windows with Excel installed")
                 return file_data
             
+        def convert_to_excel_97_2003_xlwt(xlsx_data, filename):
+            try:
+                excel_file = pd.ExcelFile(io.BytesIO(xlsx_data))
+                
+                output_buffer = io.BytesIO()
+                
+                with pd.ExcelWriter(output_buffer, engine='xlwt') as writer:
+                    for sheet_name in excel_file.sheet_names:
+                        df = pd.read_excel(io.BytesIO(xlsx_data), sheet_name=sheet_name)
+                        
+                        df.to_excel(writer, sheet_name=sheet_name, index=False)
+                
+                output_buffer.seek(0)
+                xls_data = output_buffer.getvalue()
+                output_buffer.close()
+                
+                return xls_data
+                
+            except Exception as e:
+                st.error(f"xlwt conversion error: {str(e)}")
+                return xlsx_data    
+            
         def convert_to_excel_97_2003(data, filename):
             """Convert xlsx data to Excel 97-2003 (.xls) format"""
             try:
@@ -1597,7 +1619,7 @@ def main():
                 st.info("COM method requires Windows with Excel installed")
                 return data
 
-        def create_download_section(label, data, filename, key, default_password="", mime_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"):
+        def create_download_section(label, data, filename, key, mime_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", default_password="", force_xls=False, dataframe=None):
             """Create download section with optional default password"""
             st.subheader("File Options")
             col1, col2 = st.columns(2)
@@ -1608,6 +1630,10 @@ def main():
                     value=bool(default_password),
                     key=f"{key}_password_check"
                 )
+
+            if force_xls: 
+                convert_to_xls = True
+
             if not win32_available:
                 with col2:
                     st.checkbox(
@@ -1648,7 +1674,7 @@ def main():
             
             if convert_to_xls:
                 with st.spinner("Converting to Excel 97-2003 format..."):
-                    processed_data = convert_to_excel_97_2003(processed_data, filename)
+                    processed_data = convert_to_excel_97_2003_xlwt(processed_data, filename)
                     final_extension = "xls"  
                     final_mime_type = "application/vnd.ms-excel"
                 st.success("Converted to Excel 97-2003 format")
@@ -1660,8 +1686,13 @@ def main():
                 else:
                     with st.spinner("Encrypting file... This may take a moment"):
                         if convert_to_xls:
-                            processed_data = add_password_protection_xls(processed_data, password)
-                            is_actually_protected = True
+                            if not win32_available:
+                                st.warning("⚠️ Password protection for XLS files is limited. Consider using XLSX format for better security.")
+                                st.info("💡 Tip: Uncheck XLS conversion to use XLSX with password protection")
+                                is_actually_protected = False
+                            else:
+                                processed_data = add_password_protection_xls(processed_data, password)
+                                is_actually_protected = True
                         else:
                             processed_data = add_password_protection(processed_data, password)
                             is_actually_protected = True
