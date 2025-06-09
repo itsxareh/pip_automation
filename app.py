@@ -1453,7 +1453,8 @@ class App():
                         add_password = st.checkbox(
                             "Password Protection", 
                             value=False,
-                            key=f"{key}_password_check_disabled"
+                            key=f"{key}_password_check_disabled",
+                            disabled=True
                         )
 
                 if force_xls:
