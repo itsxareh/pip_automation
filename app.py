@@ -1454,6 +1454,7 @@ class App():
                             "Password Protection", 
                             value=False,
                             key=f"{key}_password_check_disabled",
+                            help="Password protection for XLS files is limited. Consider using XLSX format for better security.",
                             disabled=True
                         )
 
@@ -1517,8 +1518,8 @@ class App():
                         with st.spinner("Encrypting file... This may take a moment"):
                             if convert_to_xls:
                                 if not win32_available:
-                                    st.warning("⚠️ Password protection for XLS files is limited. Consider using XLSX format for better security.")
-                                    st.info("💡 Tip: Uncheck XLS conversion to use XLSX with password protection")
+                                    st.warning("Password protection for XLS files is limited. Consider using XLSX format for better security.")
+                                    st.info("Tip: Uncheck XLS conversion to use XLSX with password protection")
                                     is_actually_protected = False
                                 else:
                                     processed_data = add_password_protection_xls(processed_data, password)
