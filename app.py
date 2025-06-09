@@ -12,6 +12,7 @@ import importlib.util
 import io
 import re 
 import msoffcrypto
+import xlwt
 
 win32_available = False
 if platform.system() == "Windows" and importlib.util.find_spec("win32com.client") is not None:
@@ -1411,15 +1412,47 @@ class App():
                     st.error(f"xlwt conversion error: {str(e)}")
                     return xlsx_data    
             
-            def convert_df_to_xls_pyexcel(processed_data, filename):
+            def convert_to_xls_pyexcel(processed_data, filename):
                 try:
                     xlsx_buffer = io.BytesIO(processed_data)
                     
-                    book = pe.get_book(file_stream=xlsx_buffer, file_type='xlsx')
+                    excel_data = pd.read_excel(xlsx_buffer, sheet_name=None, engine='openpyxl')
                     
                     xls_buffer = io.BytesIO()
-                    book.save_to_memory(file_type='xls', stream=xls_buffer)
+                    workbook = xlwt.Workbook()
                     
+                    text_style = xlwt.XFStyle()
+                    text_style.num_format_str = '@'
+                    
+                    default_style = xlwt.XFStyle()
+                    
+                    text_columns = ['ENDO DATE', 'Account Number', 'Maturity date']
+                    
+                    for sheet_name, df in excel_data.items():
+                        worksheet = workbook.add_sheet(sheet_name)
+                        
+                        for col_idx, column_name in enumerate(df.columns):
+                            worksheet.write(0, col_idx, str(column_name), default_style)
+                        
+                        for row_idx, row in df.iterrows():
+                            for col_idx, (column_name, value) in enumerate(row.items()):
+                                if column_name in text_columns:
+                                    style = text_style
+                                    cell_value = str(value) if pd.notna(value) else ""
+                                else:
+                                    style = default_style
+                                    cell_value = value if pd.notna(value) else ""
+                                
+                                worksheet.write(row_idx + 1, col_idx, cell_value, style)
+                        
+                        for col_idx, column_name in enumerate(df.columns):
+                            max_len = max(
+                                len(str(column_name)),
+                                df[column_name].astype(str).str.len().max() if not df.empty else 0
+                            )
+                            worksheet.col(col_idx).width = min(max_len * 300, 15000)
+                    
+                    workbook.save(xls_buffer)
                     xls_buffer.seek(0)
                     xls_data = xls_buffer.getvalue()
                     
@@ -1429,7 +1462,7 @@ class App():
                     return xls_data
                     
                 except Exception as e:
-                    raise Exception(f"Failed to convert to XLS: {str(e)}")
+                    raise Exception(f"Failed to convert to XLS with formatting: {str(e)}")
 
             def create_download_section(label, data, filename, key, mime_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", default_password="", force_xls=False, dataframe=None):
                 st.subheader("File Options")
@@ -1493,11 +1526,9 @@ class App():
                 if convert_to_xls:
                     with st.spinner("Converting to Excel 97-2003 format..."):
                         if dataframe is not None and force_xls and not win32_available:
-                            processed_data = convert_df_to_xls_pyexcel(processed_data, filename)
-                            st.write("first vonv")
+                            processed_data = convert_to_xls_pyexcel(processed_data, filename)
                         else:
                             processed_data = convert_to_xls_win32(processed_data, filename)
-                            st.write("second vonv")
                             
                         final_extension = "xls"  
                         final_mime_type = "application/vnd.ms-excel"
