@@ -1392,20 +1392,49 @@ class App():
             def convert_to_xls_pyexcel(processed_data, filename):
                 try:
                     xlsx_buffer = io.BytesIO(processed_data)
-
-                    book = pe.get_book(file_stream=xlsx_buffer, file_type='xlsx')
-
+                    
+                    workbook = load_workbook(xlsx_buffer)
+                    
+                    text_columns = ['ENDO DATE', 'Account Number', 'Maturity date']
+                    
+                    for sheet_name in workbook.sheetnames:
+                        worksheet = workbook[sheet_name]
+                        
+                        header_row = list(worksheet.iter_rows(min_row=1, max_row=1, values_only=True))[0]
+                        
+                        text_col_indices = []
+                        for idx, header in enumerate(header_row):
+                            if str(header) in text_columns:
+                                text_col_indices.append(idx + 1) 
+                        
+                        for col_idx in text_col_indices:
+                            for row in worksheet.iter_rows(min_col=col_idx, max_col=col_idx, min_row=2):  # Skip header
+                                for cell in row:
+                                    cell.number_format = '@'
+                                    if cell.value is not None:
+                                        if isinstance(cell.value, (int, float)):
+                                            cell.value = str(int(cell.value)) if cell.value == int(cell.value) else str(cell.value)
+                                        else:
+                                            cell.value = str(cell.value)
+                    
+                    modified_xlsx_buffer = io.BytesIO()
+                    workbook.save(modified_xlsx_buffer)
+                    modified_xlsx_buffer.seek(0)
+                    
+                    book = pe.get_book(file_stream=modified_xlsx_buffer, file_type='xlsx')
+                    
                     xls_buffer = io.BytesIO()
                     book.save_to_memory(file_type='xls', stream=xls_buffer)
-
+                    
                     xls_buffer.seek(0)
                     xls_data = xls_buffer.getvalue()
-
+                    
                     xlsx_buffer.close()
+                    modified_xlsx_buffer.close()
                     xls_buffer.close()
-
+                    
                     return xls_data
-
+                    
                 except Exception as e:
                     raise Exception(f"Failed to convert to XLS: {str(e)}")
 
