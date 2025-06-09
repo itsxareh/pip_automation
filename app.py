@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import pyexcel as pe
 import os
 import numpy as np
 import warnings
@@ -1347,7 +1348,7 @@ class App():
                     st.info("XLS password protection requires Windows with Excel installed")
                     return file_data
                 
-            def convert_to_excel_97_2003(data, filename):
+            def convert_to_xls_win32(data, filename):
                 """Convert xlsx data to Excel 97-2003 (.xls) format"""
                 try:
                     import pythoncom  
@@ -1410,32 +1411,21 @@ class App():
                     st.error(f"xlwt conversion error: {str(e)}")
                     return xlsx_data    
             
-            def convert_dataframe_to_xls(df, sheet_name='Sheet1'):
+            def convert_df_to_xls_pyexcel(df, sheet_name='Sheet1'):
                 try:
-                    output_buffer = io.BytesIO()
+                    data_dict = {sheet_name: [df.columns.tolist()] + df.values.tolist()}
                     
-                    with pd.ExcelWriter(output_buffer, engine='xlwt') as writer:
-                        df.to_excel(writer, sheet_name=sheet_name, index=False)
-                        
-                        workbook = writer.book
-                        worksheet = writer.sheets[sheet_name]
-                        
-                        for i, col in enumerate(df.columns):
-                            max_len = max(
-                                len(str(col)),
-                                df[col].astype(str).str.len().max() if not df.empty else 0
-                            )
-                            worksheet.col(i).width = min(max_len * 300, 15000)
+                    xls_buffer = io.BytesIO()
+                    pe.save_book_as(bookdict=data_dict, dest_file_stream=xls_buffer, dest_file_type='xls')
                     
-                    output_buffer.seek(0)
-                    xls_data = output_buffer.getvalue()
-                    output_buffer.close()
+                    xls_buffer.seek(0)
+                    xls_data = xls_buffer.getvalue()
+                    xls_buffer.close()
                     
                     return xls_data
                     
                 except Exception as e:
-                    st.error(f"DataFrame XLS conversion error: {str(e)}")
-                    return None
+                    raise Exception(f"Failed to convert DataFrame to XLS: {str(e)}")
 
             def create_download_section(label, data, filename, key, mime_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", default_password="", force_xls=False, dataframe=None):
                 st.subheader("File Options")
@@ -1499,9 +1489,11 @@ class App():
                 if convert_to_xls:
                     with st.spinner("Converting to Excel 97-2003 format..."):
                         if dataframe is not None and force_xls and not win32_available:
-                            processed_data = convert_dataframe_to_xls(processed_data, filename)
+                            processed_data = convert_df_to_xls_pyexcel(dataframe)
+                            st.write("first vonv")
                         else:
-                            processed_data = convert_to_excel_97_2003(processed_data, filename)
+                            processed_data = convert_to_xls_win32(processed_data, filename)
+                            st.write("second vonv")
                             
                         final_extension = "xls"  
                         final_mime_type = "application/vnd.ms-excel"
@@ -1679,7 +1671,7 @@ class App():
                             "endo_bot",
                             default_password=global_password,
                             force_xls=True,
-                            dataframe=result['bcrm_endo_df'],
+                            dataframe=result['bcrm_endo_df']
                         )
                     with tabs[1]:
                         st.subheader("CMS")

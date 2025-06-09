@@ -9,3 +9,6 @@ xlrd
 pyminizip
 pytz
 xlwt
+pyexcel
+pyexcel-xls 
+pyexcel-xlsx
