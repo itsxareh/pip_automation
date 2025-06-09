@@ -1350,7 +1350,6 @@ class App():
                     return file_data
                 
             def convert_to_xls_win32(data, filename):
-                """Convert xlsx data to Excel 97-2003 (.xls) format"""
                 try:
                     import pythoncom  
                     
@@ -1389,29 +1388,7 @@ class App():
                     st.error(f"Method 4 (COM) conversion error: {str(e)}")
                     st.info("COM method requires Windows with Excel installed")
                     return data
-
-            def convert_to_excel_97_2003_xlwt(xlsx_data, filename):
-                try:
-                    excel_file = pd.ExcelFile(io.BytesIO(xlsx_data))
-                    
-                    output_buffer = io.BytesIO()
-                    
-                    with pd.ExcelWriter(output_buffer, engine='xlwt') as writer:
-                        for sheet_name in excel_file.sheet_names:
-                            df = pd.read_excel(io.BytesIO(xlsx_data), sheet_name=sheet_name)
-                            
-                            df.to_excel(writer, sheet_name=sheet_name, index=False)
-                    
-                    output_buffer.seek(0)
-                    xls_data = output_buffer.getvalue()
-                    output_buffer.close()
-                    
-                    return xls_data
-                    
-                except Exception as e:
-                    st.error(f"xlwt conversion error: {str(e)}")
-                    return xlsx_data    
-            
+   
             def convert_to_xls_pyexcel(processed_data, filename):
                 try:
                     xlsx_buffer = io.BytesIO(processed_data)
