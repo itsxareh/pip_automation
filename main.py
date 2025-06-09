@@ -1,4 +1,4 @@
-#pip install streamlit pandas numpy openpyxl msoffcrypto-tool supabase python-dotenv pywin32
+#pip install streamlit pandas numpy openpyxl msoffcrypto-tool supabase python-dotenv pywin32 pyexcel pyexcel-xls pyexcel-xlsx
 import streamlit as st
 import pandas as pd
 import os

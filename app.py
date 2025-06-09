@@ -1411,21 +1411,25 @@ class App():
                     st.error(f"xlwt conversion error: {str(e)}")
                     return xlsx_data    
             
-            def convert_df_to_xls_pyexcel(df, sheet_name='Sheet1'):
+            def convert_df_to_xls_pyexcel(processed_data, filename):
                 try:
-                    data_dict = {sheet_name: [df.columns.tolist()] + df.values.tolist()}
+                    xlsx_buffer = io.BytesIO(processed_data)
+                    
+                    book = pe.get_book(file_stream=xlsx_buffer, file_type='xlsx')
                     
                     xls_buffer = io.BytesIO()
-                    pe.save_book_as(bookdict=data_dict, dest_file_stream=xls_buffer, dest_file_type='xls')
+                    book.save_to_memory(file_type='xls', stream=xls_buffer)
                     
                     xls_buffer.seek(0)
                     xls_data = xls_buffer.getvalue()
+                    
+                    xlsx_buffer.close()
                     xls_buffer.close()
                     
                     return xls_data
                     
                 except Exception as e:
-                    raise Exception(f"Failed to convert DataFrame to XLS: {str(e)}")
+                    raise Exception(f"Failed to convert to XLS: {str(e)}")
 
             def create_download_section(label, data, filename, key, mime_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", default_password="", force_xls=False, dataframe=None):
                 st.subheader("File Options")
@@ -1489,7 +1493,7 @@ class App():
                 if convert_to_xls:
                     with st.spinner("Converting to Excel 97-2003 format..."):
                         if dataframe is not None and force_xls and not win32_available:
-                            processed_data = convert_df_to_xls_pyexcel(dataframe)
+                            processed_data = convert_df_to_xls_pyexcel(processed_data, filename)
                             st.write("first vonv")
                         else:
                             processed_data = convert_to_xls_win32(processed_data, filename)
