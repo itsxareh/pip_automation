@@ -1408,7 +1408,7 @@ class App():
                     
                 except Exception as e:
                     st.error(f"xlwt conversion error: {str(e)}")
-                    return xlsx_data
+                    return xlsx_data    
             
             def convert_dataframe_to_xls(df, sheet_name='Sheet1'):
                 try:
@@ -1499,7 +1499,7 @@ class App():
                 if convert_to_xls:
                     with st.spinner("Converting to Excel 97-2003 format..."):
                         if dataframe is not None and force_xls and not win32_available:
-                            processed_data = convert_dataframe_to_xls(dataframe)
+                            processed_data = convert_dataframe_to_xls(processed_data, filename)
                         else:
                             processed_data = convert_to_excel_97_2003(processed_data, filename)
                             
@@ -1514,13 +1514,18 @@ class App():
                     else:
                         with st.spinner("Encrypting file... This may take a moment"):
                             if convert_to_xls:
-                                processed_data = add_password_protection_xls(processed_data, password)
-                                is_actually_protected = True
+                                if not win32_available:
+                                    st.warning("⚠️ Password protection for XLS files is limited. Consider using XLSX format for better security.")
+                                    st.info("💡 Tip: Uncheck XLS conversion to use XLSX with password protection")
+                                    is_actually_protected = False
+                                else:
+                                    processed_data = add_password_protection_xls(processed_data, password)
+                                    is_actually_protected = True
                             else:
                                 processed_data = add_password_protection(processed_data, password)
                                 is_actually_protected = True
                         st.success("File encrypted successfully")
-                
+
                 base_name = filename.rsplit('.', 1)[0]
                 final_filename = f"{base_name}.{final_extension}"
 
@@ -1648,7 +1653,6 @@ class App():
                         
             elif automation_type == "Endorsement" and 'new_endorsement' in st.session_state:
                 result = st.session_state['new_endorsement']
-                st.write(result)
                 if result != (None, None, None):
                     global_password = st.text_input(
                         "Set password for all files (optional)", 
