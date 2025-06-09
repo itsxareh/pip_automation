@@ -1597,7 +1597,7 @@ def main():
                 st.info("COM method requires Windows with Excel installed")
                 return data
 
-        def create_download_section(label, data, filename, key, mime_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", default_password=""):
+        def create_download_section(label, data, filename, key, default_password="", mime_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"):
             """Create download section with optional default password"""
             st.subheader("File Options")
             col1, col2 = st.columns(2)
@@ -1835,13 +1835,13 @@ def main():
                         with tabs[2]:
                             st.subheader("Reshuffle")
                             st.dataframe(result['reshuffle_df'], use_container_width=True)
-                            # is_protected = create_download_section(
-                            #     "Download Reshuffle File", 
-                            #     result['reshuffle_binary'], 
-                            #     result['reshuffle_filename'], 
-                            #     "reshuffle_cms",
-                            #     default_password=global_password
-                            # )
+                            is_protected = create_download_section(
+                                "Download Reshuffle File", 
+                                result['reshuffle_binary'], 
+                                result['reshuffle_filename'], 
+                                "reshuffle_cms",
+                                default_password=global_password
+                            )
 
         elif 'output_binary' in st.session_state and 'result_sheet_names' in st.session_state:
             excel_file = pd.ExcelFile(io.BytesIO(st.session_state['output_binary']))
