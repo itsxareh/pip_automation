@@ -22,7 +22,7 @@ class BDOAutoProcessor(base):
         try:
             response = (
                 self.supabase
-                .table("bdo_auto_loan_inputset")
+                .table("bdo_autoloan_inputset")
                 .select(
                     "report_date, kept_count_b5, kept_bal_b5, alloc_bal_b5, "
                     "kept_count_b6, kept_bal_b6, alloc_bal_b6, created_at"
@@ -43,36 +43,69 @@ class BDOAutoProcessor(base):
             print(f"Error retrieving BDO Auto history: {str(e)}")
             return []
     
-    def insert_bdo_auto_data(self, data: Dict[str, Any]) -> bool:
+    def save_bdo_auto_data(self, kept_count_b5, kept_bal_b5, alloc_bal_b5, 
+                          kept_count_b6, kept_bal_b6, alloc_bal_b6, report_date=None):
         try:
-            response = (
+            if not report_date:
+                report_date = datetime.now().strftime("%Y-%m-%d")
+            else:
+                try:
+                    parsed_date = datetime.strptime(report_date, "%B %d")
+                    parsed_date = parsed_date.replace(year=datetime.now().year)
+                    report_date = parsed_date.strftime("%Y-%m-%d")
+                except:
+                    pass
+            
+            existing_response = (
                 self.supabase
-                .table("bdo_auto_loan_inputset")
-                .insert(data)
+                .table("bdo_autoloan_inputset")
+                .select("id")
+                .eq("campaign", "BDO Auto B5 & B6")
+                .eq("automation_type", "Agency Daily Report")
+                .eq("report_date", report_date)
                 .execute()
             )
+            
+            data_payload = {
+                "campaign": "BDO Auto B5 & B6",
+                "automation_type": "Agency Daily Report",
+                "report_date": report_date,
+                "kept_count_b5": kept_count_b5,
+                "kept_bal_b5": kept_bal_b5,
+                "alloc_bal_b5": alloc_bal_b5,
+                "kept_count_b6": kept_count_b6,
+                "kept_bal_b6": kept_bal_b6,
+                "alloc_bal_b6": alloc_bal_b6,
+                "updated_at": datetime.now().isoformat()
+            }
+            
+            if existing_response.data and len(existing_response.data) > 0:
+                existing_id = existing_response.data[0]["id"]
+                response = (
+                    self.supabase
+                    .table("bdo_autoloan_inputset")
+                    .update(data_payload)
+                    .eq("id", existing_id)
+                    .execute()
+                )
+                print(f"Updated existing BDO Auto data for date: {report_date}")
+            else:
+                data_payload["created_at"] = datetime.now().isoformat()
+                response = (
+                    self.supabase
+                    .table("bdo_auto_loan_inputset")
+                    .insert(data_payload)
+                    .execute()
+                )
+                print(f"Inserted new BDO Auto data for date: {report_date}")
+            
             return True
+                
         except Exception as e:
-            print(f"Error inserting BDO Auto data: {str(e)}")
-            return False
-    
-    def update_bdo_auto_data(self, record_id: int, data: Dict[str, Any]) -> bool:
-        """Update existing BDO Auto data record"""
-        try:
-            response = (
-                self.supabase
-                .table("bdo_auto_loan_inputset")
-                .update(data)
-                .eq("id", record_id)
-                .execute()
-            )
-            return True
-        except Exception as e:
-            print(f"Error updating BDO Auto data: {str(e)}")
+            print(f"Error saving BDO Auto data to Supabase: {str(e)}")
             return False
     
     def delete_bdo_auto_data(self, record_id: int) -> bool:
-        """Delete BDO Auto data record"""
         try:
             response = (
                 self.supabase
@@ -515,7 +548,18 @@ class BDOAutoProcessor(base):
                 b5_prod_filename = f"B5 Daily Productivity AS OF {current_date}.xlsx"
                 b6_prod_filename = f"B6 Daily Productivity AS OF {current_date}.xlsx"
                 vs_filename = f"SP MADRID VS AS OF {current_date}"
-                
+
+                if not preview_only and kept_count_b5 is not None and kept_count_b6 is not None:
+                    save_success = self.save_bdo_auto_data(
+                        kept_count_b5, kept_bal_b5, alloc_bal_b5,
+                        kept_count_b6, kept_bal_b6, alloc_bal_b6,
+                        report_date
+                    )
+                    if save_success:
+                        print("Successfully saved BDO Auto data to Supabase")
+                    else:
+                        print("Failed to save BDO Auto data to Supabase")
+
                 return {
                     "b5_df": bucket5_df,
                     "b6_df": bucket6_df,
