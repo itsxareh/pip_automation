@@ -93,7 +93,7 @@ class BDOAutoProcessor(base):
                 data_payload["created_at"] = datetime.now().isoformat()
                 response = (
                     self.supabase
-                    .table("bdo_auto_loan_inputset")
+                    .table("bdo_autoloan_inputset")
                     .insert(data_payload)
                     .execute()
                 )
