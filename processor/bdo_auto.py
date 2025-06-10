@@ -549,16 +549,16 @@ class BDOAutoProcessor(base):
                 b6_prod_filename = f"B6 Daily Productivity AS OF {current_date}.xlsx"
                 vs_filename = f"SP MADRID VS AS OF {current_date}"
 
-                if not preview_only and kept_count_b5 is not None and kept_count_b6 is not None:
+                if kept_count_b5 is not None and kept_count_b6 is not None:
                     save_success = self.save_bdo_auto_data(
                         kept_count_b5, kept_bal_b5, alloc_bal_b5,
                         kept_count_b6, kept_bal_b6, alloc_bal_b6,
                         report_date
                     )
                     if save_success:
-                        print("Successfully saved BDO Auto data to Supabase")
+                        st.write("Successfully saved BDO Auto data to Supabase")
                     else:
-                        print("Failed to save BDO Auto data to Supabase")
+                        st.write("Failed to save BDO Auto data to Supabase")
 
                 return {
                     "b5_df": bucket5_df,
