@@ -609,9 +609,9 @@ class App():
         
         if campaign == "BDO Auto B5 & B6" and automation_type == "Agency Daily Report":
             with st.spinner("Loading previous data..."):
-                previous_data = processor.get_previous_bdo_auto_data()
+                previous_data = processor.get_previous_history()
                 st.write(previous_data)
-                
+
             def clean_number_input(label, default_value=None):
                 default_str = f"{default_value:,.0f}" if default_value is not None else ""
                 

@@ -18,7 +18,7 @@ load_dotenv()
 
 
 class BDOAutoProcessor(base):
-    def get_bdo_auto_history(self, limit: int = 10) -> List[Dict[str, Any]]:
+    def get_previous_history(self, limit: int = 10) -> List[Dict[str, Any]]:
         try:
             response = (
                 self.supabase
