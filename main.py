@@ -29,6 +29,7 @@ from processor.bdo_auto import BDOAutoProcessor as bdo_auto
 from processor.bpi_auto_curing import BPIAutoCuringProcessor as bpi_auto_curing
 from processor.rob_bike import ROBBikeProcessor as rob_bike
 from processor.sumisho import SumishoProcessor as sumisho
+from processor.psb_auto_curing import PSBAutoCuringProcessor as psb_auto_curing
 
 #Supabase
 from supabase import create_client
@@ -75,6 +76,14 @@ CAMPAIGN_CONFIG = {
         },
         "processor": bdo_auto
     },
+    "PSB Auto Curing": {
+        "automation_options": ["Daily Remark Report", "Endorsement"],
+        "automation_map": {
+            "Daily Remark Report": "process_daily_remark",
+            "Endorsement": "process_new_endorsement", 
+        },
+        "processor": psb_auto_curing
+    },
     "Sumisho": {
         "automation_options": ["Daily Remark Report"],
         "automation_map": {
@@ -82,6 +91,7 @@ CAMPAIGN_CONFIG = {
         },
         "processor": sumisho
     },
+
 }
 
 def main():

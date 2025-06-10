@@ -9,7 +9,7 @@ import tempfile
 import shutil
 from processor.base import BaseProcessor
 
-class PSBIAutoCuringProcessor(BaseProcessor):
+class PSBAutoCuringProcessor(BaseProcessor):
     def process_new_endorsement(self, file_content, sheet_name=None, preview_only=False,
                          remove_duplicates=False, remove_blanks=False, trim_spaces=False, endo_date=None, preserve_colors=True):
         TABLE_NAME = 'psb_auto_dataset'
