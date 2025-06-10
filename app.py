@@ -610,7 +610,7 @@ class App():
         if campaign == "BDO Auto B5 & B6" and automation_type == "Agency Daily Report":
             with st.spinner("Loading previous data..."):
                 previous_data = processor.get_previous_history()
-                st.write(previous_data)
+                previous_entry = previous_data[0] if previous_data else None
 
             def clean_number_input(label, default_value=None):
                 default_str = f"{default_value:,.0f}" if default_value is not None else ""
@@ -630,16 +630,16 @@ class App():
             with col1:
                 kept_count_b5 = clean_number_input(
                     "Kept Count (B5)", 
-                    previous_data['kept_count_b5'] if previous_data else None
+                    previous_entry['kept_count_b5'] if previous_entry else None
                 )
             with col2:
                 kept_bal_b5 = clean_number_input(
                     "Kept Balance (B5)", 
-                    previous_data['kept_bal_b5'] if previous_data else None
+                    previous_entry['kept_bal_b5'] if previous_entry else None
                 )
             alloc_bal_b5 = clean_number_input(
                 "Allocation Balance (B5)", 
-                previous_data['alloc_bal_b5'] if previous_data else None
+                previous_entry['alloc_bal_b5'] if previous_entry else None
             )
 
             st.sidebar.subheader("B6")
@@ -647,19 +647,19 @@ class App():
             with col1:
                 kept_count_b6 = clean_number_input(
                     "Kept Count (B6)", 
-                    previous_data['kept_count_b6'] if previous_data else None
+                    previous_entry['kept_count_b6'] if previous_entry else None
                 )
             with col2:
                 kept_bal_b6 = clean_number_input(
                     "Kept Balance (B6)", 
-                    previous_data['kept_bal_b6'] if previous_data else None
+                    previous_entry['kept_bal_b6'] if previous_entry else None
                 )
             alloc_bal_b6 = clean_number_input(
                 "Allocation Balance (B6)", 
-                previous_data['alloc_bal_b6'] if previous_data else None
+                previous_entry['alloc_bal_b6'] if previous_entry else None
             )
             
-            if previous_data:
+            if previous_entry:
                 st.sidebar.info("Previous values have been loaded as defaults")
             
             if st.sidebar.button("Clear All Fields", help="Clear all input fields"):
