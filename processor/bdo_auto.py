@@ -40,7 +40,7 @@ class BDOAutoProcessor(base):
                 return []
                 
         except Exception as e:
-            print(f"Error retrieving BDO Auto history: {str(e)}")
+            st.write(f"Error retrieving BDO Auto history: {str(e)}")
             return []
     
     def save_bdo_auto_data(self, kept_count_b5, kept_bal_b5, alloc_bal_b5, 
@@ -88,7 +88,7 @@ class BDOAutoProcessor(base):
                     .eq("id", existing_id)
                     .execute()
                 )
-                print(f"Updated existing BDO Auto data for date: {report_date}")
+                st.write(f"Updated existing BDO Auto data for date: {report_date}")
             else:
                 data_payload["created_at"] = datetime.now().isoformat()
                 response = (
@@ -97,12 +97,12 @@ class BDOAutoProcessor(base):
                     .insert(data_payload)
                     .execute()
                 )
-                print(f"Inserted new BDO Auto data for date: {report_date}")
+                st.write(f"Inserted new BDO Auto data for date: {report_date}")
             
             return True
                 
         except Exception as e:
-            print(f"Error saving BDO Auto data to Supabase: {str(e)}")
+            st.write(f"Error saving BDO Auto data to Supabase: {str(e)}")
             return False
     
     def delete_bdo_auto_data(self, record_id: int) -> bool:
