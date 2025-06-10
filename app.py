@@ -610,7 +610,6 @@ class App():
         if campaign == "BDO Auto B5 & B6" and automation_type == "Agency Daily Report":
             with st.spinner("Loading previous data..."):
                 previous_data = processor.get_previous_history()
-                st.write(previous_data)
 
             def clean_number_input(label, default_value=None):
                 default_str = f"{default_value:,.0f}" if default_value is not None else ""
@@ -667,7 +666,7 @@ class App():
 
             with st.sidebar.expander("View Data History", expanded=False):
                 with st.spinner("Loading history..."):
-                    history = processor.get_bdo_auto_history(limit=5)
+                    history = processor.get_previous_history(limit=5)
                 
                 if history:
                     st.write("**Recent Entries:**")
