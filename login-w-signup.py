@@ -798,7 +798,7 @@ def main_app():
             )
 
         if upload_datasets:
-            TABLE_NAME = 'bdo_auto_loan_dataset'
+            TABLE_NAME = 'bdo_autoloan_dataset'
             all_records_to_insert = []
             all_records_to_update = []
             file_dataframes = []

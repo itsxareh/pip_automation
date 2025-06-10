@@ -10,6 +10,7 @@ import pytz
 import io
 import re 
 import zipfile
+from typing import List, Dict, Any, Optional
 from processor.base import BaseProcessor as base
 from supabase import create_client
 from dotenv import load_dotenv
@@ -17,6 +18,74 @@ load_dotenv()
 
 
 class BDOAutoProcessor(base):
+    def get_bdo_auto_history(self, limit: int = 10) -> List[Dict[str, Any]]:
+        try:
+            response = (
+                self.supabase
+                .table("bdo_auto_loan_inputset")
+                .select(
+                    "report_date, kept_count_b5, kept_bal_b5, alloc_bal_b5, "
+                    "kept_count_b6, kept_bal_b6, alloc_bal_b6, created_at"
+                )
+                .eq("campaign", "BDO Auto B5 & B6")
+                .eq("automation_type", "Agency Daily Report")
+                .order("created_at", desc=True)
+                .limit(limit)
+                .execute()
+            )
+            
+            if response.data:
+                return response.data
+            else:
+                return []
+                
+        except Exception as e:
+            print(f"Error retrieving BDO Auto history: {str(e)}")
+            return []
+    
+    def insert_bdo_auto_data(self, data: Dict[str, Any]) -> bool:
+        try:
+            response = (
+                self.supabase
+                .table("bdo_auto_loan_inputset")
+                .insert(data)
+                .execute()
+            )
+            return True
+        except Exception as e:
+            print(f"Error inserting BDO Auto data: {str(e)}")
+            return False
+    
+    def update_bdo_auto_data(self, record_id: int, data: Dict[str, Any]) -> bool:
+        """Update existing BDO Auto data record"""
+        try:
+            response = (
+                self.supabase
+                .table("bdo_auto_loan_inputset")
+                .update(data)
+                .eq("id", record_id)
+                .execute()
+            )
+            return True
+        except Exception as e:
+            print(f"Error updating BDO Auto data: {str(e)}")
+            return False
+    
+    def delete_bdo_auto_data(self, record_id: int) -> bool:
+        """Delete BDO Auto data record"""
+        try:
+            response = (
+                self.supabase
+                .table("bdo_auto_loan_inputset")
+                .delete()
+                .eq("id", record_id)
+                .execute()
+            )
+            return True
+        except Exception as e:
+            print(f"Error deleting BDO Auto data: {str(e)}")
+            return False
+
     def process_agency_daily_report(self, file_content, sheet_name=None, preview_only=False,
         remove_duplicates=False, remove_blanks=False, trim_spaces=False, report_date=None,
         kept_count_b5=None, kept_bal_b5=None, alloc_bal_b5=None,
@@ -484,7 +553,7 @@ class BDOAutoProcessor(base):
     def process_new_endorsement(self, file_content, sheet_name=None, preview_only=False,
                            remove_duplicates=False, remove_blanks=False, trim_spaces=False,
                            endo_date=None, bucket=None):
-        TABLE_NAME = 'bdo_auto_loan_dataset'
+        TABLE_NAME = 'bdo_autoloan_dataset'
         all_account_numbers = []
         try:
             if isinstance(file_content, bytes):

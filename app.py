@@ -608,29 +608,86 @@ class App():
             endo_date = st.sidebar.date_input('Endo Date', format="MM/DD/YYYY") 
         
         if campaign == "BDO Auto B5 & B6" and automation_type == "Agency Daily Report":
-            def clean_number_input(label):
-                raw_input = st.sidebar.text_input(label)
+            with st.spinner("Loading previous data..."):
+                previous_data = processor.get_previous_bdo_auto_data()
+            
+            def clean_number_input(label, default_value=None):
+                default_str = f"{default_value:,.0f}" if default_value is not None else ""
+                
+                raw_input = st.sidebar.text_input(label, value=default_str)
+                if not raw_input:
+                    return None
+                
                 clean_input = raw_input.replace(",", "")
                 try:
                     return float(clean_input)
                 except ValueError:
                     return None
-                    
+            
             st.sidebar.subheader("B5")
             col1, col2 = st.columns(2)
             with col1:
-                kept_count_b5 = clean_number_input("Kept Count (B5)")
+                kept_count_b5 = clean_number_input(
+                    "Kept Count (B5)", 
+                    previous_data['kept_count_b5'] if previous_data else None
+                )
             with col2:
-                kept_bal_b5 = clean_number_input("Kept Balance (B5)")
-            alloc_bal_b5 = clean_number_input("Allocation Balance (B5)")
+                kept_bal_b5 = clean_number_input(
+                    "Kept Balance (B5)", 
+                    previous_data['kept_bal_b5'] if previous_data else None
+                )
+            alloc_bal_b5 = clean_number_input(
+                "Allocation Balance (B5)", 
+                previous_data['alloc_bal_b5'] if previous_data else None
+            )
 
             st.sidebar.subheader("B6")
             col1, col2 = st.columns(2)
             with col1:
-                kept_count_b6 = clean_number_input("Kept Count (B6)")
+                kept_count_b6 = clean_number_input(
+                    "Kept Count (B6)", 
+                    previous_data['kept_count_b6'] if previous_data else None
+                )
             with col2:
-                kept_bal_b6 = clean_number_input("Kept Balance (B6)")
-            alloc_bal_b6 = clean_number_input("Allocation Balance (B6)")
+                kept_bal_b6 = clean_number_input(
+                    "Kept Balance (B6)", 
+                    previous_data['kept_bal_b6'] if previous_data else None
+                )
+            alloc_bal_b6 = clean_number_input(
+                "Allocation Balance (B6)", 
+                previous_data['alloc_bal_b6'] if previous_data else None
+            )
+            
+            if previous_data:
+                st.sidebar.info("Previous values have been loaded as defaults")
+            
+            if st.sidebar.button("Clear All Fields", help="Clear all input fields"):
+                st.rerun()
+
+            with st.sidebar.expander("View Data History", expanded=False):
+                with st.spinner("Loading history..."):
+                    history = processor.get_bdo_auto_history(limit=5)
+                
+                if history:
+                    st.write("**Recent Entries:**")
+                    for entry in history:
+                        with st.container():
+                            st.write(f"**Date:** {entry['report_date']}")
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                st.write(f"**B5:**")
+                                st.write(f"Count: {entry['kept_count_b5']:,.0f}")
+                                st.write(f"Balance: {entry['kept_bal_b5']:,.2f}")
+                                st.write(f"Allocation: {entry['alloc_bal_b5']:,.2f}")
+                            with col2:
+                                st.write(f"**B6:**")
+                                st.write(f"Count: {entry['kept_count_b6']:,.0f}")
+                                st.write(f"Balance: {entry['kept_bal_b6']:,.2f}")
+                                st.write(f"Allocation: {entry['alloc_bal_b6']:,.2f}")
+                            st.divider()
+                else:
+                    st.write("No previous data found.")
+            
 
         if campaign == "BDO Auto B5 & B6" and automation_type == "Endorsement":
             endo_date = st.sidebar.date_input('Endo Date', format="MM/DD/YYYY")
@@ -646,7 +703,7 @@ class App():
                 )
 
             if upload_datasets:
-                TABLE_NAME = 'bdo_auto_loan_dataset'
+                TABLE_NAME = 'bdo_autoloan_dataset'
                 all_records_to_insert = []
                 all_records_to_update = []
                 file_dataframes = []
