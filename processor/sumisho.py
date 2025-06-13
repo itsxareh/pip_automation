@@ -71,11 +71,11 @@ class SumishoProcessor(BaseProcessor):
                     if template_acct in account_remark_map:
                         template_df.loc[idx, target_column] = account_remark_map[template_acct]
                         updated_count += 1
-                
                 st.write(f"Preview: {updated_count} cells would be updated in the template")
                 return template_df
             
-            output_filename = "Processed_Daily_Remark.xlsx"
+            date_report = pd.to_datetime(df['Date']).dt.strftime('%m%d%Y')
+            output_filename = f"SP MADRID DAILY REPORT {date_report}1.xlsx"
             output_path = os.path.join(self.temp_dir, output_filename)
             
             template_stream = io.BytesIO(template_content)
