@@ -420,38 +420,54 @@ class App():
                                 
                                 new_records = df_selected.to_dict(orient="records")
                                 
+                                # Fetch ALL existing records from database
                                 existing_records = []
-                                batch_size_for_query = 20
+                                batch_size_for_query = 1000  # Larger batch size for fetching all records
                                 
                                 progress_bar = st.progress(0)
                                 status_text = status_placeholder.empty()
-                                status_text.text("Fetching existing records...")
+                                status_text.text("Fetching all existing records from database...")
                                 
-                                for i in range(0, len(unique_ids), batch_size_for_query):
-                                    batch_ids = unique_ids[i:i+batch_size_for_query]
-                                    batch_ids = [id for id in batch_ids if id is not None and id != '']
-                                    
-                                    if batch_ids:
-                                        try:
-                                            batch_response = supabase.table(TABLE_NAME).select("*").in_(unique_id_col, batch_ids).execute()
-                                            if hasattr(batch_response, 'data') and batch_response.data:
-                                                existing_records.extend(batch_response.data)
-                                        except Exception as e:
-                                            st.warning(f"Error fetching batch {i}: {str(e)}. Continuing...")
-                                    
-                                    progress_value = min(1.0, (i + batch_size_for_query) / max(1, len(unique_ids)))
-                                    progress_bar.progress(progress_value)
+                                # Get total count first
+                                try:
+                                    count_response = supabase.table(TABLE_NAME).select("*", count="exact").execute()
+                                    total_records_in_db = count_response.count if hasattr(count_response, 'count') else 0
+                                except:
+                                    total_records_in_db = 0
+                                
+                                # Fetch all records in batches
+                                offset = 0
+                                while True:
+                                    try:
+                                        batch_response = supabase.table(TABLE_NAME).select("*").range(offset, offset + batch_size_for_query - 1).execute()
+                                        if hasattr(batch_response, 'data') and batch_response.data:
+                                            existing_records.extend(batch_response.data)
+                                            if len(batch_response.data) < batch_size_for_query:
+                                                break
+                                            offset += batch_size_for_query
+                                        else:
+                                            break
+                                        
+                                        if total_records_in_db > 0:
+                                            progress_value = min(1.0, offset / total_records_in_db)
+                                            progress_bar.progress(progress_value)
+                                    except Exception as e:
+                                        st.warning(f"Error fetching records at offset {offset}: {str(e)}. Continuing...")
+                                        break
                                 
                                 existing_df = pd.DataFrame(existing_records) if existing_records else pd.DataFrame()
                                 if not existing_df.empty:
                                     existing_df[unique_id_col] = existing_df[unique_id_col].astype(str).str.strip()
                                 
+                                # Prepare lists for different operations
                                 records_to_insert = []
                                 records_to_update = []
+                                records_to_delete = []
+                                
                                 total_records = len(new_records)
                                 processed_count = 0
                                 
-                                status_text.text("Identifying records to insert or update...")
+                                status_text.text("Identifying records to insert, update, or delete...")
                                 progress_bar.progress(0)
                                 
                                 def records_differ(new_record, existing_record):
@@ -460,6 +476,7 @@ class App():
                                             return True
                                     return False
                                 
+                                # Process new records (insert or update)
                                 for new_record in new_records:
                                     processed_count += 1
                                     account_number = str(new_record[unique_id_col]).strip()
@@ -480,11 +497,24 @@ class App():
                                     progress_value = min(1.0, processed_count / total_records)
                                     progress_bar.progress(progress_value)
                                 
-                                status_placeholder.info(f"Found {len(records_to_insert)} records to insert and {len(records_to_update)} records to update.")
+                                # Find records to delete (exist in DB but not in uploaded dataset)
+                                if not existing_df.empty:
+                                    uploaded_account_numbers = set(str(acc).strip() for acc in unique_ids)
+                                    existing_account_numbers = set(existing_df[unique_id_col].tolist())
+                                    
+                                    accounts_to_delete = existing_account_numbers - uploaded_account_numbers
+                                    
+                                    if accounts_to_delete:
+                                        records_to_delete = existing_df[existing_df[unique_id_col].isin(accounts_to_delete)]['id'].tolist()
+                                
+                                status_placeholder.info(f"Found {len(records_to_insert)} records to insert, {len(records_to_update)} records to update, and {len(records_to_delete)} records to delete.")
                                 
                                 batch_size_for_db = 100
                                 success_count = 0
+                                update_count = 0
+                                delete_count = 0
                                 
+                                # Insert new records
                                 if records_to_insert:
                                     status_text.text("Inserting new records...")
                                     progress_bar.progress(0)
@@ -504,7 +534,7 @@ class App():
                                         progress_bar.progress(progress_value)
                                         status_text.text(f"Inserted {success_count} of {len(records_to_insert)} new records...")
                                 
-                                update_count = 0
+                                # Update existing records
                                 if records_to_update:
                                     status_text.text("Updating existing records...")
                                     progress_bar.progress(0)
@@ -523,26 +553,46 @@ class App():
                                         progress_bar.progress(progress_value)
                                         status_text.text(f"Updated {update_count} of {len(records_to_update)} existing records...")
                                 
-                                total_processed = success_count + update_count
+                                # Delete records not in uploaded dataset
+                                if records_to_delete:
+                                    status_text.text("Removing records not in uploaded dataset...")
+                                    progress_bar.progress(0)
+                                    
+                                    for i in range(0, len(records_to_delete), batch_size_for_db):
+                                        batch_ids = records_to_delete[i:i+batch_size_for_db]
+                                        
+                                        if batch_ids:
+                                            try:
+                                                response = supabase.table(TABLE_NAME).delete().in_('id', batch_ids).execute()
+                                                if hasattr(response, 'data'):
+                                                    delete_count += len(batch_ids)
+                                            except Exception as e:
+                                                st.error(f"Error deleting records batch: {str(e)}")
+                                        
+                                        progress_value = min(1.0, min(i + batch_size_for_db, len(records_to_delete)) / max(1, len(records_to_delete)))
+                                        progress_bar.progress(progress_value)
+                                        status_text.text(f"Deleted {delete_count} of {len(records_to_delete)} obsolete records...")
+                                
+                                total_processed = success_count + update_count + delete_count
                                 if total_processed > 0:
-                                    st.toast(f"Dataset Updated! {success_count} records inserted and {update_count} records updated successfully.")
-                                    button_placeholder.button("Upload Complete!", disabled=True, key="complete_dataset_button")
+                                    st.toast(f"Dataset Synchronized! {success_count} records inserted, {update_count} records updated, and {delete_count} records removed.")
+                                    button_placeholder.button("Synchronization Complete!", disabled=True, key="complete_dataset_button")
                                 else:
                                     st.warning("No records were processed. Either no changes were needed or the operation failed.")
                                     button_placeholder.button("Try Again", key="retry_dataset_button")
                             
                             except Exception as e:
-                                st.error(f"Error uploading dataset: {str(e)}")
+                                st.error(f"Error synchronizing dataset: {str(e)}")
                                 import traceback
                                 st.code(traceback.format_exc())
-                                button_placeholder.button("Upload Failed - Try Again", key="error_dataset_button")
+                                button_placeholder.button("Synchronization Failed - Try Again", key="error_dataset_button")
                     else:
                         missing_cols = [col for col in possible_column_variants if col not in df_filtered.columns]
                         st.error(f"Required columns not found in the uploaded file.")
                         
                 except Exception as e:
                     st.error(f"Error processing Excel file: {str(e)}")
-                            
+                                    
             if upload_disposition:
                 TABLE_NAME = 'rob_bike_disposition'
                 try:
