@@ -657,7 +657,6 @@ class App():
             with st.spinner("Loading previous data..."):
                 previous_data = processor.get_previous_history()
                 previous_entry = previous_data[0] if previous_data else None
-                st.write(previous_entry)
 
             def clean_number_input(label, default_value=None, key_suffix=""):
                 if st.session_state.clear_inputs:
