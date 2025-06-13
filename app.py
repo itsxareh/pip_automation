@@ -649,14 +649,19 @@ class App():
             endo_date = st.sidebar.date_input('Endo Date', format="MM/DD/YYYY") 
         
         if campaign == "BDO Auto B5 & B6" and automation_type == "Agency Daily Report":
+            if 'input_key_suffix' not in st.session_state:
+                st.session_state.input_key_suffix = 0
+            
             with st.spinner("Loading previous data..."):
                 previous_data = processor.get_previous_history()
                 previous_entry = previous_data[0] if previous_data else None
 
-            def clean_number_input(label, default_value=None):
+            def clean_number_input(label, default_value=None, key_suffix=""):
                 default_str = f"{default_value:,.0f}" if default_value is not None else ""
                 
-                raw_input = st.sidebar.text_input(label, value=default_str)
+                unique_key = f"{label.lower().replace(' ', '_')}_{st.session_state.input_key_suffix}{key_suffix}"
+                
+                raw_input = st.sidebar.text_input(label, value=default_str, key=unique_key)
                 if not raw_input:
                     return None
                 
@@ -671,16 +676,19 @@ class App():
             with col1:
                 kept_count_b5 = clean_number_input(
                     "Kept Count (B5)", 
-                    previous_entry['kept_count_b5'] if previous_entry else None
+                    previous_entry['kept_count_b5'] if previous_entry else None,
+                    "_b5_count"
                 )
             with col2:
                 kept_bal_b5 = clean_number_input(
                     "Kept Balance (B5)", 
-                    previous_entry['kept_bal_b5'] if previous_entry else None
+                    previous_entry['kept_bal_b5'] if previous_entry else None,
+                    "_b5_bal"
                 )
             alloc_bal_b5 = clean_number_input(
                 "Allocation Balance (B5)", 
-                previous_entry['alloc_bal_b5'] if previous_entry else None
+                previous_entry['alloc_bal_b5'] if previous_entry else None,
+                "_b5_alloc"
             )
 
             st.sidebar.subheader("B6")
@@ -688,22 +696,26 @@ class App():
             with col1:
                 kept_count_b6 = clean_number_input(
                     "Kept Count (B6)", 
-                    previous_entry['kept_count_b6'] if previous_entry else None
+                    previous_entry['kept_count_b6'] if previous_entry else None,
+                    "_b6_count"
                 )
             with col2:
                 kept_bal_b6 = clean_number_input(
                     "Kept Balance (B6)", 
-                    previous_entry['kept_bal_b6'] if previous_entry else None
+                    previous_entry['kept_bal_b6'] if previous_entry else None,
+                    "_b6_bal"
                 )
             alloc_bal_b6 = clean_number_input(
                 "Allocation Balance (B6)", 
-                previous_entry['alloc_bal_b6'] if previous_entry else None
+                previous_entry['alloc_bal_b6'] if previous_entry else None,
+                "_b6_alloc"
             )
             
             if previous_entry:
                 st.sidebar.info("Previous values have been loaded as defaults")
             
             if st.sidebar.button("Clear All Fields", help="Clear all input fields"):
+                st.session_state.input_key_suffix += 1
                 st.rerun()
 
             # with st.sidebar.expander("View Data History", expanded=False):

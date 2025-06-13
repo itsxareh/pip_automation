@@ -549,9 +549,7 @@ class BDOAutoProcessor(base):
                         kept_count_b6, kept_bal_b6, alloc_bal_b6,
                         report_date
                     )
-                    if save_success:
-                        st.write("Successfully saved BDO Auto data to Supabase")
-                    else:
+                    if not save_success:
                         st.write("Failed to save BDO Auto data to Supabase")
 
                 return {
