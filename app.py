@@ -658,13 +658,12 @@ class App():
 
             def clean_number_input(label, default_value=None, key_suffix=""):
                 default_str = f"{default_value:,.0f}" if default_value is not None else ""
-                
                 unique_key = f"{label.lower().replace(' ', '_')}_{st.session_state.input_key_suffix}{key_suffix}"
-                
                 raw_input = st.sidebar.text_input(label, value=default_str, key=unique_key)
+
                 if not raw_input:
                     return None
-                
+
                 clean_input = raw_input.replace(",", "")
                 try:
                     return float(clean_input)
