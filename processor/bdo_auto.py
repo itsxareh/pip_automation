@@ -54,7 +54,6 @@ class BDOAutoProcessor(base):
                 except:
                     pass
             
-            st.write(kept_count_b5)
             existing_response = (
                 self.supabase
                 .table("bdo_autoloan_inputset")
@@ -83,8 +82,6 @@ class BDOAutoProcessor(base):
                     .eq("id", existing_id)
                     .execute()
                 )
-                st.write(f"{response}")
-                st.write(f"Updated existing BDO Auto data for date: {report_date}")
             else:
                 data_payload["created_at"] = datetime.now().isoformat()
                 response = (
@@ -93,8 +90,8 @@ class BDOAutoProcessor(base):
                     .insert(data_payload)
                     .execute()
                 )
-                st.write(f"Inserted new BDO Auto data for date: {report_date}")
-                st.write(f"{response}")
+            st.write(f"Kept: {kept_count_b5}")
+            st.write(f"{response}")
             return True
                 
         except Exception as e:
