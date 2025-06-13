@@ -90,7 +90,7 @@ class BDOAutoProcessor(base):
                     .insert(data_payload)
                     .execute()
                 )
-            st.write(f"Kept: {kept_count_b5}")
+            st.write(f"Kept: {kept_bal_b5}")
             st.write(f"{response}")
             return True
                 
