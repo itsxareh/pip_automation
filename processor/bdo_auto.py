@@ -82,6 +82,7 @@ class BDOAutoProcessor(base):
                     .eq("id", existing_id)
                     .execute()
                 )
+                st.write(f"{response}")
                 st.write("update")
             else:
                 data_payload["created_at"] = datetime.now().isoformat()
