@@ -82,6 +82,7 @@ class BDOAutoProcessor(base):
                     .eq("id", existing_id)
                     .execute()
                 )
+                st.write(f"{response}")
                 st.write(f"Updated existing BDO Auto data for date: {report_date}")
             else:
                 data_payload["created_at"] = datetime.now().isoformat()
@@ -92,7 +93,7 @@ class BDOAutoProcessor(base):
                     .execute()
                 )
                 st.write(f"Inserted new BDO Auto data for date: {report_date}")
-            
+                st.write(f"{response}")
             return True
                 
         except Exception as e:
