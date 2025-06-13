@@ -658,12 +658,12 @@ class App():
                 previous_data = processor.get_previous_history()
                 previous_entry = previous_data[0] if previous_data else None
                 st.write(previous_entry)
-                
+
             def clean_number_input(label, default_value=None, key_suffix=""):
                 if st.session_state.clear_inputs:
                     default_str = ""
                 else:
-                    default_str = f"{default_value:,.0f}" if default_value is not None else ""
+                    default_str = f"{default_value:,.2f}" if default_value is not None else ""
                 
                 unique_key = f"{label.lower().replace(' ', '_')}_{st.session_state.input_key_suffix}{key_suffix}"
                 raw_input = st.sidebar.text_input(label, value=default_str, key=unique_key)
