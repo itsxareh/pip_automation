@@ -420,22 +420,19 @@ class App():
                                 
                                 new_records = df_selected.to_dict(orient="records")
                                 
-                                # Fetch ALL existing records from database
                                 existing_records = []
-                                batch_size_for_query = 1000  # Larger batch size for fetching all records
+                                batch_size_for_query = 1000
                                 
                                 progress_bar = st.progress(0)
                                 status_text = status_placeholder.empty()
                                 status_text.text("Fetching all existing records from database...")
                                 
-                                # Get total count first
                                 try:
                                     count_response = supabase.table(TABLE_NAME).select("*", count="exact").execute()
                                     total_records_in_db = count_response.count if hasattr(count_response, 'count') else 0
                                 except:
                                     total_records_in_db = 0
                                 
-                                # Fetch all records in batches
                                 offset = 0
                                 while True:
                                     try:
@@ -459,7 +456,6 @@ class App():
                                 if not existing_df.empty:
                                     existing_df[unique_id_col] = existing_df[unique_id_col].astype(str).str.strip()
                                 
-                                # Prepare lists for different operations
                                 records_to_insert = []
                                 records_to_update = []
                                 records_to_delete = []
@@ -476,7 +472,6 @@ class App():
                                             return True
                                     return False
                                 
-                                # Process new records (insert or update)
                                 for new_record in new_records:
                                     processed_count += 1
                                     account_number = str(new_record[unique_id_col]).strip()
@@ -497,7 +492,6 @@ class App():
                                     progress_value = min(1.0, processed_count / total_records)
                                     progress_bar.progress(progress_value)
                                 
-                                # Find records to delete (exist in DB but not in uploaded dataset)
                                 if not existing_df.empty:
                                     uploaded_account_numbers = set(str(acc).strip() for acc in unique_ids)
                                     existing_account_numbers = set(existing_df[unique_id_col].tolist())
@@ -514,7 +508,6 @@ class App():
                                 update_count = 0
                                 delete_count = 0
                                 
-                                # Insert new records
                                 if records_to_insert:
                                     status_text.text("Inserting new records...")
                                     progress_bar.progress(0)
@@ -534,7 +527,6 @@ class App():
                                         progress_bar.progress(progress_value)
                                         status_text.text(f"Inserted {success_count} of {len(records_to_insert)} new records...")
                                 
-                                # Update existing records
                                 if records_to_update:
                                     status_text.text("Updating existing records...")
                                     progress_bar.progress(0)
@@ -553,7 +545,6 @@ class App():
                                         progress_bar.progress(progress_value)
                                         status_text.text(f"Updated {update_count} of {len(records_to_update)} existing records...")
                                 
-                                # Delete records not in uploaded dataset
                                 if records_to_delete:
                                     status_text.text("Removing records not in uploaded dataset...")
                                     progress_bar.progress(0)
@@ -592,7 +583,7 @@ class App():
                         
                 except Exception as e:
                     st.error(f"Error processing Excel file: {str(e)}")
-                                    
+
             if upload_disposition:
                 TABLE_NAME = 'rob_bike_disposition'
                 try:
