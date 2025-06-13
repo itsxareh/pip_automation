@@ -662,7 +662,13 @@ class App():
                 if st.session_state.clear_inputs:
                     default_str = ""
                 else:
-                    default_str = f"{default_value:,.2f}" if default_value is not None else ""
+                    if default_value is not None:
+                        if default_value == int(default_value):
+                            default_str = f"{default_value:,.0f}"
+                        else:
+                            default_str = f"{default_value:,.2f}"
+                    else:
+                        default_str = ""
                 
                 unique_key = f"{label.lower().replace(' ', '_')}_{st.session_state.input_key_suffix}{key_suffix}"
                 raw_input = st.sidebar.text_input(label, value=default_str, key=unique_key)
