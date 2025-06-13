@@ -74,7 +74,8 @@ class SumishoProcessor(BaseProcessor):
                 st.write(f"Preview: {updated_count} cells would be updated in the template")
                 return template_df
             
-            date_report = pd.to_datetime(df['Date']).dt.strftime('%m%d%Y')
+                date_report = pd.to_datetime(df['Date']).dt.strftime('%m%d%Y')
+                
             output_filename = f"SP MADRID DAILY REPORT {date_report}1.xlsx"
             output_path = os.path.join(self.temp_dir, output_filename)
             
@@ -114,7 +115,7 @@ class SumishoProcessor(BaseProcessor):
                         sheet.cell(row=row_idx, column=target_col_idx).value = account_remark_map[account_str]
                         update_count += 1
 
-            st.write(f"Updated {update_count} cells in the Excel file")
+            st.info(f"Updated {update_count} cells in the Excel file")
             workbook.save(output_path)
 
             with open(output_path, 'rb') as f:
