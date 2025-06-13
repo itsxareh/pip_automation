@@ -54,6 +54,7 @@ class BDOAutoProcessor(base):
                 except:
                     pass
             
+            st.write(kept_count_b5)
             existing_response = (
                 self.supabase
                 .table("bdo_autoloan_inputset")
@@ -544,7 +545,6 @@ class BDOAutoProcessor(base):
                 b6_prod_filename = f"B6 Daily Productivity AS OF {current_date}.xlsx"
                 vs_filename = f"SP MADRID VS AS OF {current_date}"
                 
-                st.write(f"Alloc balance: ", alloc_bal_b5)
                 if kept_count_b5 is not None and kept_count_b6 is not None:
                     save_success = self.save_bdo_auto_data(
                         kept_count_b5, kept_bal_b5, alloc_bal_b5,
