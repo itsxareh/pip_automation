@@ -719,7 +719,7 @@ class App():
             if previous_entry and not st.session_state.clear_inputs:
                 st.sidebar.info("Previous values have been loaded as defaults")
             
-            if st.sidebar.button("Clear All Fields", help="Clear all input fields"):
+            if st.sidebar.button("Clear", help="Clear all input fields"):
                 st.session_state.clear_inputs = True
                 st.session_state.input_key_suffix += 1
                 st.rerun()
