@@ -706,29 +706,29 @@ class App():
             if st.sidebar.button("Clear All Fields", help="Clear all input fields"):
                 st.rerun()
 
-            with st.sidebar.expander("View Data History", expanded=False):
-                with st.spinner("Loading history..."):
-                    history = processor.get_previous_history(limit=5)
+            # with st.sidebar.expander("View Data History", expanded=False):
+            #     with st.spinner("Loading history..."):
+            #         history = processor.get_previous_history(limit=5)
                 
-                if history:
-                    st.write("**Recent Entries:**")
-                    for entry in history:
-                        with st.container():
-                            st.write(f"**Date:** {entry['report_date']}")
-                            col1, col2 = st.columns(2)
-                            with col1:
-                                st.write(f"**B5:**")
-                                st.write(f"Count: {entry['kept_count_b5']:,.0f}")
-                                st.write(f"Balance: {entry['kept_bal_b5']:,.2f}")
-                                st.write(f"Allocation: {entry['alloc_bal_b5']:,.2f}")
-                            with col2:
-                                st.write(f"**B6:**")
-                                st.write(f"Count: {entry['kept_count_b6']:,.0f}")
-                                st.write(f"Balance: {entry['kept_bal_b6']:,.2f}")
-                                st.write(f"Allocation: {entry['alloc_bal_b6']:,.2f}")
-                            st.divider()
-                else:
-                    st.write("No previous data found.")
+            #     if history:
+            #         st.write("**Recent Entries:**")
+            #         for entry in history:
+            #             with st.container():
+            #                 st.write(f"**Date:** {entry['report_date']}")
+            #                 col1, col2 = st.columns(2)
+            #                 with col1:
+            #                     st.write(f"**B5:**")
+            #                     st.write(f"Count: {entry['kept_count_b5']:,.0f}")
+            #                     st.write(f"Balance: {entry['kept_bal_b5']:,.2f}")
+            #                     st.write(f"Allocation: {entry['alloc_bal_b5']:,.2f}")
+            #                 with col2:
+            #                     st.write(f"**B6:**")
+            #                     st.write(f"Count: {entry['kept_count_b6']:,.0f}")
+            #                     st.write(f"Balance: {entry['kept_bal_b6']:,.2f}")
+            #                     st.write(f"Allocation: {entry['alloc_bal_b6']:,.2f}")
+            #                 st.divider()
+            #     else:
+            #         st.write("No previous data found.")
             
 
         if campaign == "BDO Auto B5 & B6" and automation_type == "Endorsement":

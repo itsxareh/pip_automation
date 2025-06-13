@@ -27,8 +27,6 @@ class BDOAutoProcessor(base):
                     "report_date, kept_count_b5, kept_bal_b5, alloc_bal_b5, "
                     "kept_count_b6, kept_bal_b6, alloc_bal_b6, created_at"
                 )
-                .eq("campaign", "BDO Auto B5 & B6")
-                .eq("automation_type", "Agency Daily Report")
                 .order("created_at", desc=True)
                 .limit(limit)
                 .execute()
@@ -60,15 +58,11 @@ class BDOAutoProcessor(base):
                 self.supabase
                 .table("bdo_autoloan_inputset")
                 .select("id")
-                .eq("campaign", "BDO Auto B5 & B6")
-                .eq("automation_type", "Agency Daily Report")
                 .eq("report_date", report_date)
                 .execute()
             )
             
             data_payload = {
-                "campaign": "BDO Auto B5 & B6",
-                "automation_type": "Agency Daily Report",
                 "report_date": report_date,
                 "kept_count_b5": kept_count_b5,
                 "kept_bal_b5": kept_bal_b5,
