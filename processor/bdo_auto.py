@@ -73,6 +73,7 @@ class BDOAutoProcessor(base):
                 "updated_at": datetime.now().isoformat()
             }
             
+            st.write(f"{existing_response}")
             if existing_response.data and len(existing_response.data) > 0:
                 existing_id = existing_response.data[0]["id"]
                 response = (
