@@ -36,6 +36,8 @@ class SumishoProcessor(BaseProcessor):
             df['FormattedDate'] = pd.to_datetime(df['Date']).dt.strftime('%m/%d/%Y')
             df['Date_Remark'] = df['FormattedDate'] + ' ' + df['Remark'].astype(str)
             
+            date_report = pd.to_datetime(df['Date']).dt.strftime('%m%d%Y').iloc[0]
+            
             account_remark_map = {}
             for idx, row in df.iterrows():
                 account_number = str(int(row['Account No.']))
@@ -74,7 +76,6 @@ class SumishoProcessor(BaseProcessor):
                 st.write(f"Preview: {updated_count} cells would be updated in the template")
                 return template_df
             
-            date_report = pd.to_datetime(df['Date']).dt.strftime('%m%d%Y').iloc[0]
             output_filename = f"SP MADRID DAILY REPORT {date_report}1.xlsx"
             output_path = os.path.join(self.temp_dir, output_filename)
             
