@@ -73,12 +73,14 @@ class ROBBikeProcessor(base):
                     df = df[~not_in_valid_dispo]
                 
                 if 'Remark' in df.columns:
-                    df['Remark'] = df['Remark'].astype(str)
-                    df = df[df['Remark'].str.strip().ne('')]
+                    df['Remark'] = df['Remark'].astype(str).str.lstrip('=').str.strip()
+
+                    df = df[df['Remark'].ne('')]
 
                     system_auto_update_remarks = df['Remark'].str.contains('System Auto Update Remarks For PD', case=False, na=False)
                     system_auto_update_remarks_count = system_auto_update_remarks.sum()
                     df = df[~system_auto_update_remarks]
+
                     new_assignment_os_updated_remarks = df['Remark'].str.contains('New Assignment - OS updated from', case=False, na=False)
                     new_assignment_os_updated_remarks_count = new_assignment_os_updated_remarks.sum()
                     df = df[~new_assignment_os_updated_remarks]
