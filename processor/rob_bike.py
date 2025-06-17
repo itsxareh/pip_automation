@@ -73,7 +73,7 @@ class ROBBikeProcessor(base):
                     df = df[~not_in_valid_dispo]
                 
                 if 'Remark' in df.columns:
-                    df['Remark'] = df['Remark'].astype(str).str.lstrip('=').str.strip()
+                    df['Remark'] = df['Remark'].astype(str).str.replace(r'^=', '+', regex=True).str.strip()
 
                     df = df[df['Remark'].ne('')]
 
