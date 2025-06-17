@@ -218,6 +218,7 @@ class BDOAutoProcessor(base):
 
             if df_main["Remart By"].isin(["CCDIVINAGRACIA", "MSBONITA"]).any():
                 df_main.loc[df_main["Remart By"].isin(["CCDIVINAGRACIA", "MSBONITA"]), "Remark By"] = "JMOBSEQUIAS"
+                st.write("converted into jm")
 
 
             df_main = df_main[~df_main["Remark"].isin([
