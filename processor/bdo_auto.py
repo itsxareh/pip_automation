@@ -215,7 +215,11 @@ class BDOAutoProcessor(base):
             df_main = df_main[required_columns]
             
             df_main["Remark By"] = df_main["Remark By"].astype(str).str.strip()
-            
+
+            if df_main["Remart By"].isin(["CCDIVINAGRACIA", "MSBONITA"]).any():
+                df_main.loc[df_main["Remart By"].isin(["CCDIVINAGRACIA", "MSBONITA"]), "Remark By"] = "JMOBSEQUIAS"
+
+
             df_main = df_main[~df_main["Remark"].isin([
                 "Updates when case reassign to another collector", 
                 "System Auto Update Remarks For PD"
