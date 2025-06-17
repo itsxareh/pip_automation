@@ -86,15 +86,11 @@ class ROBBikeProcessor(base):
                     df = df[~new_assignment_os_updated_remarks]
                 
                 if 'Remark By' in df.columns:
-                    jerivera_remarks = df['Remark By'].str.contains('JERIVERA', case=False, na=False)
-                    system_remarks_count = jerivera_remarks.sum()
-                    df = df[~jerivera_remarks]
-                    rcraytos_remarks = df['Remark By'].str.contains('RCRAYTOS', case=False, na=False)
-                    system_remarks_count = rcraytos_remarks.sum()
-                    df = df[~rcraytos_remarks]
-                    system_remarks = df['Remark By'].str.contains('SYSTEM', case=False, na=False)
-                    system_remarks_count = system_remarks.sum()
-                    df = df[~system_remarks]
+                    unwanted_remarks = ['JERIVERA', 'RCRAYTOS', 'SYSTEM']
+                    mask_unwanted = df['Remark By'].str.contains('|'.join(unwanted_remarks), case=False, na=False)
+                    system_remarks_count = mask_unwanted.sum()
+    
+                    df = df[~mask_unwanted]
 
                 if 'Account No.' in df.columns and 'Status' in df.columns:
                     initial_duplicates = df.duplicated(subset=['Account No.', 'Status']).sum()
@@ -134,7 +130,7 @@ class ROBBikeProcessor(base):
                 if system_auto_update_remarks_count:
                     messages.append(f"{system_auto_update_remarks_count} system auto update remarks")
                 if system_remarks_count:
-                    messages.append(f"{system_remarks_count} system remarks")
+                    messages.append(f"{system_remarks_count} invalid remarked by")
                 if initial_duplicates:
                     messages.append(f"{initial_duplicates} duplicates")
 
