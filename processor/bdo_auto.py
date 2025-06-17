@@ -73,7 +73,6 @@ class BDOAutoProcessor(base):
                 "updated_at": datetime.now().isoformat()
             }
             
-            st.write(f"{existing_response}")
             if existing_response.data and len(existing_response.data) > 0:
                 existing_id = existing_response.data[0]["id"]
                 response = (
@@ -83,8 +82,6 @@ class BDOAutoProcessor(base):
                     .eq("id", existing_id)
                     .execute()
                 )
-                st.write(f"{response}")
-                st.write("update")
             else:
                 data_payload["created_at"] = datetime.now().isoformat()
                 response = (
@@ -93,7 +90,6 @@ class BDOAutoProcessor(base):
                     .insert(data_payload)
                     .execute()
                 )
-                st.write("insert")
             return True
                 
         except Exception as e:
@@ -218,8 +214,6 @@ class BDOAutoProcessor(base):
 
             if df_main["Remark By"].isin(["CCDIVINAGRACIA", "MSBONITA"]).any():
                 df_main.loc[df_main["Remark By"].isin(["CCDIVINAGRACIA", "MSBONITA"]), "Remark By"] = "JMOBSEQUIAS"
-                st.write("converted into jm")
-
 
             df_main = df_main[~df_main["Remark"].isin([
                 "Updates when case reassign to another collector", 
