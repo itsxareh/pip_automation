@@ -216,8 +216,8 @@ class BDOAutoProcessor(base):
             
             df_main["Remark By"] = df_main["Remark By"].astype(str).str.strip()
 
-            if df_main["Remart By"].isin(["CCDIVINAGRACIA", "MSBONITA"]).any():
-                df_main.loc[df_main["Remart By"].isin(["CCDIVINAGRACIA", "MSBONITA"]), "Remark By"] = "JMOBSEQUIAS"
+            if df_main["Remark By"].isin(["CCDIVINAGRACIA", "MSBONITA"]).any():
+                df_main.loc[df_main["Remark By"].isin(["CCDIVINAGRACIA", "MSBONITA"]), "Remark By"] = "JMOBSEQUIAS"
                 st.write("converted into jm")
 
 
